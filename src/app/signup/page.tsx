@@ -68,9 +68,13 @@ export default function SignupPage() {
         switch (error.code) {
             case 'auth/popup-closed-by-user':
                 return;
+            case 'auth/unauthorized-domain':
+                title = 'Dominio no autorizado';
+                description = "Este dominio no está autorizado para realizar operaciones de autenticación. Por favor, ve a la consola de Firebase -> Authentication -> Settings -> Authorized domains y añade 'localhost'.";
+                break;
             case 'auth/network-request-failed':
                 title = 'Error de Red';
-                description = 'No se pudo conectar con los servicios de autenticación. Revisa tu conexión a internet y la configuración de dominios autorizados en Firebase.';
+                description = 'No se pudo conectar con los servicios de autenticación. Revisa tu conexión a internet.';
                 break;
             case 'auth/email-already-in-use':
                 title = 'Correo ya registrado';

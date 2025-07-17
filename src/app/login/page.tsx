@@ -66,9 +66,13 @@ export default function LoginPage() {
         switch (error.code) {
             case 'auth/popup-closed-by-user':
                 return; // No mostramos toast para esta acción intencional.
+            case 'auth/unauthorized-domain':
+                title = 'Dominio no autorizado';
+                description = "Este dominio no está autorizado para realizar operaciones de autenticación. Por favor, ve a la consola de Firebase -> Authentication -> Settings -> Authorized domains y añade 'localhost'.";
+                break;
             case 'auth/network-request-failed':
                 title = 'Error de Red';
-                description = 'No se pudo conectar con los servicios de autenticación. Revisa tu conexión a internet y la configuración de dominios autorizados en Firebase.';
+                description = 'No se pudo conectar con los servicios de autenticación. Revisa tu conexión a internet.';
                 break;
             case 'auth/wrong-password':
             case 'auth/user-not-found':
