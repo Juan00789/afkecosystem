@@ -18,7 +18,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { MoreHorizontal, ArrowUpRight, CheckCircle, Clock, FileText, MessageSquare, Briefcase, Users, Smile } from "lucide-react";
-import { Progress } from "@/components/ui/progress";
 
 const cases = [
   {
@@ -160,11 +159,7 @@ export default function DashboardPage() {
                                     </TableCell>
                                     <TableCell>{c.service}</TableCell>
                                     <TableCell>
-                                        <Badge variant={c.status === "Completado" ? "default" : "secondary"} className={
-                                            c.status === "Completado" ? "bg-green-500/20 text-green-700 dark:bg-green-500/20 dark:text-green-400" :
-                                            c.status === "En Progreso" ? "bg-blue-500/20 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400" :
-                                            "bg-yellow-500/20 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400"
-                                        }>
+                                        <Badge variant={c.status === "Completado" ? "default" : "secondary"}>
                                             {c.status}
                                         </Badge>
                                     </TableCell>
