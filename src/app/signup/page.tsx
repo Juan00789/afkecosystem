@@ -15,9 +15,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Logo } from '@/components/logo';
 import { auth, db } from '@/lib/firebase';
-import { createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, GithubAuthProvider, OAuthProvider, type AuthProvider } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
-import { useState } from 'react';
+import { createUserWithEmailAndPassword, signInWithRedirect, getRedirectResult, GoogleAuthProvider, GithubAuthProvider, OAuthProvider, type AuthProvider } from 'firebase/auth';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 
@@ -66,11 +66,9 @@ export default function SignupPage() {
 
     if (error.code) {
         switch (error.code) {
-            case 'auth/popup-closed-by-user':
-                return;
             case 'auth/unauthorized-domain':
                 title = 'Dominio no autorizado';
-                description = "Este dominio no está autorizado para realizar operaciones de autenticación. Por favor, ve a la consola de Firebase -> Authentication -> Settings -> Authorized domains y añade 'localhost'.";
+                description = "Este dominio no está autorizado. Ve a la consola de Firebase -> Authentication -> Settings -> Authorized domains y añade 'localhost'.";
                 break;
             case 'auth/network-request-failed':
                 title = 'Error de Red';
@@ -92,25 +90,39 @@ export default function SignupPage() {
     });
   }
 
+  useEffect(() => {
+    const handleRedirectResult = async () => {
+      setLoading(true);
+      try {
+        const result = await getRedirectResult(auth);
+        if (result) {
+          const user = result.user;
+          const userRef = doc(db, 'users', user.uid);
+          const docSnap = await getDoc(userRef);
+
+          if (!docSnap.exists()) {
+            await setDoc(userRef, {
+              name: user.displayName,
+              email: user.email,
+              createdAt: new Date(),
+            }, { merge: true });
+          }
+          router.push('/dashboard');
+        } else {
+            setLoading(false);
+        }
+      } catch (error) {
+        handleError(error);
+      }
+    };
+
+    handleRedirectResult();
+  }, [router]);
+
+
   const handleSocialLogin = async (provider: AuthProvider) => {
     setLoading(true);
-    try {
-      const result = await signInWithPopup(auth, provider);
-      const user = result.user;
-
-      const userRef = doc(db, 'users', user.uid);
-      await setDoc(userRef, {
-        name: user.displayName,
-        email: user.email,
-        createdAt: new Date(),
-      }, { merge: true });
-
-      router.push('/dashboard');
-    } catch (error: any) {
-        handleError(error);
-    } finally {
-      setLoading(false);
-    }
+    await signInWithRedirect(auth, provider).catch(handleError);
   };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -141,6 +153,11 @@ export default function SignupPage() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-muted/40 p-4">
       <div className="w-full max-w-md">
+       {loading && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+            <Loader2 className="h-10 w-10 animate-spin" />
+          </div>
+        )}
         <Card className="shadow-lg">
           <CardHeader className="text-center">
             <div className="mb-4 flex justify-center">
