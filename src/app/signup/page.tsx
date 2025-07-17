@@ -72,7 +72,7 @@ export default function SignupPage() {
                 break;
             case 'auth/network-request-failed':
                 title = 'Error de Red';
-                description = 'No se pudo conectar con los servicios de autenticación. Revisa tu conexión a internet.';
+                description = 'No se pudo conectar. Revisa tu conexión a internet y asegúrate de haber creado la base de datos de Firestore en la consola de Firebase.';
                 break;
             case 'auth/email-already-in-use':
                 title = 'Correo ya registrado';
@@ -145,8 +145,6 @@ export default function SignupPage() {
     } catch (error: any)
 {
       handleError(error);
-    } finally {
-        setLoading(false);
     }
   };
 
@@ -254,3 +252,5 @@ export default function SignupPage() {
     </div>
   );
 }
+
+    

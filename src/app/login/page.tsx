@@ -70,7 +70,7 @@ export default function LoginPage() {
                 break;
             case 'auth/network-request-failed':
                 title = 'Error de Red';
-                description = 'No se pudo conectar con los servicios de autenticación. Revisa tu conexión a internet.';
+                description = 'No se pudo conectar. Revisa tu conexión a internet y asegúrate de haber creado la base de datos de Firestore en la consola de Firebase.';
                 break;
             case 'auth/wrong-password':
             case 'auth/user-not-found':
@@ -133,8 +133,6 @@ export default function LoginPage() {
       router.push('/dashboard');
     } catch (error: any) {
         handleError(error);
-    } finally {
-        setLoading(false);
     }
   };
 
@@ -225,3 +223,5 @@ export default function LoginPage() {
     </div>
   );
 }
+
+    

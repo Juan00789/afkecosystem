@@ -36,21 +36,30 @@ export default function ProfilePage() {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
         setUser(currentUser);
-        const docRef = doc(db, 'users', currentUser.uid);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          const userData = docSnap.data();
-          setForm({
-            name: userData.name || currentUser.displayName || '',
-            email: currentUser.email || '',
-            phoneNumber: userData.phoneNumber || '',
-          });
-        } else {
-           setForm({
-            name: currentUser.displayName || '',
-            email: currentUser.email || '',
-            phoneNumber: '',
-          });
+        try {
+          const docRef = doc(db, 'users', currentUser.uid);
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            const userData = docSnap.data();
+            setForm({
+              name: userData.name || currentUser.displayName || '',
+              email: currentUser.email || '',
+              phoneNumber: userData.phoneNumber || '',
+            });
+          } else {
+             setForm({
+              name: currentUser.displayName || '',
+              email: currentUser.email || '',
+              phoneNumber: '',
+            });
+          }
+        } catch (error) {
+           console.error("Error fetching user data:", error);
+           toast({
+             variant: 'destructive',
+             title: 'Error de conexión',
+             description: 'No se pudo cargar tu perfil. Revisa tu conexión y que Firestore esté habilitado.',
+           });
         }
       } else {
         router.push('/login');
@@ -59,7 +68,7 @@ export default function ProfilePage() {
     });
 
     return () => unsubscribe();
-  }, [router]);
+  }, [router, toast]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -155,3 +164,5 @@ export default function ProfilePage() {
     </main>
   );
 }
+
+    
