@@ -1,22 +1,14 @@
-
 // Import the functions you need from the SDKs you need
-import { initializeApp, getApps, getApp } from "firebase/app";
+import { initializeApp, getApps, getApp, type FirebaseOptions } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
+import { firebaseConfig as importedConfig } from './firebase-config';
 
-// Your web app's Firebase configuration is read from environment variables
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-};
+const firebaseConfig: FirebaseOptions = importedConfig;
 
-// Check for missing environment variables to provide a clear error
-if (!firebaseConfig.apiKey || !firebaseConfig.authDomain || !firebaseConfig.projectId) {
-    throw new Error("Missing Firebase configuration. Please check your .env file and ensure all required environment variables are set.");
+// Provide a clear error if the config is not filled.
+if (!firebaseConfig || !firebaseConfig.apiKey || firebaseConfig.apiKey.includes('XXX')) {
+    throw new Error("Missing or incomplete Firebase configuration. Please check your src/lib/firebase-config.ts file and paste your project's configuration object.");
 }
 
 // Initialize Firebase safely
