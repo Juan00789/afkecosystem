@@ -30,6 +30,7 @@ export default function SignupPage() {
     name: '',
     email: '',
     password: '',
+    phoneNumber: ''
   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -50,6 +51,7 @@ export default function SignupPage() {
       await setDoc(doc(db, 'users', user.uid), {
         name: form.name,
         email: form.email,
+        phoneNumber: form.phoneNumber,
         createdAt: new Date(),
       });
       
@@ -103,6 +105,17 @@ export default function SignupPage() {
                   placeholder="ana.torres@ejemplo.com"
                   required
                   value={form.email}
+                  onChange={handleInputChange}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phoneNumber">Número de Teléfono (Opcional)</Label>
+                <Input
+                  id="phoneNumber"
+                  name="phoneNumber"
+                  type="tel"
+                  placeholder="Ej: +1 123 456 7890"
+                  value={form.phoneNumber}
                   onChange={handleInputChange}
                 />
               </div>
