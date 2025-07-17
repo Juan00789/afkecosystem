@@ -1,4 +1,8 @@
+
+'use client';
+
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -12,6 +16,13 @@ import { Label } from '@/components/ui/label';
 import { Logo } from '@/components/logo';
 
 export default function LoginPage() {
+  const router = useRouter();
+
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    router.push('/dashboard');
+  };
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-muted/40 p-4">
       <div className="w-full max-w-md">
@@ -26,13 +37,14 @@ export default function LoginPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form className="space-y-4">
+            <form className="space-y-4" onSubmit={handleSubmit}>
               <div className="space-y-2">
                 <Label htmlFor="email">Correo Electrónico</Label>
                 <Input
                   id="email"
                   type="email"
                   placeholder="juan.perez@afk.com"
+                  defaultValue="juan.perez@afk.com"
                   required
                 />
               </div>
@@ -46,7 +58,7 @@ export default function LoginPage() {
                     ¿Olvidaste tu contraseña?
                   </Link>
                 </div>
-                <Input id="password" type="password" required />
+                <Input id="password" type="password" defaultValue="password" required />
               </div>
               <Button type="submit" className="w-full">
                 Ingresar
