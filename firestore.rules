@@ -1,0 +1,18 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Los usuarios solo pueden leer y escribir en su propio documento de usuario.
+    match /users/{userId} {
+      allow read, update, delete: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null;
+    }
+
+    // Por ahora, denegar el acceso a otras colecciones hasta que se definan reglas específicas.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
