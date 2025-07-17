@@ -8,18 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
-import { CreditCard, ExternalLink } from 'lucide-react';
+import { CreditCard, Rocket } from 'lucide-react';
 
 export default function BillingPage() {
   return (
@@ -31,40 +20,21 @@ export default function BillingPage() {
             <div>
               <CardTitle>Facturación y Contabilidad</CardTitle>
               <CardDescription>
-                Gestiona tus facturas y contabilidad con la integración de Wave.
+                Gestiona tus facturas y contabilidad directamente desde AFKEcosystem.
               </CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent className="text-center">
-            <div className="flex flex-col items-center justify-center h-48 border-2 border-dashed rounded-md p-6">
-                <h3 className="text-lg font-semibold mb-2">Conecta tu cuenta de Wave</h3>
+            <div className="flex flex-col items-center justify-center h-48 border-2 border-dashed rounded-md p-6 bg-secondary/50">
+                <Rocket className="h-10 w-10 text-primary mb-4" />
+                <h3 className="text-lg font-semibold mb-2">Facturación Nativa Próximamente</h3>
                 <p className="text-muted-foreground mb-4 max-w-sm">
-                    Sincroniza tus clientes y genera facturas automáticamente desde tus cotizaciones aprobadas.
+                    Estamos construyendo una potente herramienta de facturación integrada. Pronto podrás generar y gestionar facturas directamente desde tus casos y cotizaciones.
                 </p>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button>
-                        Conectar con Wave
-                        <ExternalLink className="ml-2 h-4 w-4" />
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>¿Redirigir a Wave?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Estás a punto de ser redirigido a Wave para autorizar de forma segura la conexión con AFKEcosystem.
-                        No compartiremos tus datos sin tu permiso.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => console.log("Redirigiendo a Wave...")}>
-                        Continuar
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                <Button disabled>
+                    Función en Desarrollo
+                </Button>
             </div>
         </CardContent>
       </Card>
