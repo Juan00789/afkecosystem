@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Logo } from "@/components/logo";
 import { UserNav } from "@/components/user-nav";
-import { Home, Users, Briefcase, FileText, Settings, CreditCard, Bell } from "lucide-react";
+import { Home, Users, Briefcase, FileText, Settings, CreditCard, Bell, Receipt } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { doc, getDoc } from "firebase/firestore";
@@ -105,9 +105,15 @@ export default function DashboardLayout({
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton href="/dashboard/billing" tooltip="Facturación">
+              <SidebarMenuButton href="/dashboard/invoices" tooltip="Facturas">
+                <Receipt />
+                Facturas
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton href="/dashboard/billing" tooltip="Contabilidad">
                 <CreditCard />
-                Facturación
+                Contabilidad
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
