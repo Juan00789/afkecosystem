@@ -1,3 +1,4 @@
+
 // Import the functions you need from the SDKs you need
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
@@ -15,7 +16,7 @@ const firebaseConfig = {
 
 // Check for missing environment variables to provide a clear error
 if (!firebaseConfig.apiKey || !firebaseConfig.authDomain || !firebaseConfig.projectId) {
-    throw new Error("Missing Firebase configuration. Please check your .env file.");
+    throw new Error("Missing Firebase configuration. Please check your .env file and ensure all required environment variables are set.");
 }
 
 // Initialize Firebase safely

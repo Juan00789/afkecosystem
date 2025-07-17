@@ -15,12 +15,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Logo } from '@/components/logo';
 import { useState } from 'react';
-import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, GithubAuthProvider, OAuthProvider } from 'firebase/auth';
+import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, GithubAuthProvider, OAuthProvider, type AuthProvider } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 
 const GoogleIcon = () => (
     <svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" className="h-4 w-4">
@@ -58,6 +58,7 @@ export default function LoginPage() {
   };
 
   const handleError = (error: any) => {
+    setLoading(false);
     console.error("Error de autenticación:", error);
     let title = 'Error de autenticación';
     let description = 'Ocurrió un error inesperado. Por favor, inténtalo de nuevo.';
@@ -65,11 +66,10 @@ export default function LoginPage() {
     if (error.code) {
         switch (error.code) {
             case 'auth/popup-closed-by-user':
-                // No mostramos toast para esta acción intencional.
-                return;
+                return; // No mostramos toast para esta acción intencional.
             case 'auth/network-request-failed':
                 title = 'Error de Red';
-                description = 'No se pudo conectar con los servicios de autenticación. Revisa tu conexión a internet.';
+                description = 'No se pudo conectar con los servicios de autenticación. Revisa tu conexión a internet y la configuración de dominios autorizados en Firebase.';
                 break;
             case 'auth/wrong-password':
             case 'auth/user-not-found':
@@ -78,7 +78,7 @@ export default function LoginPage() {
                  description = 'El correo o la contraseña son incorrectos. Por favor, verifica tus datos.';
                  break;
             default:
-                 description = error.message;
+                 description = `Código: ${error.code}. Por favor, inténtalo de nuevo.`;
                  break;
         }
     }
@@ -90,18 +90,22 @@ export default function LoginPage() {
     });
   }
 
-  const handleSocialLogin = async (provider: GoogleAuthProvider | GithubAuthProvider | OAuthProvider) => {
+  const handleSocialLogin = async (provider: AuthProvider) => {
     setLoading(true);
     try {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
 
       const userRef = doc(db, 'users', user.uid);
-      await setDoc(userRef, {
-        name: user.displayName,
-        email: user.email,
-        createdAt: new Date(),
-      }, { merge: true });
+      const docSnap = await getDoc(userRef);
+
+      if (!docSnap.exists()) {
+        await setDoc(userRef, {
+          name: user.displayName,
+          email: user.email,
+          createdAt: new Date(),
+        }, { merge: true });
+      }
 
       router.push('/dashboard');
     } catch (error: any) {

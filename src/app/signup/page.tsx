@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Logo } from '@/components/logo';
 import { auth, db } from '@/lib/firebase';
-import { createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, GithubAuthProvider, OAuthProvider } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, GithubAuthProvider, OAuthProvider, type AuthProvider } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
@@ -59,6 +59,7 @@ export default function SignupPage() {
   };
 
   const handleError = (error: any) => {
+    setLoading(false);
     console.error("Error de autenticación:", error);
     let title = 'Error de autenticación';
     let description = 'Ocurrió un error inesperado. Por favor, inténtalo de nuevo.';
@@ -69,14 +70,14 @@ export default function SignupPage() {
                 return;
             case 'auth/network-request-failed':
                 title = 'Error de Red';
-                description = 'No se pudo conectar con los servicios de autenticación. Revisa tu conexión a internet.';
+                description = 'No se pudo conectar con los servicios de autenticación. Revisa tu conexión a internet y la configuración de dominios autorizados en Firebase.';
                 break;
             case 'auth/email-already-in-use':
                 title = 'Correo ya registrado';
                 description = 'El correo electrónico que ingresaste ya está en uso. Intenta iniciar sesión.';
                 break;
             default:
-                 description = error.message;
+                 description = `Código: ${error.code}. Por favor, inténtalo de nuevo.`;
                  break;
         }
     }
@@ -87,7 +88,7 @@ export default function SignupPage() {
     });
   }
 
-  const handleSocialLogin = async (provider: GoogleAuthProvider | GithubAuthProvider | OAuthProvider) => {
+  const handleSocialLogin = async (provider: AuthProvider) => {
     setLoading(true);
     try {
       const result = await signInWithPopup(auth, provider);
