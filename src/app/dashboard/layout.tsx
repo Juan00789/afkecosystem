@@ -1,3 +1,5 @@
+'use client';
+import { useEffect } from 'react';
 import {
   SidebarProvider,
   Sidebar,
@@ -14,12 +16,35 @@ import { Logo } from "@/components/logo";
 import { UserNav } from "@/components/user-nav";
 import { Home, Users, Briefcase, FileText, Settings, CreditCard, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { doc, setDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+
+async function marcarPresentacionActiva(userId: string) {
+  try {
+    await setDoc(doc(db, "usuarios", userId), {
+      loginTimestamp: new Date(),
+      presentacion: "uno", // 🌟 Aquí lo declaras
+      estado: "activo",
+    }, { merge: true });
+    console.log("Presentación activa marcada para el usuario:", userId);
+  } catch (error) {
+    console.error("Error al marcar presentación activa:", error);
+  }
+}
+
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  useEffect(() => {
+    // Usamos un ID de usuario estático para la demostración.
+    // Esto se reemplazará con el ID del usuario autenticado.
+    const userId = 'agente_juan_perez';
+    marcarPresentacionActiva(userId);
+  }, []);
+
   return (
     <SidebarProvider>
       <Sidebar collapsible="icon" className="bg-sidebar text-sidebar-foreground">
