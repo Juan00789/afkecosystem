@@ -16,5 +16,10 @@ export const firebaseConfig = {
 
 // PASTE YOUR CONFIGURATION BELOW THIS LINE
 export const firebaseConfig = {
-  // Your config here
+  apiKey: "AIzaSyA7gkBqO4LfBCiKLD3kXQ29J4JUJg9vuas",
+  authDomain: "afkecosystem.firebaseapp.com",
+  projectId: "afkecosystem",
+  storageBucket: "afkecosystem.appspot.com",
+  messagingSenderId: "943759593",
+  appId: "1:943759593:web:5845ddf5b8c1ba6f285078"
 };
