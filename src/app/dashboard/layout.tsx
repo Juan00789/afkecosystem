@@ -126,7 +126,9 @@ export default function DashboardLayout({
             <UserNav />
           </div>
         </header>
-        {children}
+        <main className="flex-1">
+            {children}
+        </main>
       </SidebarInset>
     </SidebarProvider>
   );
