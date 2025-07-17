@@ -1,5 +1,5 @@
 'use client';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   SidebarProvider,
   Sidebar,
@@ -16,8 +16,9 @@ import { Logo } from "@/components/logo";
 import { UserNav } from "@/components/user-nav";
 import { Home, Users, Briefcase, FileText, Settings, CreditCard, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { doc, setDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { onAuthStateChanged, type User } from 'firebase/auth';
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { auth, db } from "@/lib/firebase";
 
 async function marcarPresentacionActiva(userId: string) {
   try {
@@ -38,11 +39,33 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [userName, setUserName] = useState('¡Hola!');
+
   useEffect(() => {
-    // Usamos un ID de usuario estático para la demostración.
-    // Esto se reemplazará con el ID del usuario autenticado.
-    const userId = 'agente_juan_perez';
-    marcarPresentacionActiva(userId);
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      if (currentUser) {
+        setUser(currentUser);
+        // Usamos un ID de usuario estático para la demostración.
+        // Esto se reemplazará con el ID del usuario autenticado.
+        const userId = 'agente_juan_perez';
+        marcarPresentacionActiva(userId);
+        
+        const docRef = doc(db, 'users', currentUser.uid);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const userData = docSnap.data();
+          // Prioritize name from Firestore, fallback to display name, then generic greeting
+          setUserName(userData.name ? `¡Hola, ${userData.name.split(' ')[0]}!` : (currentUser.displayName ? `¡Hola, ${currentUser.displayName}!` : '¡Hola!'));
+        } else {
+           setUserName(currentUser.displayName ? `¡Hola, ${currentUser.displayName}!` : '¡Hola!');
+        }
+      } else {
+        // En un caso real, podrías redirigir al login
+        // router.push('/login');
+      }
+    });
+     return () => unsubscribe();
   }, []);
 
   return (
@@ -116,7 +139,7 @@ export default function DashboardLayout({
         <header className="flex h-14 items-center justify-between gap-4 border-b bg-card px-4 lg:px-6">
           <SidebarTrigger className="md:hidden" />
           <div className="flex-1">
-            <h1 className="text-lg font-semibold md:text-xl">¡Hola, Juan!</h1>
+            <h1 className="text-lg font-semibold md:text-xl">{userName}</h1>
           </div>
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="icon" className="rounded-full">

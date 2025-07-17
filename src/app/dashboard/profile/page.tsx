@@ -17,9 +17,11 @@ import { onAuthStateChanged, type User } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 export default function ProfilePage() {
   const { toast } = useToast();
+  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -38,20 +40,25 @@ export default function ProfilePage() {
         if (docSnap.exists()) {
           const userData = docSnap.data();
           setForm({
-            name: userData.name || '',
+            name: userData.name || currentUser.displayName || '',
             email: currentUser.email || '',
             phoneNumber: userData.phoneNumber || '',
           });
+        } else {
+           setForm({
+            name: currentUser.displayName || '',
+            email: currentUser.email || '',
+            phoneNumber: '',
+          });
         }
       } else {
-        // Redirigir al login si no hay usuario
-        window.location.href = '/login';
+        router.push('/login');
       }
       setLoading(false);
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [router]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
