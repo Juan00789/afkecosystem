@@ -202,7 +202,7 @@ export default function SignupPage() {
                   id="phoneNumber"
                   name="phoneNumber"
                   type="tel"
-                  placeholder="Ej: +1 123 456 7890"
+                  placeholder="Ej: 829-922-6556"
                   value={form.phoneNumber}
                   onChange={handleInputChange}
                   disabled={loading}

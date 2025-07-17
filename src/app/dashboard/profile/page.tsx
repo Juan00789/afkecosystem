@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -139,7 +140,7 @@ export default function ProfilePage() {
                 type="tel"
                 value={form.phoneNumber}
                 onChange={handleInputChange}
-                placeholder="Ej: +1 123 456 7890"
+                placeholder="Ej: 829-922-6556"
               />
             </div>
           </CardContent>
