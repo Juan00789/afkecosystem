@@ -87,7 +87,7 @@ export default function DashboardLayout({
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton href="#" tooltip="Clientes">
+              <SidebarMenuButton href="/dashboard/clients" tooltip="Clientes">
                 <Users />
                 Clientes
               </SidebarMenuButton>
