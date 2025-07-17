@@ -3,7 +3,7 @@ import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 
-// Your web app's Firebase configuration
+// Your web app's Firebase configuration is read from environment variables
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -13,18 +13,12 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Check for missing environment variables
-if (!firebaseConfig.apiKey) {
-    throw new Error("Missing NEXT_PUBLIC_FIREBASE_API_KEY in .env file");
-}
-if (!firebaseConfig.authDomain) {
-    throw new Error("Missing NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN in .env file");
-}
-if (!firebaseConfig.projectId) {
-    throw new Error("Missing NEXT_PUBLIC_FIREBASE_PROJECT_ID in .env file");
+// Check for missing environment variables to provide a clear error
+if (!firebaseConfig.apiKey || !firebaseConfig.authDomain || !firebaseConfig.projectId) {
+    throw new Error("Missing Firebase configuration. Please check your .env file.");
 }
 
-// Initialize Firebase
+// Initialize Firebase safely
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 export const db = getFirestore(app);
 export const auth = getAuth(app);
