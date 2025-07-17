@@ -17,21 +17,9 @@ import { UserNav } from "@/components/user-nav";
 import { Home, Users, Briefcase, FileText, Settings, CreditCard, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { onAuthStateChanged, type User } from 'firebase/auth';
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
-
-async function marcarPresentacionActiva(userId: string) {
-  try {
-    await setDoc(doc(db, "usuarios", userId), {
-      loginTimestamp: new Date(),
-      presentacion: "uno", // 🌟 Aquí lo declaras
-      estado: "activo",
-    }, { merge: true });
-    console.log("Presentación activa marcada para el usuario:", userId);
-  } catch (error) {
-    console.error("Error al marcar presentación activa:", error);
-  }
-}
+import { useRouter } from 'next/navigation';
 
 
 export default function DashboardLayout({
@@ -39,34 +27,34 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [userName, setUserName] = useState('¡Hola!');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
         setUser(currentUser);
-        // Usamos un ID de usuario estático para la demostración.
-        // Esto se reemplazará con el ID del usuario autenticado.
-        const userId = 'agente_juan_perez';
-        marcarPresentacionActiva(userId);
-        
         const docRef = doc(db, 'users', currentUser.uid);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           const userData = docSnap.data();
-          // Prioritize name from Firestore, fallback to display name, then generic greeting
-          setUserName(userData.name ? `¡Hola, ${userData.name.split(' ')[0]}!` : (currentUser.displayName ? `¡Hola, ${currentUser.displayName}!` : '¡Hola!'));
+          setUserName(userData.name ? `¡Hola, ${userData.name.split(' ')[0]}!` : (currentUser.displayName ? `¡Hola, ${currentUser.displayName.split(' ')[0]}!` : '¡Hola!'));
         } else {
-           setUserName(currentUser.displayName ? `¡Hola, ${currentUser.displayName}!` : '¡Hola!');
+           setUserName(currentUser.displayName ? `¡Hola, ${currentUser.displayName.split(' ')[0]}!` : '¡Hola!');
         }
       } else {
-        // En un caso real, podrías redirigir al login
-        // router.push('/login');
+        router.push('/login');
       }
+      setLoading(false);
     });
      return () => unsubscribe();
-  }, []);
+  }, [router]);
+
+  if (loading) {
+    return <div className="flex h-screen w-full items-center justify-center">Cargando...</div>;
+  }
 
   return (
     <SidebarProvider>
