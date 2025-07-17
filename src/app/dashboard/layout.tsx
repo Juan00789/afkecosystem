@@ -94,7 +94,7 @@ export default function DashboardLayout({
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton href="#" tooltip="Facturación">
+              <SidebarMenuButton href="/dashboard/billing" tooltip="Facturación">
                 <CreditCard />
                 Facturación
               </SidebarMenuButton>
