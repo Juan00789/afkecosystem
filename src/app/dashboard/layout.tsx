@@ -45,7 +45,7 @@ export default function DashboardLayout({
         <SidebarContent>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton href="#" isActive tooltip="Dashboard">
+              <SidebarMenuButton href="/dashboard" tooltip="Dashboard">
                 <Home />
                 Dashboard
               </SidebarMenuButton>
@@ -63,7 +63,7 @@ export default function DashboardLayout({
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton href="#" tooltip="Cotizaciones">
+              <SidebarMenuButton href="/dashboard/quotes" tooltip="Cotizaciones">
                 <FileText />
                 Cotizaciones
               </SidebarMenuButton>
