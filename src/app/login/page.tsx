@@ -19,7 +19,6 @@ import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, Github
 import { auth, db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import { Separator } from '@/components/ui/separator';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 
 const GoogleIcon = () => (

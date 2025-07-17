@@ -61,7 +61,7 @@ export default function SignupPage() {
   const handleError = (error: any) => {
     setLoading(false);
     console.error("Error de autenticación:", error);
-    let title = 'Error de autenticación';
+    let title = 'Error de registro';
     let description = 'Ocurrió un error inesperado. Por favor, inténtalo de nuevo.';
 
     if (error.code) {
@@ -126,7 +126,8 @@ export default function SignupPage() {
       
       router.push('/dashboard');
 
-    } catch (error: any) {
+    } catch (error: any)
+{
       handleError(error);
     } finally {
         setLoading(false);
