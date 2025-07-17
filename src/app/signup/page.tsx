@@ -58,6 +58,35 @@ export default function SignupPage() {
     setForm(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleError = (error: any) => {
+    console.error("Error de autenticación:", error);
+    let title = 'Error de autenticación';
+    let description = 'Ocurrió un error inesperado. Por favor, inténtalo de nuevo.';
+
+    if (error.code) {
+        switch (error.code) {
+            case 'auth/popup-closed-by-user':
+                return;
+            case 'auth/network-request-failed':
+                title = 'Error de Red';
+                description = 'No se pudo conectar con los servicios de autenticación. Revisa tu conexión a internet.';
+                break;
+            case 'auth/email-already-in-use':
+                title = 'Correo ya registrado';
+                description = 'El correo electrónico que ingresaste ya está en uso. Intenta iniciar sesión.';
+                break;
+            default:
+                 description = error.message;
+                 break;
+        }
+    }
+    toast({
+        variant: 'destructive',
+        title: title,
+        description: description,
+    });
+  }
+
   const handleSocialLogin = async (provider: GoogleAuthProvider | GithubAuthProvider | OAuthProvider) => {
     setLoading(true);
     try {
@@ -73,17 +102,7 @@ export default function SignupPage() {
 
       router.push('/dashboard');
     } catch (error: any) {
-      if (error.code === 'auth/popup-closed-by-user') {
-        console.log('El usuario cerró la ventana de inicio de sesión.');
-        // No mostramos un toast de error porque fue una acción intencional.
-      } else {
-        console.error("Error en inicio de sesión social:", error);
-        toast({
-          variant: 'destructive',
-          title: 'Error de autenticación',
-          description: error.message || 'No se pudo iniciar sesión con el proveedor seleccionado.',
-        });
-      }
+        handleError(error);
     } finally {
       setLoading(false);
     }
@@ -107,12 +126,7 @@ export default function SignupPage() {
       router.push('/dashboard');
 
     } catch (error: any) {
-      console.error("Error al registrarse:", error);
-      toast({
-        variant: 'destructive',
-        title: 'Error en el registro',
-        description: error.message || 'No se pudo crear la cuenta. Inténtalo de nuevo.',
-      });
+      handleError(error);
     } finally {
         setLoading(false);
     }

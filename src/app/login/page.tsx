@@ -57,13 +57,45 @@ export default function LoginPage() {
     setForm(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleError = (error: any) => {
+    console.error("Error de autenticación:", error);
+    let title = 'Error de autenticación';
+    let description = 'Ocurrió un error inesperado. Por favor, inténtalo de nuevo.';
+
+    if (error.code) {
+        switch (error.code) {
+            case 'auth/popup-closed-by-user':
+                // No mostramos toast para esta acción intencional.
+                return;
+            case 'auth/network-request-failed':
+                title = 'Error de Red';
+                description = 'No se pudo conectar con los servicios de autenticación. Revisa tu conexión a internet.';
+                break;
+            case 'auth/wrong-password':
+            case 'auth/user-not-found':
+            case 'auth/invalid-credential':
+                 title = 'Credenciales Incorrectas';
+                 description = 'El correo o la contraseña son incorrectos. Por favor, verifica tus datos.';
+                 break;
+            default:
+                 description = error.message;
+                 break;
+        }
+    }
+
+    toast({
+        variant: 'destructive',
+        title: title,
+        description: description,
+    });
+  }
+
   const handleSocialLogin = async (provider: GoogleAuthProvider | GithubAuthProvider | OAuthProvider) => {
     setLoading(true);
     try {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
 
-      // Guardar información del usuario en Firestore si es un nuevo registro
       const userRef = doc(db, 'users', user.uid);
       await setDoc(userRef, {
         name: user.displayName,
@@ -73,17 +105,7 @@ export default function LoginPage() {
 
       router.push('/dashboard');
     } catch (error: any) {
-      if (error.code === 'auth/popup-closed-by-user') {
-        console.log('El usuario cerró la ventana de inicio de sesión.');
-        // No mostramos un toast de error porque fue una acción intencional.
-      } else {
-        console.error("Error en inicio de sesión social:", error);
-        toast({
-          variant: 'destructive',
-          title: 'Error de autenticación',
-          description: error.message || 'No se pudo iniciar sesión con el proveedor seleccionado.',
-        });
-      }
+        handleError(error);
     } finally {
       setLoading(false);
     }
@@ -96,12 +118,7 @@ export default function LoginPage() {
       await signInWithEmailAndPassword(auth, form.email, form.password);
       router.push('/dashboard');
     } catch (error: any) {
-        console.error("Error al iniciar sesión:", error);
-        toast({
-          variant: 'destructive',
-          title: 'Error al iniciar sesión',
-          description: 'Las credenciales son incorrectas. Por favor, inténtalo de nuevo.',
-        });
+        handleError(error);
     } finally {
         setLoading(false);
     }
