@@ -189,7 +189,7 @@ export default function SignupPage() {
                   id="email"
                   name="email"
                   type="email"
-                  placeholder="ana.torres@ejemplo.com"
+                  placeholder="ana.torres@afk.com"
                   required
                   value={form.email}
                   onChange={handleInputChange}
