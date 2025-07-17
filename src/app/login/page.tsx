@@ -73,12 +73,17 @@ export default function LoginPage() {
 
       router.push('/dashboard');
     } catch (error: any) {
-      console.error("Error en inicio de sesión social:", error);
-      toast({
-        variant: 'destructive',
-        title: 'Error de autenticación',
-        description: error.message || 'No se pudo iniciar sesión con el proveedor seleccionado.',
-      });
+      if (error.code === 'auth/popup-closed-by-user') {
+        console.log('El usuario cerró la ventana de inicio de sesión.');
+        // No mostramos un toast de error porque fue una acción intencional.
+      } else {
+        console.error("Error en inicio de sesión social:", error);
+        toast({
+          variant: 'destructive',
+          title: 'Error de autenticación',
+          description: error.message || 'No se pudo iniciar sesión con el proveedor seleccionado.',
+        });
+      }
     } finally {
       setLoading(false);
     }
