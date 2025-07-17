@@ -8,6 +8,17 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { CreditCard, ExternalLink } from 'lucide-react';
 
 export default function BillingPage() {
@@ -31,10 +42,29 @@ export default function BillingPage() {
                 <p className="text-muted-foreground mb-4 max-w-sm">
                     Sincroniza tus clientes y genera facturas automáticamente desde tus cotizaciones aprobadas.
                 </p>
-                <Button>
-                    Conectar con Wave
-                    <ExternalLink className="ml-2 h-4 w-4" />
-                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button>
+                        Conectar con Wave
+                        <ExternalLink className="ml-2 h-4 w-4" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>¿Redirigir a Wave?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Estás a punto de ser redirigido a Wave para autorizar de forma segura la conexión con AFKEcosystem.
+                        No compartiremos tus datos sin tu permiso.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => console.log("Redirigiendo a Wave...")}>
+                        Continuar
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
             </div>
         </CardContent>
       </Card>
