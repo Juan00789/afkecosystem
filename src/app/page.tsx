@@ -22,7 +22,7 @@ export default function LandingPage() {
             <span className="text-xl font-bold">AFKEcosystem</span>
         </div>
         <Button asChild>
-          <Link href="/dashboard">Ingresar</Link>
+          <Link href="/login">Ingresar</Link>
         </Button>
       </header>
       <main className="flex-1 flex flex-col items-center justify-center text-center p-4">
@@ -35,7 +35,7 @@ export default function LandingPage() {
           </p>
           <div className="mt-8">
             <Button size="lg" asChild>
-              <Link href="/dashboard">
+              <Link href="/login">
                 Comenzar ahora <ArrowRight className="ml-2" />
               </Link>
             </Button>
