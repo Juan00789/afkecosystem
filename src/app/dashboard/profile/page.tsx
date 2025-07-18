@@ -96,7 +96,9 @@ export default function ProfilePage() {
       await setDoc(userRef, { photoURL }, { merge: true });
       
       // Update Auth user profile
-      await updateProfile(user, { photoURL });
+      if (auth.currentUser) {
+        await updateProfile(auth.currentUser, { photoURL });
+      }
 
       setForm(prev => ({ ...prev, photoURL }));
       toast({
@@ -156,7 +158,7 @@ export default function ProfilePage() {
     );
   }
 
-  const fallback = form.name.charAt(0).toUpperCase() || 'U';
+  const fallback = form.name ? form.name.charAt(0).toUpperCase() : 'U';
 
   return (
     <main className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -226,13 +228,13 @@ export default function ProfilePage() {
                     />
                 </div>
                 <div className="space-y-2">
-                    <Label htmlFor="mainProviderId">ID del Proveedor Principal</Label>
+                    <Label htmlFor="mainProviderId">ID de tu Proveedor (Opcional)</Label>
                     <Input
                         id="mainProviderId"
                         name="mainProviderId"
                         value={form.mainProviderId}
                         onChange={handleInputChange}
-                        placeholder="Pega el ID de tu proveedor"
+                        placeholder="Pega el ID para conectar"
                         disabled={saving || uploading}
                     />
                 </div>

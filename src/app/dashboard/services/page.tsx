@@ -255,7 +255,7 @@ export default function ServicesPage() {
                                         <TableRow>
                                             <TableCell colSpan={isProvider ? 4 : 3} className="h-24 text-center">
                                                 {!isProvider && !userData.mainProviderId
-                                                    ? 'Aún no estás conectado a un proveedor. Añade su ID en tu perfil.'
+                                                    ? 'Para ver servicios, añade el ID de tu proveedor en tu perfil.'
                                                     : 'No hay servicios para mostrar.'
                                                 }
                                             </TableCell>
