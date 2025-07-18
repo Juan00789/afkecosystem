@@ -19,8 +19,9 @@ import { Button } from "@/components/ui/button";
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { RoleSwitcher } from '@/components/role-switcher';
+import Link from 'next/link';
 
 const providerLinks = [
     { href: "/dashboard", icon: <Home />, label: "Dashboard", tooltip: "Dashboard" },
@@ -45,6 +46,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [user, setUser] = useState<User | null>(null);
   const [userName, setUserName] = useState('¡Hola!');
   const [loading, setLoading] = useState(true);
@@ -64,12 +66,11 @@ export default function DashboardLayout({
         } else {
            const name = currentUser.displayName;
            setUserName(name ? `¡Hola, ${name.split(' ')[0]}!` : '¡Hola!');
-           // Ensure user doc is created if it doesn't exist
            await setDoc(docRef, { 
              name: currentUser.displayName, 
              email: currentUser.email,
              activeRole: 'provider',
-             roles: ['provider', 'client'] // User can be both
+             roles: ['provider', 'client']
             }, { merge: true });
         }
       } else {
@@ -85,9 +86,7 @@ export default function DashboardLayout({
         setActiveRole(newRole);
         const userRef = doc(db, 'users', user.uid);
         await setDoc(userRef, { activeRole: newRole }, { merge: true });
-        // You might want to force a reload or redirect to reflect the new role's dashboard
         router.push('/dashboard');
-        // This is a simple way to reload the page to get new server-side props for the layout
         router.refresh();
     }
   };
@@ -127,10 +126,12 @@ export default function DashboardLayout({
           <SidebarMenu>
             {navLinks.map((link) => (
                <SidebarMenuItem key={link.href}>
-                 <SidebarMenuButton href={link.href} tooltip={link.tooltip}>
-                   {link.icon}
-                   {link.label}
-                 </SidebarMenuButton>
+                 <Link href={link.href} legacyBehavior passHref>
+                    <SidebarMenuButton as="a" isActive={pathname === link.href} tooltip={link.tooltip}>
+                        {link.icon}
+                        {link.label}
+                    </SidebarMenuButton>
+                 </Link>
                </SidebarMenuItem>
             ))}
           </SidebarMenu>
@@ -138,10 +139,12 @@ export default function DashboardLayout({
         <SidebarFooter>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton href="/dashboard/profile" tooltip="Configuración">
-                <Settings />
-                Configuración
-              </SidebarMenuButton>
+              <Link href="/dashboard/profile" legacyBehavior passHref>
+                <SidebarMenuButton as="a" isActive={pathname === '/dashboard/profile'} tooltip="Configuración">
+                  <Settings />
+                  Configuración
+                </SidebarMenuButton>
+              </Link>
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarFooter>
