@@ -18,7 +18,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { MoreHorizontal, ArrowUpRight, CheckCircle, Clock, FileText, MessageSquare, Briefcase, Users, Smile } from "lucide-react";
+import { MoreHorizontal, ArrowUpRight, CheckCircle, Clock, FileText, MessageSquare, Briefcase, Users, Smile, UserCheck, Activity } from "lucide-react";
 
 const cases: any[] = [];
 const activities: any[] = [];
@@ -29,42 +29,42 @@ export default function DashboardPage() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Casos Abiertos</CardTitle>
+                    <CardTitle className="text-sm font-medium">Casos Activos</CardTitle>
                     <Briefcase className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                     <div className="text-2xl font-bold">0</div>
-                    <p className="text-xs text-muted-foreground">No hay casos abiertos</p>
+                    <p className="text-xs text-muted-foreground">No tienes casos en progreso.</p>
                 </CardContent>
             </Card>
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Clientes Activos</CardTitle>
+                    <CardTitle className="text-sm font-medium">Tus Clientes</CardTitle>
                     <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                     <div className="text-2xl font-bold">0</div>
-                    <p className="text-xs text-muted-foreground">No hay clientes registrados</p>
+                    <p className="text-xs text-muted-foreground">Añade tu primer cliente para empezar.</p>
                 </CardContent>
             </Card>
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Satisfacción del Cliente</CardTitle>
-                    <Smile className="h-4 w-4 text-muted-foreground" />
+                    <CardTitle className="text-sm font-medium">Tu Próxima Tarea</CardTitle>
+                    <UserCheck className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">N/A</div>
-                    <p className="text-xs text-muted-foreground">Sin datos de satisfacción</p>
+                    <div className="text-xl font-bold">¡Todo en orden!</div>
+                    <p className="text-xs text-muted-foreground">No hay acciones urgentes por ahora.</p>
                 </CardContent>
             </Card>
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Resolución Primer Contacto</CardTitle>
-                    <CheckCircle className="h-4 w-4 text-muted-foreground" />
+                    <CardTitle className="text-sm font-medium">Pulso del Ecosistema</CardTitle>
+                    <Activity className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">N/A</div>
-                    <p className="text-xs text-muted-foreground">Sin datos de resolución</p>
+                    <div className="text-2xl font-bold">Tranquilo</div>
+                    <p className="text-xs text-muted-foreground">El sistema está listo para la acción.</p>
                 </CardContent>
             </Card>
         </div>
@@ -73,7 +73,7 @@ export default function DashboardPage() {
                 <CardHeader>
                     <CardTitle>Casos que requieren tu atención</CardTitle>
                     <CardDescription>
-                        Una vista rápida de los casos más recientes y su estado actual.
+                        Aquí te mostraré los casos que necesitan una acción de tu parte.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -117,7 +117,7 @@ export default function DashboardPage() {
                             ) : (
                                 <TableRow>
                                     <TableCell colSpan={5} className="h-24 text-center">
-                                        No hay casos que requieran tu atención.
+                                        No hay casos que requieran tu atención. ¡Buen trabajo!
                                     </TableCell>
                                 </TableRow>
                             )}
@@ -132,7 +132,7 @@ export default function DashboardPage() {
                 <CardHeader>
                     <CardTitle>Actividad Reciente</CardTitle>
                     <CardDescription>
-                        Un pulso de las últimas interacciones en tu ecosistema.
+                        Te mantendré al tanto de las últimas interacciones en tu ecosistema.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -153,7 +153,7 @@ export default function DashboardPage() {
                         ))
                     ) : (
                         <div className="flex items-center justify-center h-48 border-2 border-dashed rounded-md">
-                            <p className="text-muted-foreground">No hay actividad reciente.</p>
+                            <p className="text-muted-foreground">Todo tranquilo. La actividad aparecerá aquí.</p>
                         </div>
                     )}
                 </CardContent>
