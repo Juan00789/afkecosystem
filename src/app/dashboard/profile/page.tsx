@@ -16,10 +16,10 @@ import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { auth, db, storage } from '@/lib/firebase';
 import { onAuthStateChanged, type User, updateProfile } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Camera, Copy } from 'lucide-react';
+import { Loader2, Camera, Copy, Link2Off } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function ProfilePage() {
@@ -94,11 +94,9 @@ export default function ProfilePage() {
       await uploadBytes(storageRef, file);
       const photoURL = await getDownloadURL(storageRef);
 
-      // Update Firestore
       const userRef = doc(db, 'users', user.uid);
-      await setDoc(userRef, { photoURL }, { merge: true });
+      await updateDoc(userRef, { photoURL });
       
-      // Update Auth user profile
       if (auth.currentUser) {
         await updateProfile(auth.currentUser, { photoURL });
       }
@@ -157,12 +155,36 @@ export default function ProfilePage() {
     if (!form.userId) return;
     navigator.clipboard.writeText(form.userId);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000); // Reset after 2 seconds
+    setTimeout(() => setCopied(false), 2000);
     toast({
         title: 'ID de Usuario Copiado',
         description: 'Tu ID ha sido copiado al portapapeles.',
     });
   }
+
+  const handleUnlinkProvider = async () => {
+    if (!user) return;
+    setSaving(true);
+    try {
+        const userRef = doc(db, 'users', user.uid);
+        await updateDoc(userRef, { mainProviderId: '' });
+        setForm(prev => ({ ...prev, mainProviderId: '' }));
+        toast({
+            title: 'Proveedor desvinculado',
+            description: 'Has roto la conexión con tu proveedor.',
+        });
+    } catch (error) {
+        console.error('Error desvinculando proveedor:', error);
+        toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: 'No se pudo desvincular el proveedor. Inténtalo de nuevo.',
+        });
+    } finally {
+        setSaving(false);
+    }
+  };
+
 
   if (loading) {
     return (
@@ -253,16 +275,25 @@ export default function ProfilePage() {
                         disabled={saving || uploading}
                     />
                 </div>
-                <div className="space-y-2">
-                    <Label htmlFor="mainProviderId">ID de tu Proveedor (Opcional)</Label>
-                    <Input
-                        id="mainProviderId"
-                        name="mainProviderId"
-                        value={form.mainProviderId}
-                        onChange={handleInputChange}
-                        placeholder="Pega el ID para conectar"
-                        disabled={saving || uploading}
-                    />
+                 <div className="space-y-2">
+                    <Label htmlFor="mainProviderId">ID de tu Proveedor</Label>
+                    {form.mainProviderId ? (
+                         <div className="flex gap-2">
+                            <Input id="mainProviderId" value={form.mainProviderId} readOnly disabled />
+                            <Button type="button" variant="destructive" size="icon" onClick={handleUnlinkProvider} disabled={saving}>
+                                <Link2Off className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    ) : (
+                        <Input
+                            id="mainProviderId"
+                            name="mainProviderId"
+                            value={form.mainProviderId}
+                            onChange={handleInputChange}
+                            placeholder="Pega el ID para conectar"
+                            disabled={saving || uploading}
+                        />
+                    )}
                 </div>
             </div>
           </CardContent>
@@ -277,3 +308,5 @@ export default function ProfilePage() {
     </main>
   );
 }
+
+    
