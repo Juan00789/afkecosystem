@@ -19,7 +19,7 @@ import { onAuthStateChanged, type User, updateProfile } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Camera } from 'lucide-react';
+import { Loader2, Camera, Copy } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function ProfilePage() {
@@ -29,12 +29,14 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [form, setForm] = useState({
     name: '',
     email: '',
     phoneNumber: '',
     photoURL: '',
     mainProviderId: '',
+    userId: '',
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -53,6 +55,7 @@ export default function ProfilePage() {
             phoneNumber: userData.phoneNumber || '',
             photoURL: userData.photoURL || currentUser.photoURL || '',
             mainProviderId: userData.mainProviderId || '',
+            userId: currentUser.uid,
           });
 
         } catch (error) {
@@ -150,6 +153,17 @@ export default function ProfilePage() {
     }
   };
 
+  const handleCopyId = () => {
+    if (!form.userId) return;
+    navigator.clipboard.writeText(form.userId);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000); // Reset after 2 seconds
+    toast({
+        title: 'ID de Usuario Copiado',
+        description: 'Tu ID ha sido copiado al portapapeles.',
+    });
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full p-8">
@@ -194,6 +208,18 @@ export default function ProfilePage() {
                 />
               </div>
             </div>
+            
+            <div className="space-y-2">
+                <Label htmlFor="userId">Tu ID de Usuario (para compartir)</Label>
+                <div className="flex gap-2">
+                    <Input id="userId" value={form.userId} readOnly />
+                    <Button type="button" variant="outline" size="icon" onClick={handleCopyId} disabled={copied}>
+                        <Copy className="h-4 w-4" />
+                    </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">Este es tu ID de proveedor. Compártelo con tus clientes para que puedan conectarse contigo.</p>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                     <Label htmlFor="name">Nombre Completo</Label>
