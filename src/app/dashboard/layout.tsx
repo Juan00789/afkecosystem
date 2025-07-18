@@ -127,7 +127,7 @@ export default function DashboardLayout({
           <SidebarMenu>
             {navLinks.map((link) => (
                <SidebarMenuItem key={link.href}>
-                 <Link href={link.href} legacyBehavior passHref>
+                 <Link href={link.href} passHref>
                     <SidebarMenuButton as="a" isActive={pathname === link.href} tooltip={link.tooltip}>
                         {link.icon}
                         {link.label}
@@ -140,7 +140,7 @@ export default function DashboardLayout({
         <SidebarFooter>
           <SidebarMenu>
             <SidebarMenuItem>
-              <Link href="/dashboard/profile" legacyBehavior passHref>
+              <Link href="/dashboard/profile" passHref>
                 <SidebarMenuButton as="a" isActive={pathname === '/dashboard/profile'} tooltip="Configuración">
                   <Settings />
                   Configuración
