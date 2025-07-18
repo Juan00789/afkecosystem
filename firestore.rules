@@ -1,56 +1,43 @@
 
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-  
-    // Helper function to check ownership
-    function isOwner(userId) {
-      return request.auth != null && request.auth.uid == userId;
-    }
     
-    // User profile data
+    // Reglas para la colección 'users'
+    // Permite a cualquier usuario autenticado leer su propio perfil.
+    // Permite a cualquier usuario autenticado actualizar su propio perfil.
     match /users/{userId} {
-      // A user can read their own profile, create it, and update it.
-      // Any authenticated user can get another user's profile (for name, etc.)
-      allow read, update, create: if isOwner(userId);
-      allow get: if request.auth != null;
+      allow read, update: if request.auth != null && request.auth.uid == userId;
+      
+      // Reglas para la subcolección 'providers'
+      // Permite a un usuario gestionar su propia lista de proveedores.
+      match /providers/{providerId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
     }
 
-    // Client data
+    // Reglas para la colección 'clients'
+    // Permite a un proveedor crear, leer, actualizar y eliminar sus propios clientes.
+    // Un usuario solo puede listar los clientes que le pertenecen.
     match /clients/{clientId} {
-      // A provider can manage their own clients.
-      allow create, update, delete: if isOwner(resource.data.userId);
-
-      // A provider can get their own client's details.
-      allow get: if isOwner(resource.data.userId);
-
-      // A provider can list their own clients. This is a separate rule.
-      allow list: if request.auth != null && request.query.where.size() > 0 && request.query.where[0].field == 'userId' && request.query.where[0].value == request.auth.uid;
+      allow read, update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow list: if request.auth != null && request.query.resource.data.userId == request.auth.uid;
     }
     
-    // Services offered by providers
+    // Reglas para la colección 'services'
+    // Permite a un proveedor gestionar sus propios servicios.
+    // Permite a cualquier usuario autenticado leer los servicios.
     match /services/{serviceId} {
-        // A provider can create, update, and delete their own services.
-        allow create, update, delete: if isOwner(request.resource.data.userId) || isOwner(resource.data.userId);
-        
-        // Any authenticated user can read services.
-        // The app logic filters which services to show (e.g., only from a specific provider).
-        allow read: if request.auth != null;
+      allow create, update, delete: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow read: if request.auth != null;
     }
-    
-    // Cases between clients and providers
-    match /cases/{caseId} {
-        // For now, allow authenticated users to read/write.
-        // TODO: Refine rules to only allow involved client/provider.
-        allow read, write: if request.auth != null;
 
-        // Comments within a case
-        match /comments/{commentId} {
-            // Any authenticated user can read/write comments.
-            // TODO: Refine rules to only allow involved client/provider.
-            allow read, write: if request.auth != null;
-        }
-    }
-  }
-}
+    // Reglas para la colección 'cases'
+    // Permite leer y escribir si el usuario es el proveedor (userId) o el cliente (clientId).
+    match /cases/{caseId} {
+      allow read, write: if request.auth != null && (request.auth.uid == resource.data.providerId || request.auth.uid == resource.data.clientId);
+      
+      // Reglas para la subcolección de comentarios
+      match /comments/{commentId} {
+         allow read, write: if request.auth != null; // Se podría restringir más si fuera

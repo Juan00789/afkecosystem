@@ -19,7 +19,7 @@ import { onAuthStateChanged, type User, updateProfile } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Camera, Copy, Link2Off } from 'lucide-react';
+import { Loader2, Camera, Copy } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function ProfilePage() {
@@ -35,7 +35,6 @@ export default function ProfilePage() {
     email: '',
     phoneNumber: '',
     photoURL: '',
-    mainProviderId: '',
     userId: '',
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -54,7 +53,6 @@ export default function ProfilePage() {
             email: currentUser.email || '',
             phoneNumber: userData.phoneNumber || '',
             photoURL: userData.photoURL || currentUser.photoURL || '',
-            mainProviderId: userData.mainProviderId || '',
             userId: currentUser.uid,
           });
 
@@ -128,7 +126,6 @@ export default function ProfilePage() {
       await setDoc(userRef, { 
         name: form.name,
         phoneNumber: form.phoneNumber,
-        mainProviderId: form.mainProviderId,
       }, { merge: true });
 
       if (auth.currentUser) {
@@ -161,30 +158,6 @@ export default function ProfilePage() {
         description: 'Tu ID ha sido copiado al portapapeles.',
     });
   }
-
-  const handleUnlinkProvider = async () => {
-    if (!user) return;
-    setSaving(true);
-    try {
-        const userRef = doc(db, 'users', user.uid);
-        await updateDoc(userRef, { mainProviderId: '' });
-        setForm(prev => ({ ...prev, mainProviderId: '' }));
-        toast({
-            title: 'Proveedor desvinculado',
-            description: 'Has roto la conexión con tu proveedor.',
-        });
-    } catch (error) {
-        console.error('Error desvinculando proveedor:', error);
-        toast({
-            variant: 'destructive',
-            title: 'Error',
-            description: 'No se pudo desvincular el proveedor. Inténtalo de nuevo.',
-        });
-    } finally {
-        setSaving(false);
-    }
-  };
-
 
   if (loading) {
     return (
@@ -239,7 +212,7 @@ export default function ProfilePage() {
                         <Copy className="h-4 w-4" />
                     </Button>
                 </div>
-                <p className="text-xs text-muted-foreground">Este es tu ID de proveedor. Compártelo con tus clientes para que puedan conectarse contigo.</p>
+                <p className="text-xs text-muted-foreground">Este es tu ID. Compártelo con tus clientes para que puedan conectarse contigo, o con otros proveedores para añadirlos a tu red.</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -276,24 +249,13 @@ export default function ProfilePage() {
                     />
                 </div>
                  <div className="space-y-2">
-                    <Label htmlFor="mainProviderId">ID de tu Proveedor</Label>
-                    {form.mainProviderId ? (
-                         <div className="flex gap-2">
-                            <Input id="mainProviderId" value={form.mainProviderId} readOnly disabled />
-                            <Button type="button" variant="destructive" size="icon" onClick={handleUnlinkProvider} disabled={saving}>
-                                <Link2Off className="h-4 w-4" />
-                            </Button>
-                        </div>
-                    ) : (
-                        <Input
-                            id="mainProviderId"
-                            name="mainProviderId"
-                            value={form.mainProviderId}
-                            onChange={handleInputChange}
-                            placeholder="Pega el ID para conectar"
-                            disabled={saving || uploading}
-                        />
-                    )}
+                    <Label htmlFor="manage-connections">Gestionar Conexiones</Label>
+                     <Button asChild variant="outline" className="w-full justify-start font-normal">
+                        <Link href="/dashboard/network">
+                            Ir a tu Red
+                        </Link>
+                     </Button>
+                     <p className="text-xs text-muted-foreground">Añade y gestiona tus clientes y proveedores en la sección de Red.</p>
                 </div>
             </div>
           </CardContent>
@@ -302,11 +264,4 @@ export default function ProfilePage() {
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Guardar Cambios
             </Button>
-          </CardFooter>
-        </form>
-      </Card>
-    </main>
-  );
-}
-
-    
+          </Card

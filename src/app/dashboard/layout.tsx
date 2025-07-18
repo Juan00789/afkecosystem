@@ -1,4 +1,3 @@
-
 'use client';
 import { useEffect, useState, useMemo } from 'react';
 import {
@@ -15,7 +14,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Logo } from "@/components/logo";
 import { UserNav } from "@/components/user-nav";
-import { Home, Users, Briefcase, FileText, Settings, CreditCard, Bell, Receipt, Search, ListTodo, BrainCircuit } from "lucide-react";
+import { Home, Briefcase, FileText, Settings, CreditCard, Bell, Receipt, Search, ListTodo, BrainCircuit, Network } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { doc, getDoc, setDoc } from "firebase/firestore";
@@ -26,7 +25,7 @@ import Link from 'next/link';
 
 const providerLinks = [
     { href: "/dashboard", icon: <Home />, label: "Dashboard", tooltip: "Dashboard" },
-    { href: "/dashboard/clients", icon: <Users />, label: "Clientes", tooltip: "Clientes" },
+    { href: "/dashboard/network", icon: <Network />, label: "Red", tooltip: "Red" },
     { href: "/dashboard/cases", icon: <Briefcase />, label: "Casos", tooltip: "Casos" },
     { href: "/dashboard/quotes", icon: <FileText />, label: "Cotizaciones", tooltip: "Cotizaciones" },
     { href: "/dashboard/services", icon: <ListTodo />, label: "Servicios", tooltip: "Servicios" },
@@ -38,6 +37,7 @@ const providerLinks = [
 const clientLinks = [
     { href: "/dashboard", icon: <Home />, label: "Inicio", tooltip: "Inicio" },
     { href: "/dashboard/services", icon: <Search />, label: "Explorar Servicios", tooltip: "Explorar Servicios" },
+    { href: "/dashboard/network", icon: <Network />, label: "Red", tooltip: "Red" },
     { href: "/dashboard/cases", icon: <Briefcase />, label: "Mis Casos", tooltip: "Mis Casos" },
     { href: "/dashboard/invoices", icon: <Receipt />, label: "Mis Facturas", tooltip: "Mis Facturas" },
 ];
@@ -95,7 +95,21 @@ export default function DashboardLayout({
   };
 
   const navLinks = useMemo(() => {
-      return activeRole === 'provider' ? providerLinks : clientLinks;
+      if (activeRole === 'provider') {
+        // Find the index of the clients link
+        const clientsIndex = providerLinks.findIndex(link => link.href === "/dashboard/clients");
+        // If it exists, replace it with the network link
+        if (clientsIndex !== -1) {
+            providerLinks.splice(clientsIndex, 1, { href: "/dashboard/network", icon: <Network />, label: "Red", tooltip: "Red" });
+        } else {
+             // If it doesn't exist (e.g., after first run), ensure network link is there
+            if (!providerLinks.some(link => link.href === "/dashboard/network")) {
+                 providerLinks.splice(1, 0, { href: "/dashboard/network", icon: <Network />, label: "Red", tooltip: "Red" });
+            }
+        }
+        return providerLinks;
+      }
+      return clientLinks;
   }, [activeRole]);
 
 

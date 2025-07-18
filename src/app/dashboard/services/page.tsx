@@ -57,6 +57,7 @@ import { useToast } from '@/hooks/use-toast';
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 interface Service {
     id: string;
@@ -69,7 +70,12 @@ interface Service {
 interface UserData {
     name?: string;
     activeRole?: 'provider' | 'client';
-    mainProviderId?: string;
+}
+
+interface ProviderConnection {
+    id: string;
+    providerId: string;
+    status: 'potential' | 'main';
 }
 
 export default function ServicesPage() {
@@ -77,6 +83,7 @@ export default function ServicesPage() {
     const router = useRouter();
     const [user, setUser] = useState<User | null>(null);
     const [userData, setUserData] = useState<UserData | null>(null);
+    const [mainProviderId, setMainProviderId] = useState<string | null>(null);
     const [services, setServices] = useState<Service[]>([]);
     const [newService, setNewService] = useState({ name: '', description: '', price: '' });
     const [loading, setLoading] = useState(true);
@@ -100,6 +107,27 @@ export default function ServicesPage() {
       });
       return () => unsubscribeAuth();
     }, [router]);
+    
+    // Effect to get the main provider for the current user (if client)
+    useEffect(() => {
+        if (user && userData?.activeRole === 'client') {
+            const providersQuery = query(
+                collection(db, 'users', user.uid, 'providers'),
+                where('status', '==', 'main'),
+                where('userId', '==', user.uid) // Security rule compliance
+            );
+            const unsubscribe = onSnapshot(providersQuery, (snapshot) => {
+                if (!snapshot.empty) {
+                    const mainProviderDoc = snapshot.docs[0];
+                    setMainProviderId(mainProviderDoc.data().providerId);
+                } else {
+                    setMainProviderId(null);
+                }
+            });
+            return () => unsubscribe();
+        }
+    }, [user, userData]);
+
 
     useEffect(() => {
         if (!user || !userData) {
@@ -112,8 +140,8 @@ export default function ServicesPage() {
 
         if (userData.activeRole === 'provider') {
             servicesQuery = query(collection(db, 'services'), where('userId', '==', user.uid));
-        } else if (userData.activeRole === 'client' && userData.mainProviderId) {
-            servicesQuery = query(collection(db, 'services'), where('userId', '==', userData.mainProviderId));
+        } else if (userData.activeRole === 'client' && mainProviderId) {
+            servicesQuery = query(collection(db, 'services'), where('userId', '==', mainProviderId));
         } else {
             setServices([]);
             setLoading(false);
@@ -135,7 +163,7 @@ export default function ServicesPage() {
         });
 
         return () => unsubscribe();
-    }, [user, userData, toast]);
+    }, [user, userData, mainProviderId, toast]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
@@ -228,7 +256,7 @@ export default function ServicesPage() {
                     <p className="text-muted-foreground">
                         {isProvider 
                             ? 'Añade y administra los servicios que ofreces a tus clientes.'
-                            : 'Explora los servicios ofrecidos por tu proveedor.'
+                            : 'Explora los servicios ofrecidos por tu proveedor principal.'
                         }
                     </p>
                 </div>
@@ -348,8 +376,12 @@ export default function ServicesPage() {
                                     )) : (
                                         <TableRow>
                                             <TableCell colSpan={isProvider ? 4 : 3} className="h-24 text-center">
-                                                {!isProvider && !userData.mainProviderId
-                                                    ? 'Para ver servicios, añade el ID de tu proveedor en tu perfil.'
+                                                {!isProvider && !mainProviderId
+                                                    ? (
+                                                        <span>
+                                                            Para ver servicios, <Link href="/dashboard/network" className="text-primary underline">añade un proveedor principal a tu red</Link>.
+                                                        </span>
+                                                      )
                                                     : 'No hay servicios para mostrar.'
                                                 }
                                             </TableCell>
@@ -395,12 +427,3 @@ export default function ServicesPage() {
                                     {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                     Guardar Cambios
                                 </Button>
-                            </DialogFooter>
-                        </form>
-                    </DialogContent>
-                </Dialog>
-            )}
-
-        </main>
-    );
-}
