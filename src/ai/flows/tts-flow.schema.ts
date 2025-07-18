@@ -1,4 +1,3 @@
-'use server';
 /**
  * @fileOverview Schema and type definitions for the text-to-speech flow.
  *
