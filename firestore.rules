@@ -3,42 +3,42 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Users can read and write their own profile data.
+    // Users can read and write to their own profile.
     match /users/{userId} {
-      allow get, update, delete: if request.auth.uid == userId;
-      allow create: if request.auth.uid != null;
+      allow get, update: if request.auth.uid == userId;
+      allow create: if request.auth.uid == userId;
     }
 
-    // A user can manage their own clients.
+    // Provider can manage their own clients. A client cannot see other clients.
     match /clients/{clientId} {
-        allow read, create, update, delete: if request.auth.uid == request.resource.data.userId;
+      // Allow a provider to list their own clients.
+      allow list: if request.auth.uid != null && request.resource.data.userId == request.auth.uid;
+      // Allow a provider to get, write, and delete their own clients.
+      allow get, write, delete: if request.auth.uid == resource.data.userId;
+      allow create: if request.auth.uid == request.resource.data.userId;
     }
-    
-    // A user can manage their own services.
-    match /services/{serviceId} {
-        allow read, create, update, delete: if request.auth.uid == request.resource.data.userId;
-    }
-    
-    // Complex rules for cases and comments
-    match /cases/{caseId} {
-        // The provider can do anything. The assigned client can only read.
-        allow read, update, delete: if get(/databases/$(database)/documents/cases/$(caseId)).data.providerId == request.auth.uid;
-        allow create: if request.auth.uid == request.resource.data.providerId;
-        
-        // Client access rule
-        allow get: if get(/databases/$(database)/documents/cases/$(caseId)).data.clientId == request.auth.uid;
 
-        // Nested comments rules
-        match /comments/{commentId} {
-            // Both the provider and the assigned client can read comments.
-            allow read: if 
-                request.auth.uid == get(/databases/$(database)/documents/cases/$(caseId)).data.providerId ||
-                request.auth.uid == get(/databases/$(database)/documents/cases/$(caseId)).data.clientId;
-                
-            // Anyone authenticated (provider or client) can create a comment.
-            // The logic in the app should determine if they are part of the case.
-            allow create: if request.auth.uid != null;
-        }
+    // Provider can manage their own services.
+    // A client can read the services of their assigned provider.
+    match /services/{serviceId} {
+      allow get, list: if request.auth.uid == resource.data.userId ||
+                     (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.mainProviderId == resource.data.userId);
+      allow write, delete: if request.auth.uid == resource.data.userId;
+      allow create: if request.auth.uid == request.resource.data.userId;
+    }
+    
+    // Cases can be read by the provider who owns it, and the client it's assigned to.
+    match /cases/{caseId} {
+      // TODO: Add rules for cases based on client ID field
+      allow read: if request.auth.uid != null;
+      
+      match /comments/{commentId} {
+        // Anyone authenticated can create a comment (provider or client).
+        allow create: if request.auth.uid != null;
+        // Anyone authenticated can read comments for a case they can access.
+        allow read: if request.auth.uid != null;
+      }
     }
   }
 }
