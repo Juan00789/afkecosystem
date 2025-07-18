@@ -19,7 +19,7 @@ export const firebaseConfig = {
   apiKey: "AIzaSyA7gkBqO4LfBCiKLD3kXQ29J4JUJg9vuas",
   authDomain: "afkecosystem.firebaseapp.com",
   projectId: "afkecosystem",
-  storageBucket: "afkecosystem.appspot.com",
+  storageBucket: "afkecosystem.firebasestorage.app",
   messagingSenderId: "943759593",
-  appId: "1:943759593:web:5845ddf5b8c1ba6f285078"
+  appId: "1:943759593:web:3933b7a70c9ac91c285078"
 };
