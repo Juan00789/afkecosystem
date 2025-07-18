@@ -1,51 +1,51 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Users can read and update their own user document.
-    // They can list users (to search by phone number) but cannot read arbitrary user docs.
+    // Users can only read/write their own user document.
+    // Any authenticated user can read public user profiles.
     match /users/{userId} {
-      allow read, update: if request.auth.uid == userId;
-      allow list: if request.auth != null;
-    }
+      allow read: if request.auth != null;
+      allow write: if request.auth.uid == userId;
 
-    // A user can manage their own subcollections (like providers).
-    match /users/{userId}/{subcollection}/{docId} {
+      // Clients can manage their own list of providers
+      match /providers/{providerDocId} {
         allow read, write, delete: if request.auth.uid == userId;
-    }
-    
-    // Clients: Only the provider can create/manage their clients.
-    match /clients/{clientId} {
-      allow read, write, delete: if request.auth.uid == resource.data.providerId;
-    }
-
-    // Services: Only the provider who owns the service can manage it.
-    // Any authenticated user can read the services.
-    match /services/{serviceId} {
-        allow read: if request.auth != null;
-        allow write, delete: if request.auth.uid == resource.data.userId;
-    }
-
-    // Cases: Only the client or provider associated with the case can access it.
-    match /cases/{caseId} {
-      allow read, write: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
-      
-      // Comments: The same logic applies to comments within a case.
-      match /comments/{commentId} {
-        allow read, write: if request.auth.uid == get(/databases/$(database)/documents/cases/$(caseId)).data.clientId || request.auth.uid == get(/databases/$(database)/documents/cases/$(caseId)).data.providerId;
       }
     }
-
-    // Invoices: Only the client or provider associated with the invoice can read it.
-    match /invoices/{invoiceId} {
-       allow read, write: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
+    
+    // Providers can manage their own list of clients
+    match /clients/{clientId} {
+      allow read, create: if request.auth.uid == request.resource.data.providerId;
+      allow update, delete: if request.auth.uid == resource.data.providerId;
+    }
+    
+    // Providers can manage their own services
+    match /services/{serviceId} {
+        allow read: if request.auth != null;
+        allow create: if request.auth.uid == request.resource.data.userId;
+        allow update, delete: if request.auth.uid == resource.data.userId;
+    }
+    
+    // Users can read/write cases they are involved in
+    match /cases/{caseId} {
+        allow read, write, create, update: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
+        
+        // Comments can be read/written by participants of the case
+        match /comments/{commentId} {
+            allow read, create: if get(/databases/$(database)/documents/cases/$(caseId)).data.clientId == request.auth.uid || get(/databases/$(database)/documents/cases/$(caseId)).data.providerId == request.auth.uid;
+        }
     }
 
-    // Collection Group for Comments: Allow reading comments if user is client or provider.
+    // Collection Group rules
     match /{path=**}/comments/{commentId} {
-        allow read: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
+        allow read: if resource.data.clientId == request.auth.uid || resource.data.providerId == request.auth.uid;
+    }
+
+    // Invoices can be read by participants
+    match /invoices/{invoiceId} {
+      allow read, create, update: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
     }
   }
 }
