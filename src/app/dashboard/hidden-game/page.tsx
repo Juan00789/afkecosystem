@@ -37,7 +37,7 @@ export default function HiddenGamePage() {
 
   useEffect(() => {
     const checkUserAccess = async () => {
-        if (!user || !user.email) {
+        if (!user) {
             setCheckingAccess(false);
             return;
         }
@@ -50,10 +50,11 @@ export default function HiddenGamePage() {
             const hasBeenProvider = !providerSnapshot.empty;
 
             // Condition 2: Check if the user has ever been a client.
-            // This is true if there's a client document where their email matches.
-            const clientQuery = query(collection(db, 'clients'), where('email', '==', user.email), limit(1));
-            const clientSnapshot = await getDocs(clientQuery);
-            const hasBeenClient = !clientSnapshot.empty;
+            // This is true if they have a mainProviderId set in their user profile.
+            const userDocRef = doc(db, 'users', user.uid);
+            const userDocSnap = await getDoc(userDocRef);
+            const userData = userDocSnap.data();
+            const hasBeenClient = !!userData?.mainProviderId;
 
             setHasAccess(hasBeenClient && hasBeenProvider);
         } catch (error) {
@@ -75,6 +76,8 @@ export default function HiddenGamePage() {
     
     if (user) {
         checkUserAccess();
+    } else {
+        setCheckingAccess(false);
     }
 
   }, [user, toast]);
