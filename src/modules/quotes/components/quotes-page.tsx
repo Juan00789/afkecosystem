@@ -22,7 +22,8 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { generateQuote, type GenerateQuoteOutput } from '@/ai/flows/quote-flow';
-import { textToSpeech, type TextToSpeechOutput } from '@/ai/flows/tts-flow';
+import { textToSpeech } from '@/ai/flows/tts-flow';
+import type { TextToSpeechOutput } from '@/ai/flows/tts-flow.schema';
 import { Loader2, Volume2 } from 'lucide-react';
 import { db, auth } from '@/lib/firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
