@@ -1,6 +1,6 @@
 
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -13,13 +13,30 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { generateQuote, type GenerateQuoteOutput } from '@/ai/flows/quote-flow';
 import { Loader2 } from 'lucide-react';
+import { db, auth } from '@/lib/firebase';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import type { User } from 'firebase/auth';
 
+interface Client {
+  id: string;
+  name: string;
+}
 
 export function QuotesPage() {
   const { toast } = useToast();
+  const [user, setUser] = useState<User | null>(null);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [loadingClients, setLoadingClients] = useState(true);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     clientName: '',
@@ -28,13 +45,66 @@ export function QuotesPage() {
   });
   const [quote, setQuote] = useState<GenerateQuoteOutput | null>(null);
 
+   useEffect(() => {
+    const unsubscribeAuth = auth.onAuthStateChanged((currentUser) => {
+      setUser(currentUser);
+      if (!currentUser) {
+        setLoadingClients(false);
+      }
+    });
+    return () => unsubscribeAuth();
+  }, []);
+
+  useEffect(() => {
+    if (!user) {
+      setClients([]);
+      setLoadingClients(false);
+      return;
+    }
+
+    setLoadingClients(true);
+    const clientsQuery = query(collection(db, 'clients'), where('userId', '==', user.uid));
+    
+    const unsubscribe = onSnapshot(clientsQuery, (snapshot) => {
+        const clientsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client));
+        setClients(clientsData);
+        setLoadingClients(false);
+    }, (error) => {
+        console.error("Error fetching clients: ", error);
+        toast({
+            variant: 'destructive',
+            title: 'Error al cargar clientes',
+            description: 'No se pudieron obtener los datos.'
+        });
+        setLoadingClients(false);
+    });
+
+    return () => unsubscribe();
+  }, [user, toast]);
+
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setForm(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleClientChange = (clientId: string) => {
+    const client = clients.find(c => c.id === clientId);
+    if (client) {
+      setForm(prev => ({ ...prev, clientName: client.name }));
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.clientName) {
+        toast({
+            variant: 'destructive',
+            title: 'Cliente no seleccionado',
+            description: 'Por favor, selecciona un cliente para la cotización.',
+        });
+        return;
+    }
     setLoading(true);
     setQuote(null);
     try {
@@ -65,15 +135,23 @@ export function QuotesPage() {
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="clientName">Nombre del Cliente</Label>
-                <Input 
-                  id="clientName" 
-                  name="clientName" 
-                  placeholder="Ej: Empresa Innova S.A." 
-                  value={form.clientName}
-                  onChange={handleInputChange}
-                  required 
-                />
+                <Label htmlFor="clientName">Selecciona un Cliente</Label>
+                 <Select onValueChange={handleClientChange} disabled={loadingClients || clients.length === 0}>
+                    <SelectTrigger>
+                        <SelectValue placeholder={loadingClients ? "Cargando clientes..." : "Elige un cliente"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {clients.length > 0 ? (
+                            clients.map((client) => (
+                                <SelectItem key={client.id} value={client.id}>
+                                    {client.name}
+                                </SelectItem>
+                            ))
+                        ) : (
+                           <SelectItem value="no-clients" disabled>No hay clientes registrados</SelectItem>
+                        )}
+                    </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="projectName">Nombre del Proyecto</Label>
@@ -100,7 +178,7 @@ export function QuotesPage() {
               </div>
             </CardContent>
             <CardFooter>
-              <Button type="submit" disabled={loading}>
+              <Button type="submit" disabled={loading || loadingClients}>
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Generar Cotización
               </Button>
