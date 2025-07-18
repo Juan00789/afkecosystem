@@ -24,7 +24,7 @@ import { Label } from '@/components/ui/label';
 import { MoreHorizontal, PlusCircle, UserPlus, Users, Loader2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, getDocs, onSnapshot, QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
+import { collection, addDoc, onSnapshot } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged, type User } from 'firebase/auth';
@@ -40,11 +40,23 @@ interface Client {
     userId: string;
 }
 
+const initialClient: Client[] = [
+    {
+        id: '1',
+        name: 'Ledpop_Decorspop',
+        company: 'Ledpop',
+        email: 'ventas@ledpop.com',
+        phone: '849-886-5556',
+        avatar: `https://placehold.co/100x100.png`,
+        userId: 'demo'
+    }
+]
+
 export default function ClientsPage() {
     const { toast } = useToast();
     const router = useRouter();
     const [user, setUser] = useState<User | null>(null);
-    const [clients, setClients] = useState<Client[]>([]);
+    const [clients, setClients] = useState<Client[]>(initialClient);
     const [newClient, setNewClient] = useState({ name: '', company: '', email: '', phone: '' });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -61,7 +73,10 @@ export default function ClientsPage() {
     }, [router]);
 
     useEffect(() => {
-        if (!user) return;
+        if (!user) {
+            setLoading(false);
+            return;
+        }
 
         setLoading(true);
         const clientsCollection = collection(db, 'clients');
@@ -69,9 +84,15 @@ export default function ClientsPage() {
         const unsubscribe = onSnapshot(clientsCollection, (snapshot) => {
             const clientsData = snapshot.docs
               .map(doc => ({ id: doc.id, ...doc.data() } as Client))
-              .filter(client => client.userId === user.uid); // Filtra por el ID del usuario logueado
+              .filter(client => client.userId === user.uid); 
             
-            setClients(clientsData);
+            // Combine initial client with fetched clients, avoiding duplicates if demo user exists
+            setClients(prev => {
+                const existingIds = new Set(prev.map(c => c.id));
+                const newClients = clientsData.filter(c => !existingIds.has(c.id));
+                return [...prev, ...newClients];
+            });
+
             setLoading(false);
         }, (error) => {
             console.error("Error fetching clients: ", error);
@@ -103,18 +124,22 @@ export default function ClientsPage() {
         }
         setSaving(true);
         try {
-            await addDoc(collection(db, 'clients'), {
+            const docRef = await addDoc(collection(db, 'clients'), {
                 ...newClient,
-                userId: user.uid, // Asocia el cliente con el usuario actual
+                userId: user.uid, 
                 avatar: `https://placehold.co/100x100.png`,
                 createdAt: new Date(),
             });
+
+            // Optimistically update UI
+            setClients(prev => [...prev, { id: docRef.id, ...newClient, avatar: `https://placehold.co/100x100.png`, userId: user.uid }]);
+
 
             toast({
                 title: 'Cliente guardado',
                 description: 'El nuevo cliente ha sido añadido a tu lista.',
             });
-            setNewClient({ name: '', company: '', email: '', phone: '' }); // Reset form
+            setNewClient({ name: '', company: '', email: '', phone: '' }); 
         } catch (error) {
             console.error('Error al añadir cliente:', error);
             toast({
@@ -188,7 +213,7 @@ export default function ClientsPage() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        {loading ? (
+                        {loading && clients.length === 0 ? (
                              <div className="flex items-center justify-center h-48">
                                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                              </div>
@@ -208,7 +233,7 @@ export default function ClientsPage() {
                                         <TableCell>
                                             <div className="flex items-center gap-3">
                                                 <Avatar className="h-9 w-9">
-                                                    <AvatarImage src={client.avatar} alt={client.name} data-ai-hint="person face" />
+                                                    <AvatarImage src={client.avatar} alt={client.name} data-ai-hint="company logo" />
                                                     <AvatarFallback>{client.name.charAt(0)}</AvatarFallback>
                                                 </Avatar>
                                                 <span className="font-medium">{client.name}</span>
