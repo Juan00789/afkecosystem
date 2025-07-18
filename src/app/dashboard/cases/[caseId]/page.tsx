@@ -14,14 +14,24 @@ import { Textarea } from "@/components/ui/textarea"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
-import { FileUp, MessageSquare, Paperclip, Loader2, Send } from "lucide-react"
+import { FileUp, MessageSquare, Paperclip, Loader2, Send, Receipt } from "lucide-react"
 import Image from "next/image"
 import { db, auth } from "@/lib/firebase";
-import { collection, addDoc, query, orderBy, onSnapshot, Timestamp, doc, getDoc, DocumentData } from "firebase/firestore";
+import { collection, addDoc, query, orderBy, onSnapshot, Timestamp, doc, getDoc, DocumentData, serverTimestamp } from "firebase/firestore";
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose
+} from "@/components/ui/dialog"
 
 const WhatsAppIcon = () => (
     <svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 fill-current">
@@ -46,6 +56,8 @@ interface CaseData {
     providerName: string;
     services: { name: string, price: string }[];
     status: string;
+    clientId: string;
+    providerId: string;
     financials?: {
         total: string;
         paid: string;
@@ -64,6 +76,9 @@ export default function CaseDetailsPage({ params }: { params: { caseId: string }
     const [newComment, setNewComment] = useState("");
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [isGeneratingInvoice, setIsGeneratingInvoice] = useState(false);
+    const [isInvoiceDialogOpen, setIsInvoiceDialogOpen] = useState(false);
+
 
     useEffect(() => {
         const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
@@ -145,6 +160,56 @@ export default function CaseDetailsPage({ params }: { params: { caseId: string }
         }
     };
     
+    const handleGenerateInvoice = async () => {
+        if (!user || !caseData) return;
+
+        setIsGeneratingInvoice(true);
+        try {
+            // 1. Create the invoice document
+            const dueDate = new Date();
+            dueDate.setDate(dueDate.getDate() + 30); // Due in 30 days
+
+            const invoiceRef = await addDoc(collection(db, 'invoices'), {
+                caseId: caseData.id,
+                clientId: caseData.clientId,
+                providerId: caseData.providerId,
+                clientName: caseData.clientName,
+                providerName: caseData.providerName,
+                services: caseData.services,
+                amount: caseData.financials?.total || '0',
+                status: 'Pendiente',
+                createdAt: serverTimestamp(),
+                dueDate: Timestamp.fromDate(dueDate),
+            });
+            
+            // 2. Add a comment to the case timeline
+            await addDoc(collection(db, 'cases', params.caseId, 'comments'), {
+                text: `Se ha generado la factura #${invoiceRef.id.substring(0,6).toUpperCase()}.`,
+                userId: user.uid,
+                userName: 'Sistema',
+                userFallback: 'S',
+                createdAt: Timestamp.now(),
+            });
+
+            toast({
+                title: "Factura Generada",
+                description: `La factura #${invoiceRef.id.substring(0,6).toUpperCase()} ha sido creada y añadida al historial.`,
+            });
+            
+            setIsInvoiceDialogOpen(false);
+
+        } catch (error) {
+             console.error('Error al generar factura:', error);
+            toast({
+                variant: 'destructive',
+                title: 'Error al generar factura',
+                description: 'No se pudo crear la factura. Inténtalo de nuevo.',
+            });
+        } finally {
+            setIsGeneratingInvoice(false);
+        }
+    };
+
     if (loading || !caseData) {
         return (
             <main className="flex-1 flex items-center justify-center">
@@ -208,9 +273,35 @@ export default function CaseDetailsPage({ params }: { params: { caseId: string }
                             />
                             <div className="flex justify-between items-center">
                                {userData.activeRole === 'provider' ? (
-                                    <Button variant="outline" size="sm" type="button" disabled={saving}>
-                                        <Paperclip className="mr-2 h-4 w-4" /> Adjuntar
-                                    </Button>
+                                    <div className="flex gap-2">
+                                        <Button variant="outline" size="sm" type="button" disabled={saving}>
+                                            <Paperclip className="mr-2 h-4 w-4" /> Adjuntar
+                                        </Button>
+                                         <Dialog open={isInvoiceDialogOpen} onOpenChange={setIsInvoiceDialogOpen}>
+                                            <DialogTrigger asChild>
+                                                <Button variant="outline" size="sm" type="button" disabled={saving || isGeneratingInvoice}>
+                                                    <Receipt className="mr-2 h-4 w-4" /> Generar Factura
+                                                </Button>
+                                            </DialogTrigger>
+                                            <DialogContent>
+                                                <DialogHeader>
+                                                    <DialogTitle>Confirmar Generación de Factura</DialogTitle>
+                                                    <DialogDescription>
+                                                        Se creará una nueva factura para el caso con <span className="font-semibold">{caseData.clientName}</span> por un monto de <span className="font-semibold">{caseData.financials?.total || 'N/A'}</span>. ¿Deseas continuar?
+                                                    </DialogDescription>
+                                                </DialogHeader>
+                                                 <DialogFooter>
+                                                    <DialogClose asChild>
+                                                        <Button variant="outline" disabled={isGeneratingInvoice}>Cancelar</Button>
+                                                    </DialogClose>
+                                                    <Button onClick={handleGenerateInvoice} disabled={isGeneratingInvoice}>
+                                                        {isGeneratingInvoice && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                                        Confirmar y Generar
+                                                    </Button>
+                                                </DialogFooter>
+                                            </DialogContent>
+                                        </Dialog>
+                                    </div>
                                ) : ( <div/> ) }
                                 <Button type="submit" disabled={saving || !newComment.trim()} className={userData.activeRole === 'client' ? 'bg-[#25D366] hover:bg-[#1DAE5A] text-white' : ''}>
                                     {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -287,9 +378,6 @@ export default function CaseDetailsPage({ params }: { params: { caseId: string }
                        </div>
                    </div>
                 </CardContent>
-                <CardFooter>
-                    <Button className="w-full" variant="outline">Generar Factura</Button>
-                </CardFooter>
             </Card>
         </div>
       </div>
