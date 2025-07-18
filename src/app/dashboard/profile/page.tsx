@@ -34,6 +34,7 @@ export default function ProfilePage() {
     email: '',
     phoneNumber: '',
     photoURL: '',
+    mainProviderId: '',
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -51,6 +52,7 @@ export default function ProfilePage() {
             email: currentUser.email || '',
             phoneNumber: userData.phoneNumber || '',
             photoURL: userData.photoURL || currentUser.photoURL || '',
+            mainProviderId: userData.mainProviderId || '',
           });
 
         } catch (error) {
@@ -122,7 +124,8 @@ export default function ProfilePage() {
       const userRef = doc(db, 'users', user.uid);
       await setDoc(userRef, { 
         name: form.name,
-        phoneNumber: form.phoneNumber 
+        phoneNumber: form.phoneNumber,
+        mainProviderId: form.mainProviderId,
       }, { merge: true });
 
       if (auth.currentUser) {
@@ -189,37 +192,50 @@ export default function ProfilePage() {
                 />
               </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="name">Nombre Completo</Label>
-              <Input
-                id="name"
-                name="name"
-                value={form.name}
-                onChange={handleInputChange}
-                disabled={saving || uploading}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Correo Electrónico</Label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                value={form.email}
-                disabled
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="phoneNumber">Número de Teléfono (Opcional)</Label>
-              <Input
-                id="phoneNumber"
-                name="phoneNumber"
-                type="tel"
-                value={form.phoneNumber}
-                onChange={handleInputChange}
-                placeholder="Ej: 829-922-6556"
-                disabled={saving || uploading}
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <Label htmlFor="name">Nombre Completo</Label>
+                    <Input
+                        id="name"
+                        name="name"
+                        value={form.name}
+                        onChange={handleInputChange}
+                        disabled={saving || uploading}
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="email">Correo Electrónico</Label>
+                    <Input
+                        id="email"
+                        name="email"
+                        type="email"
+                        value={form.email}
+                        disabled
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="phoneNumber">Número de Teléfono (Opcional)</Label>
+                    <Input
+                        id="phoneNumber"
+                        name="phoneNumber"
+                        type="tel"
+                        value={form.phoneNumber}
+                        onChange={handleInputChange}
+                        placeholder="Ej: 829-922-6556"
+                        disabled={saving || uploading}
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="mainProviderId">ID del Proveedor Principal</Label>
+                    <Input
+                        id="mainProviderId"
+                        name="mainProviderId"
+                        value={form.mainProviderId}
+                        onChange={handleInputChange}
+                        placeholder="Pega el ID de tu proveedor"
+                        disabled={saving || uploading}
+                    />
+                </div>
             </div>
           </CardContent>
           <CardFooter>

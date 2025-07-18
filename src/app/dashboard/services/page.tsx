@@ -22,9 +22,9 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { MoreHorizontal, PlusCircle, ListTodo, Loader2 } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, ListTodo, Loader2, Search } from 'lucide-react';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, addDoc, onSnapshot, query, where, doc, getDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged, type User } from 'firebase/auth';
@@ -38,19 +38,32 @@ interface Service {
     userId: string;
 }
 
+interface UserData {
+    name?: string;
+    activeRole?: 'provider' | 'client';
+    mainProviderId?: string;
+}
+
 export default function ServicesPage() {
     const { toast } = useToast();
     const router = useRouter();
     const [user, setUser] = useState<User | null>(null);
+    const [userData, setUserData] = useState<UserData | null>(null);
     const [services, setServices] = useState<Service[]>([]);
     const [newService, setNewService] = useState({ name: '', description: '', price: '' });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
-      const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+      const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
         if (currentUser) {
           setUser(currentUser);
+          const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+          if (userDoc.exists()) {
+              setUserData(userDoc.data() as UserData);
+          } else {
+             router.push('/login');
+          }
         } else {
           router.push('/login');
         }
@@ -59,13 +72,23 @@ export default function ServicesPage() {
     }, [router]);
 
     useEffect(() => {
-        if (!user) {
+        if (!user || !userData) {
             setLoading(false);
             return;
         }
 
         setLoading(true);
-        const servicesQuery = query(collection(db, 'services'), where('userId', '==', user.uid));
+        let servicesQuery;
+
+        if (userData.activeRole === 'provider') {
+            servicesQuery = query(collection(db, 'services'), where('userId', '==', user.uid));
+        } else if (userData.activeRole === 'client' && userData.mainProviderId) {
+            servicesQuery = query(collection(db, 'services'), where('userId', '==', userData.mainProviderId));
+        } else {
+            setServices([]);
+            setLoading(false);
+            return;
+        }
         
         const unsubscribe = onSnapshot(servicesQuery, (snapshot) => {
             const servicesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Service));
@@ -82,7 +105,7 @@ export default function ServicesPage() {
         });
 
         return () => unsubscribe();
-    }, [user, toast]);
+    }, [user, userData, toast]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
@@ -124,103 +147,127 @@ export default function ServicesPage() {
         }
     }
 
-  return (
-    <main className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-        <div className="flex items-center justify-between">
-            <div>
-                <h2 className="text-3xl font-bold tracking-tight">Gestión de Servicios</h2>
-                <p className="text-muted-foreground">Añade y administra los servicios que ofreces a tus clientes.</p>
-            </div>
-        </div>
+    const isProvider = userData?.activeRole === 'provider';
 
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-            <div className="lg:col-span-1">
-                <Card>
-                    <CardHeader>
-                        <div className="flex items-center gap-3">
-                            <PlusCircle className="h-6 w-6 text-primary"/>
-                            <CardTitle>Añadir Nuevo Servicio</CardTitle>
-                        </div>
-                        <CardDescription>
-                            Define un nuevo servicio para tu catálogo.
-                        </CardDescription>
-                    </CardHeader>
-                    <form onSubmit={handleAddService}>
-                        <CardContent className="space-y-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="name">Nombre del Servicio</Label>
-                                <Input id="name" name="name" placeholder="Ej: Consultoría SEO" value={newService.name} onChange={handleInputChange} required disabled={saving} />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="description">Descripción (Opcional)</Label>
-                                <Textarea id="description" name="description" placeholder="Describe en qué consiste el servicio." value={newService.description} onChange={handleInputChange} disabled={saving} />
-                            </div>
-                             <div className="space-y-2">
-                                <Label htmlFor="price">Precio / Tarifa</Label>
-                                <Input id="price" name="price" placeholder="Ej: $50/hora o $500 (fijo)" value={newService.price} onChange={handleInputChange} required disabled={saving} />
-                            </div>
-                        </CardContent>
-                        <CardFooter>
-                            <Button type="submit" disabled={saving}>
-                                {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Guardar Servicio
-                            </Button>
-                        </CardFooter>
-                    </form>
-                </Card>
+    if (!userData) {
+         return (
+             <main className="flex-1 space-y-4 p-4 md:p-8 pt-6 flex items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+             </main>
+         )
+    }
+
+    return (
+        <main className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+            <div className="flex items-center justify-between">
+                <div>
+                    <h2 className="text-3xl font-bold tracking-tight">
+                        {isProvider ? 'Gestión de Servicios' : 'Servicios Disponibles'}
+                    </h2>
+                    <p className="text-muted-foreground">
+                        {isProvider 
+                            ? 'Añade y administra los servicios que ofreces a tus clientes.'
+                            : 'Explora los servicios ofrecidos por tu proveedor.'
+                        }
+                    </p>
+                </div>
             </div>
-            <div className="lg:col-span-2">
-                <Card>
-                    <CardHeader>
-                         <div className="flex items-center gap-3">
-                            <ListTodo className="h-6 w-6 text-primary"/>
-                            <CardTitle>Mis Servicios</CardTitle>
-                        </div>
-                        <CardDescription>
-                            Listado de todos tus servicios registrados.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        {loading ? (
-                             <div className="flex items-center justify-center h-48">
-                                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                             </div>
-                        ) : (
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Servicio</TableHead>
-                                    <TableHead className="hidden md:table-cell">Descripción</TableHead>
-                                    <TableHead className="text-right">Precio</TableHead>
-                                    <TableHead><span className="sr-only">Acciones</span></TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {services.length > 0 ? services.map((service) => (
-                                    <TableRow key={service.id}>
-                                        <TableCell className="font-medium">{service.name}</TableCell>
-                                        <TableCell className="hidden md:table-cell text-muted-foreground">{service.description}</TableCell>
-                                        <TableCell className="text-right">{service.price}</TableCell>
-                                        <TableCell className="text-right">
-                                            <Button variant="ghost" size="icon">
-                                                <MoreHorizontal className="h-4 w-4" />
-                                            </Button>
-                                        </TableCell>
-                                    </TableRow>
-                                )) : (
+
+            <div className={`grid grid-cols-1 gap-8 ${isProvider ? 'lg:grid-cols-3' : ''}`}>
+                {isProvider && (
+                    <div className="lg:col-span-1">
+                        <Card>
+                            <CardHeader>
+                                <div className="flex items-center gap-3">
+                                    <PlusCircle className="h-6 w-6 text-primary"/>
+                                    <CardTitle>Añadir Nuevo Servicio</CardTitle>
+                                </div>
+                                <CardDescription>
+                                    Define un nuevo servicio para tu catálogo.
+                                </CardDescription>
+                            </CardHeader>
+                            <form onSubmit={handleAddService}>
+                                <CardContent className="space-y-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="name">Nombre del Servicio</Label>
+                                        <Input id="name" name="name" placeholder="Ej: Consultoría SEO" value={newService.name} onChange={handleInputChange} required disabled={saving} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="description">Descripción (Opcional)</Label>
+                                        <Textarea id="description" name="description" placeholder="Describe en qué consiste el servicio." value={newService.description} onChange={handleInputChange} disabled={saving} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="price">Precio / Tarifa</Label>
+                                        <Input id="price" name="price" placeholder="Ej: $50/hora o $500 (fijo)" value={newService.price} onChange={handleInputChange} required disabled={saving} />
+                                    </div>
+                                </CardContent>
+                                <CardFooter>
+                                    <Button type="submit" disabled={saving}>
+                                        {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                        Guardar Servicio
+                                    </Button>
+                                </CardFooter>
+                            </form>
+                        </Card>
+                    </div>
+                )}
+                <div className={isProvider ? 'lg:col-span-2' : 'w-full'}>
+                    <Card>
+                        <CardHeader>
+                            <div className="flex items-center gap-3">
+                                {isProvider ? <ListTodo className="h-6 w-6 text-primary"/> : <Search className="h-6 w-6 text-primary"/>}
+                                <CardTitle>{isProvider ? 'Mis Servicios' : 'Catálogo de Servicios'}</CardTitle>
+                            </div>
+                            <CardDescription>
+                                {isProvider ? 'Listado de todos tus servicios registrados.' : 'Estos son los servicios que puedes solicitar.'}
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            {loading ? (
+                                <div className="flex items-center justify-center h-48">
+                                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                                </div>
+                            ) : (
+                            <Table>
+                                <TableHeader>
                                     <TableRow>
-                                        <TableCell colSpan={4} className="h-24 text-center">
-                                            No tienes servicios registrados todavía.
-                                        </TableCell>
+                                        <TableHead>Servicio</TableHead>
+                                        <TableHead className="hidden md:table-cell">Descripción</TableHead>
+                                        <TableHead className="text-right">Precio</TableHead>
+                                        {isProvider && <TableHead><span className="sr-only">Acciones</span></TableHead>}
                                     </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
-                        )}
-                    </CardContent>
-                </Card>
+                                </TableHeader>
+                                <TableBody>
+                                    {services.length > 0 ? services.map((service) => (
+                                        <TableRow key={service.id}>
+                                            <TableCell className="font-medium">{service.name}</TableCell>
+                                            <TableCell className="hidden md:table-cell text-muted-foreground">{service.description}</TableCell>
+                                            <TableCell className="text-right">{service.price}</TableCell>
+                                            {isProvider && (
+                                                <TableCell className="text-right">
+                                                    <Button variant="ghost" size="icon">
+                                                        <MoreHorizontal className="h-4 w-4" />
+                                                    </Button>
+                                                </TableCell>
+                                            )}
+                                        </TableRow>
+                                    )) : (
+                                        <TableRow>
+                                            <TableCell colSpan={isProvider ? 4 : 3} className="h-24 text-center">
+                                                {!isProvider && !userData.mainProviderId
+                                                    ? 'Aún no estás conectado a un proveedor. Añade su ID en tu perfil.'
+                                                    : 'No hay servicios para mostrar.'
+                                                }
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
             </div>
-        </div>
-    </main>
-  );
+        </main>
+    );
 }

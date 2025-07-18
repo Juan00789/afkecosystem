@@ -1,3 +1,4 @@
+
 'use client';
 import { useEffect, useState, useMemo } from 'react';
 import {
@@ -35,7 +36,7 @@ const providerLinks = [
 
 const clientLinks = [
     { href: "/dashboard", icon: <Home />, label: "Inicio", tooltip: "Inicio" },
-    { href: "/dashboard/explore", icon: <Search />, label: "Explorar", tooltip: "Explorar Servicios" },
+    { href: "/dashboard/services", icon: <Search />, label: "Explorar Servicios", tooltip: "Explorar Servicios" },
     { href: "/dashboard/cases", icon: <Briefcase />, label: "Mis Casos", tooltip: "Mis Casos" },
     { href: "/dashboard/invoices", icon: <Receipt />, label: "Mis Facturas", tooltip: "Mis Facturas" },
 ];
