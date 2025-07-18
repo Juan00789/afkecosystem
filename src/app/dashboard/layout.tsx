@@ -93,7 +93,7 @@ export default function DashboardLayout({
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton href="#" tooltip="Casos">
+              <SidebarMenuButton href="/dashboard/cases" tooltip="Casos">
                 <Briefcase />
                 Casos
               </SidebarMenuButton>
