@@ -34,8 +34,8 @@ const providerLinks = [
 const clientLinks = [
     { href: "/dashboard", icon: <Home />, label: "Inicio", tooltip: "Inicio" },
     { href: "/dashboard/explore", icon: <Search />, label: "Explorar", tooltip: "Explorar Servicios" },
-    { href: "/dashboard/my-cases", icon: <Briefcase />, label: "Mis Casos", tooltip: "Mis Casos" },
-    { href: "/dashboard/my-invoices", icon: <Receipt />, label: "Mis Facturas", tooltip: "Mis Facturas" },
+    { href: "/dashboard/cases", icon: <Briefcase />, label: "Mis Casos", tooltip: "Mis Casos" },
+    { href: "/dashboard/invoices", icon: <Receipt />, label: "Mis Facturas", tooltip: "Mis Facturas" },
 ];
 
 
@@ -58,16 +58,18 @@ export default function DashboardLayout({
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           const userData = docSnap.data();
-          setUserName(userData.name ? `¡Hola, ${userData.name.split(' ')[0]}!` : (currentUser.displayName ? `¡Hola, ${currentUser.displayName.split(' ')[0]}!` : '¡Hola!'));
+          const name = userData.name || currentUser.displayName;
+          setUserName(name ? `¡Hola, ${name.split(' ')[0]}!` : '¡Hola!');
           setActiveRole(userData.activeRole || 'provider');
         } else {
-           setUserName(currentUser.displayName ? `¡Hola, ${currentUser.displayName.split(' ')[0]}!` : '¡Hola!');
+           const name = currentUser.displayName;
+           setUserName(name ? `¡Hola, ${name.split(' ')[0]}!` : '¡Hola!');
            // Ensure user doc is created if it doesn't exist
            await setDoc(docRef, { 
              name: currentUser.displayName, 
              email: currentUser.email,
              activeRole: 'provider',
-             roles: ['provider']
+             roles: ['provider', 'client'] // User can be both
             }, { merge: true });
         }
       } else {
@@ -85,6 +87,8 @@ export default function DashboardLayout({
         await setDoc(userRef, { activeRole: newRole }, { merge: true });
         // You might want to force a reload or redirect to reflect the new role's dashboard
         router.push('/dashboard');
+        // This is a simple way to reload the page to get new server-side props for the layout
+        router.refresh();
     }
   };
 
@@ -134,7 +138,7 @@ export default function DashboardLayout({
         <SidebarFooter>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton href="#" tooltip="Configuración">
+              <SidebarMenuButton href="/dashboard/profile" tooltip="Configuración">
                 <Settings />
                 Configuración
               </SidebarMenuButton>
