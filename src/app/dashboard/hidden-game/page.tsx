@@ -43,22 +43,16 @@ export default function HiddenGamePage() {
         }
 
         try {
-            const userDocRef = doc(db, 'users', user.uid);
-            const userDocSnap = await getDoc(userDocRef);
+            // Check if the user has ever been a provider (i.e., has at least one client)
+            const providerQuery = query(collection(db, 'clients'), where('userId', '==', user.uid), limit(1));
+            const providerSnapshot = await getDocs(providerQuery);
+            const hasBeenProvider = !providerSnapshot.empty;
 
-            if (!userDocSnap.exists()) {
-                setHasAccess(false);
-                setCheckingAccess(false);
-                return;
-            }
+            // Check if the user has ever been a client (i.e., their email is in a client document)
+            const clientQuery = query(collection(db, 'clients'), where('email', '==', user.email), limit(1));
+            const clientSnapshot = await getDocs(clientQuery);
+            const hasBeenClient = !clientSnapshot.empty;
 
-            const userData = userDocSnap.data();
-            const hasBeenClient = !!userData.mainProviderId;
-
-            const clientsQuery = query(collection(db, 'clients'), where('userId', '==', user.uid), limit(1));
-            const clientsSnapshot = await getDocs(clientsQuery);
-            const hasBeenProvider = !clientsSnapshot.empty;
-            
             setHasAccess(hasBeenClient && hasBeenProvider);
         } catch (error) {
             console.error("Error checking access:", error);
