@@ -138,7 +138,7 @@ export default function CaseDetailsPage({ params }: { params: { caseId: string }
                 userId: user.uid,
                 userName: userData.activeRole === 'client' ? caseData.client.name : userData.name,
                 userFallback: userData.activeRole === 'client' ? caseData.client.fallback : userData.fallback,
-                createdAt: new Date(),
+                createdAt: Timestamp.now(),
             });
             setNewComment("");
         } catch (error) {
@@ -186,7 +186,7 @@ export default function CaseDetailsPage({ params }: { params: { caseId: string }
                                 <div className="flex items-center justify-between">
                                     <p className="font-semibold">{comment.userName}</p>
                                     <p className="text-xs text-muted-foreground">
-                                        {formatDistanceToNow(comment.createdAt.toDate(), { addSuffix: true, locale: es })}
+                                        {comment.createdAt ? formatDistanceToNow(comment.createdAt.toDate(), { addSuffix: true, locale: es }) : 'hace un momento'}
                                     </p>
                                 </div>
                                 <div className="p-3 bg-secondary rounded-md mt-1">
@@ -301,5 +301,4 @@ export default function CaseDetailsPage({ params }: { params: { caseId: string }
       </div>
     </main>
   );
-
-    
+  
