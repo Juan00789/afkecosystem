@@ -2,42 +2,40 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Users can read and write to their own profile.
-    match /users/{userId} {
-      allow get, update: if request.auth.uid == userId;
-      allow create: if request.auth.uid == userId;
-    }
-
-    // Provider can manage their own clients. A client cannot see other clients.
-    match /clients/{clientId} {
-      // Allow a provider to list their own clients.
-      allow list: if request.auth.uid != null && request.resource.data.userId == request.auth.uid;
-      // Allow a provider to get, write, and delete their own clients.
-      allow get, write, delete: if request.auth.uid == resource.data.userId;
-      allow create: if request.auth.uid == request.resource.data.userId;
-    }
-
-    // Provider can manage their own services.
-    // A client can read the services of their assigned provider.
-    match /services/{serviceId} {
-      allow get, list: if request.auth.uid == resource.data.userId ||
-                     (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.mainProviderId == resource.data.userId);
-      allow write, delete: if request.auth.uid == resource.data.userId;
-      allow create: if request.auth.uid == request.resource.data.userId;
+    
+    function isOwner(userId) {
+      return request.auth.uid == userId;
     }
     
-    // Cases can be read by the provider who owns it, and the client it's assigned to.
-    match /cases/{caseId} {
-      // TODO: Add rules for cases based on client ID field
+    // Users can only read and write to their own user document.
+    match /users/{userId} {
+      allow read, update: if isOwner(userId);
+      allow create: if request.auth.uid != null;
+    }
+
+    // Providers can manage their clients, clients can't see other clients.
+    match /clients/{clientId} {
+      allow read, write: if isOwner(resource.data.userId);
+    }
+
+    // Providers can manage their services.
+    // Clients can read services if the service's userId matches their mainProviderId.
+    match /services/{serviceId} {
       allow read: if request.auth.uid != null;
-      
+      allow create, update, delete: if isOwner(resource.data.userId);
+    }
+    
+    // Case data can be read by the owner (provider) or the assigned client.
+    match /cases/{caseId} {
+      allow read: if isOwner(resource.data.userId) || isOwner(resource.data.clientId);
+      allow create, update: if isOwner(resource.data.userId);
+
+      // Comments can be created by the provider or the client of the case.
+      // Users can only edit/delete their own comments.
       match /comments/{commentId} {
-        // Anyone authenticated can create a comment (provider or client).
-        allow create: if request.auth.uid != null;
-        // Anyone authenticated can read comments for a case they can access.
-        allow read: if request.auth.uid != null;
+        allow read: if isOwner(get(/databases/$(database)/documents/cases/$(caseId)).data.userId) || isOwner(get(/databases/$(database)/documents/cases/$(caseId)).data.clientId);
+        allow create: if isOwner(request.resource.data.userId);
+        allow update, delete: if isOwner(resource.data.userId);
       }
     }
   }

@@ -19,12 +19,40 @@ import {
   TableBody,
   TableCell,
 } from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogClose
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { MoreHorizontal, PlusCircle, ListTodo, Loader2, Search } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, ListTodo, Loader2, Search, Edit, Trash2 } from 'lucide-react';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, onSnapshot, query, where, doc, getDoc } from 'firebase/firestore';
+import { collection, addDoc, onSnapshot, query, where, doc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged, type User } from 'firebase/auth';
@@ -53,6 +81,8 @@ export default function ServicesPage() {
     const [newService, setNewService] = useState({ name: '', description: '', price: '' });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [editingService, setEditingService] = useState<Service | null>(null);
+    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
     useEffect(() => {
       const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
@@ -111,15 +141,17 @@ export default function ServicesPage() {
         const { name, value } = e.target;
         setNewService(prev => ({...prev, [name]: value}));
     }
+    
+    const handleEditInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        if (!editingService) return;
+        const { name, value } = e.target;
+        setEditingService(prev => ({...prev!, [name]: value}));
+    }
 
     const handleAddService = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!user) {
-            toast({
-                variant: 'destructive',
-                title: 'No estás autenticado',
-                description: 'Debes iniciar sesión para añadir servicios.'
-            });
+            toast({ variant: 'destructive', title: 'No estás autenticado' });
             return;
         }
         setSaving(true);
@@ -129,22 +161,51 @@ export default function ServicesPage() {
                 userId: user.uid, 
                 createdAt: new Date(),
             });
-
-            toast({
-                title: 'Servicio guardado',
-                description: 'El nuevo servicio ha sido añadido a tu lista.',
-            });
+            toast({ title: 'Servicio guardado' });
             setNewService({ name: '', description: '', price: '' }); 
         } catch (error) {
             console.error('Error al añadir servicio:', error);
-            toast({
-                variant: 'destructive',
-                title: 'Error al guardar',
-                description: 'No se pudo añadir el servicio. Inténtalo de nuevo.',
-            });
+            toast({ variant: 'destructive', title: 'Error al guardar' });
         } finally {
             setSaving(false);
         }
+    }
+    
+    const handleUpdateService = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingService) return;
+        setSaving(true);
+        try {
+            const serviceRef = doc(db, 'services', editingService.id);
+            await updateDoc(serviceRef, {
+                name: editingService.name,
+                description: editingService.description,
+                price: editingService.price,
+            });
+            toast({ title: 'Servicio actualizado' });
+            setIsEditDialogOpen(false);
+            setEditingService(null);
+        } catch (error) {
+             console.error('Error al actualizar servicio:', error);
+            toast({ variant: 'destructive', title: 'Error al actualizar' });
+        } finally {
+            setSaving(false);
+        }
+    }
+
+    const handleDeleteService = async (serviceId: string) => {
+         try {
+            await deleteDoc(doc(db, 'services', serviceId));
+            toast({ title: 'Servicio eliminado' });
+        } catch (error) {
+            console.error('Error al eliminar servicio:', error);
+            toast({ variant: 'destructive', title: 'Error al eliminar' });
+        }
+    }
+
+    const openEditDialog = (service: Service) => {
+        setEditingService(service);
+        setIsEditDialogOpen(true);
     }
 
     const isProvider = userData?.activeRole === 'provider';
@@ -234,7 +295,7 @@ export default function ServicesPage() {
                                         <TableHead>Servicio</TableHead>
                                         <TableHead className="hidden md:table-cell">Descripción</TableHead>
                                         <TableHead className="text-right">Precio</TableHead>
-                                        {isProvider && <TableHead><span className="sr-only">Acciones</span></TableHead>}
+                                        {isProvider && <TableHead className="text-right">Acciones</TableHead>}
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -245,9 +306,42 @@ export default function ServicesPage() {
                                             <TableCell className="text-right">{service.price}</TableCell>
                                             {isProvider && (
                                                 <TableCell className="text-right">
-                                                    <Button variant="ghost" size="icon">
-                                                        <MoreHorizontal className="h-4 w-4" />
-                                                    </Button>
+                                                    <AlertDialog>
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild>
+                                                                <Button variant="ghost" size="icon">
+                                                                    <MoreHorizontal className="h-4 w-4" />
+                                                                </Button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="end">
+                                                                <DropdownMenuItem onClick={() => openEditDialog(service)}>
+                                                                    <Edit className="mr-2 h-4 w-4" />
+                                                                    Editar
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuSeparator />
+                                                                <AlertDialogTrigger asChild>
+                                                                    <DropdownMenuItem className="text-destructive focus:text-destructive">
+                                                                        <Trash2 className="mr-2 h-4 w-4" />
+                                                                        Eliminar
+                                                                    </DropdownMenuItem>
+                                                                </AlertDialogTrigger>
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                         <AlertDialogContent>
+                                                            <AlertDialogHeader>
+                                                              <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                                                              <AlertDialogDescription>
+                                                                Esta acción no se puede deshacer. Esto eliminará permanentemente el servicio.
+                                                              </AlertDialogDescription>
+                                                            </AlertDialogHeader>
+                                                            <AlertDialogFooter>
+                                                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                                              <AlertDialogAction onClick={() => handleDeleteService(service.id)} className="bg-destructive hover:bg-destructive/90">
+                                                                Sí, eliminar
+                                                              </AlertDialogAction>
+                                                            </AlertDialogFooter>
+                                                        </AlertDialogContent>
+                                                    </AlertDialog>
                                                 </TableCell>
                                             )}
                                         </TableRow>
@@ -268,6 +362,45 @@ export default function ServicesPage() {
                     </Card>
                 </div>
             </div>
+            
+             {editingService && (
+                <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Editar Servicio</DialogTitle>
+                            <DialogDescription>
+                                Realiza los cambios necesarios y guarda para actualizar el servicio.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <form onSubmit={handleUpdateService}>
+                             <div className="space-y-4 py-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="edit-name">Nombre del Servicio</Label>
+                                    <Input id="edit-name" name="name" value={editingService.name} onChange={handleEditInputChange} required disabled={saving} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="edit-description">Descripción (Opcional)</Label>
+                                    <Textarea id="edit-description" name="description" value={editingService.description} onChange={handleEditInputChange} disabled={saving} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="edit-price">Precio / Tarifa</Label>
+                                    <Input id="edit-price" name="price" value={editingService.price} onChange={handleEditInputChange} required disabled={saving} />
+                                </div>
+                            </div>
+                            <DialogFooter>
+                                <DialogClose asChild>
+                                    <Button type="button" variant="outline">Cancelar</Button>
+                                </DialogClose>
+                                <Button type="submit" disabled={saving}>
+                                    {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Guardar Cambios
+                                </Button>
+                            </DialogFooter>
+                        </form>
+                    </DialogContent>
+                </Dialog>
+            )}
+
         </main>
     );
 }
