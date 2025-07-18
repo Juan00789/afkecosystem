@@ -1,22 +1,56 @@
+
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Permite a los usuarios leer y escribir sus propios datos de perfil
-    match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-
-    // Permite a los usuarios autenticados crear, leer, actualizar y borrar
-    // sus propios clientes. Nadie más puede ver los clientes de otros.
-    match /clients/{clientId} {
-      allow read, update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null;
+  
+    // Helper function to check if the user is authenticated.
+    function isSignedIn() {
+      return request.auth != null;
     }
     
-    // Permite a los usuarios autenticados gestionar sus propios servicios.
+    // Helper function to get the user's data document.
+    function getUserData() {
+    	return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    // Users can only read and write their own user document.
+    match /users/{userId} {
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Clients can be created, read, updated, and deleted only by the user who owns them.
+    match /clients/{clientId} {
+      allow read, write: if isSignedIn() && request.auth.uid == resource.data.userId;
+      allow create: if isSignedIn() && request.auth.uid == request.resource.data.userId;
+    }
+    
+    // Services can be created, read, updated, and deleted only by the user who owns them.
     match /services/{serviceId} {
-      allow read, update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null;
+      allow read, write: if isSignedIn() && request.auth.uid == resource.data.userId;
+      allow create: if isSignedIn() && request.auth.uid == request.resource.data.userId;
+    }
+
+    // Cases can be read by the associated provider or client.
+    // Cases can only be written/created by the provider.
+    match /cases/{caseId} {
+      allow read: if isSignedIn() && (request.auth.uid == resource.data.providerId || request.auth.uid == resource.data.clientId);
+      allow write: if isSignedIn() && request.auth.uid == resource.data.providerId;
+      allow create: if isSignedIn() && request.auth.uid == request.resource.data.providerId;
+      
+      // Comments can be read by the provider or client of the parent case.
+      // Comments can be created by the provider or client of the parent case.
+      // No one can edit or delete comments once created.
+      match /comments/{commentId} {
+        function isCaseParticipant() {
+          let caseData = get(/databases/$(database)/documents/cases/$(caseId)).data;
+          return request.auth.uid == caseData.providerId || request.auth.uid == caseData.clientId;
+        }
+        
+      	allow read: if isSignedIn() && isCaseParticipant();
+        allow create: if isSignedIn() && isCaseParticipant() && request.auth.uid == request.resource.data.userId;
+        allow update, delete: if false;
+      }
     }
   }
 }
