@@ -2,6 +2,10 @@ import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
   /* config options here */
+  experimental: {
+    // This is a workaround for a development-only issue when running in a container.
+    allowedDevOrigins: ['**'],
+  },
   typescript: {
     ignoreBuildErrors: true,
   },
