@@ -25,7 +25,7 @@ import { ArrowUpRight, PlusCircle, Briefcase, Users, UserCheck, Activity, Loader
 import Link from "next/link";
 import { useRouter } from 'next/navigation';
 import { db, auth } from '@/lib/firebase';
-import { collection, query, where, onSnapshot, getDoc, doc, or, limit, orderBy, collectionGroup } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, getDoc, doc, or, limit, orderBy, getDocs, collectionGroup, Timestamp } from 'firebase/firestore';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
@@ -37,7 +37,9 @@ interface Case {
   providerName: string;
   services: { name: string }[];
   status: string;
-  lastUpdate: { toDate: () => Date };
+  lastUpdate: Timestamp;
+  clientId: string;
+  providerId: string;
 }
 
 interface Client {
@@ -47,10 +49,10 @@ interface Client {
 interface ActivityItem {
     id: string;
     caseId: string;
-    caseName?: string;
+    caseName: string;
     text: string;
     userName: string;
-    createdAt: { toDate: () => Date };
+    createdAt: Timestamp;
 }
 
 export default function DashboardPage() {
@@ -86,54 +88,71 @@ export default function DashboardPage() {
     setLoading(true);
     let unsubscribeCases: () => void;
     let unsubscribeClients: () => void;
-    let unsubscribeActivities: () => void;
+    let unsubscribeActivities: (() => void) | undefined;
 
-    // Fetch Cases
-    const casesQuery = query(
-      collection(db, 'cases'),
-      or(where('clientId', '==', user.uid), where('providerId', '==', user.uid)),
-      orderBy('lastUpdate', 'desc'),
-      limit(5)
-    );
-    unsubscribeCases = onSnapshot(casesQuery, (snapshot) => {
-      const casesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Case));
-      setCases(casesData);
-    }, (error) => {
-      console.error("Error fetching cases: ", error);
-      toast({ variant: 'destructive', title: 'Error al cargar casos' });
-    });
+    const fetchDashboardData = async () => {
+        try {
+            // 1. Fetch Cases for both roles
+            const casesQuery = query(
+              collection(db, 'cases'),
+              or(where('clientId', '==', user.uid), where('providerId', '==', user.uid)),
+              orderBy('lastUpdate', 'desc')
+            );
+            const casesSnapshot = await getDocs(casesQuery);
+            const casesData = casesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Case));
+            setCases(casesData);
+            
+            // 2. Fetch Clients (only for providers)
+            if (userData.activeRole === 'provider') {
+                const clientsQuery = query(collection(db, 'clients'), where('userId', '==', user.uid));
+                const clientsSnapshot = await getDocs(clientsQuery);
+                const clientsData = clientsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client));
+                setClients(clientsData);
+            }
 
-     // Fetch Clients (only for providers)
-    if (userData.activeRole === 'provider') {
-        const clientsQuery = query(collection(db, 'clients'), where('userId', '==', user.uid));
-        unsubscribeClients = onSnapshot(clientsQuery, (snapshot) => {
-            const clientsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client));
-            setClients(clientsData);
-        }, (error) => {
-            console.error("Error fetching clients: ", error);
-            toast({ variant: 'destructive', title: 'Error al cargar clientes' });
-        });
-    }
+            // 3. Fetch Recent Activity from the fetched cases
+            if (casesData.length > 0) {
+                const caseIds = casesData.map(c => c.id);
+                // We'll fetch comments for the 5 most recent cases to keep it performant
+                const recentCaseIds = caseIds.slice(0, 5); 
+                
+                const commentsQuery = query(
+                    collectionGroup(db, 'comments'),
+                    where('caseId', 'in', recentCaseIds),
+                    orderBy('createdAt', 'desc'),
+                    limit(5)
+                );
 
-    // Fetch Recent Activity (comments from relevant cases)
-     const activityQuery = query(
-        collectionGroup(db, 'comments'), 
-        or(where('case.providerId', '==', user.uid), where('case.clientId', '==', user.uid)),
-        orderBy('createdAt', 'desc'),
-        limit(5)
-    );
+                unsubscribeActivities = onSnapshot(commentsQuery, (snapshot) => {
+                    const activityData = snapshot.docs.map(doc => {
+                       const data = doc.data();
+                       const parentCase = casesData.find(c => c.id === data.caseId);
+                       return {
+                           id: doc.id,
+                           caseId: data.caseId,
+                           caseName: parentCase?.services.map(s => s.name).join(', ') || 'un caso',
+                           text: data.text,
+                           userName: data.userName,
+                           createdAt: data.createdAt
+                       } as ActivityItem;
+                    });
+                    setActivities(activityData);
+                });
+            } else {
+                setActivities([]);
+            }
 
-    // This is a placeholder, as we can't query collectionGroup effectively with rules like this.
-    // A better approach would be to have a dedicated 'activity' collection.
-    // For now, we'll leave this empty and show a placeholder message.
-    setActivities([]);
-
-
-    setLoading(false);
+        } catch (error) {
+            console.error("Error fetching dashboard data: ", error);
+            toast({ variant: 'destructive', title: 'Error al cargar el panel' });
+        } finally {
+            setLoading(false);
+        }
+    };
+    
+    fetchDashboardData();
 
     return () => {
-      if (unsubscribeCases) unsubscribeCases();
-      if (unsubscribeClients) unsubscribeClients();
       if (unsubscribeActivities) unsubscribeActivities();
     };
   }, [user, userData.activeRole, toast]);
@@ -167,9 +186,11 @@ export default function DashboardPage() {
                 <p className="text-muted-foreground">Bienvenido de nuevo a tu centro de mando.</p>
             </div>
             {isProvider && (
-              <Button onClick={() => router.push('/dashboard/services')}>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Crear Nuevo Caso
+              <Button asChild>
+                <Link href="/dashboard/services">
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Crear Nuevo Caso
+                </Link>
               </Button>
             )}
         </div>
@@ -190,7 +211,7 @@ export default function DashboardPage() {
                     <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">{isProvider ? clients.length : cases.length > 0 ? new Set(cases.map(c => c.providerName)).size : 0}</div>
+                    <div className="text-2xl font-bold">{isProvider ? clients.length : new Set(cases.map(c => c.providerId)).size}</div>
                     <p className="text-xs text-muted-foreground">{isProvider ? 'Clientes registrados en tu red.' : 'Proveedores con casos activos.'}</p>
                 </CardContent>
             </Card>
@@ -236,7 +257,7 @@ export default function DashboardPage() {
                         </TableHeader>
                         <TableBody>
                             {cases.length > 0 ? (
-                              cases.map((c) => (
+                              cases.slice(0, 5).map((c) => (
                                 <TableRow key={c.id}>
                                     <TableCell>
                                         <div className="flex items-center gap-3">
@@ -294,7 +315,7 @@ export default function DashboardPage() {
                                 </div>
                                 <div className="flex-1">
                                     <p className="text-sm">
-                                        <span className="font-medium text-primary">{activity.userName}</span> comentó en el caso <Link href={`/dashboard/cases/${activity.caseId}`} className="font-medium hover:underline">{activity.caseName || 'un caso'}</Link>: "{activity.text}"
+                                        <span className="font-medium text-primary">{activity.userName}</span> comentó en <Link href={`/dashboard/cases/${activity.caseId}`} className="font-medium hover:underline">un caso</Link>: "{activity.text.length > 50 ? `${activity.text.substring(0, 50)}...` : activity.text}"
                                     </p>
                                     <p className="text-xs text-muted-foreground">{activity.createdAt ? formatDistanceToNow(activity.createdAt.toDate(), { addSuffix: true, locale: es }) : ''}</p>
                                 </div>
@@ -314,5 +335,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    

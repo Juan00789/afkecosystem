@@ -17,7 +17,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { FileUp, MessageSquare, Paperclip, Loader2, Send, Receipt } from "lucide-react"
 import Image from "next/image"
 import { db, auth } from "@/lib/firebase";
-import { collection, addDoc, query, orderBy, onSnapshot, Timestamp, doc, getDoc, DocumentData, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, query, orderBy, onSnapshot, Timestamp, doc, getDoc, DocumentData, serverTimestamp, updateDoc } from "firebase/firestore";
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from 'date-fns';
@@ -48,6 +48,7 @@ interface Comment {
     userName: string;
     userFallback: string;
     createdAt: Timestamp;
+    caseId: string;
 }
 
 interface CaseData {
@@ -146,7 +147,15 @@ export default function CaseDetailsPage({ params }: { params: { caseId: string }
                 userName: userData.name,
                 userFallback: userData.fallback,
                 createdAt: Timestamp.now(),
+                caseId: params.caseId, // Add caseId for activity feed queries
             });
+
+            // Also update the lastUpdate field on the case
+            const caseRef = doc(db, 'cases', params.caseId);
+            await updateDoc(caseRef, {
+                lastUpdate: Timestamp.now(),
+            });
+
             setNewComment("");
         } catch (error) {
             console.error('Error al añadir comentario:', error);
@@ -189,7 +198,15 @@ export default function CaseDetailsPage({ params }: { params: { caseId: string }
                 userName: 'Sistema',
                 userFallback: 'S',
                 createdAt: Timestamp.now(),
+                caseId: params.caseId,
             });
+
+             // Also update the lastUpdate field on the case
+            const caseRef = doc(db, 'cases', params.caseId);
+            await updateDoc(caseRef, {
+                lastUpdate: Timestamp.now(),
+            });
+
 
             toast({
                 title: "Factura Generada",
