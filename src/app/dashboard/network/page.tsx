@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -20,25 +21,24 @@ import {
 } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { MoreHorizontal, PlusCircle, UserPlus, Users, Loader2, Link2Off, Star, Trash2 } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, UserPlus, Users, Loader2, Star, Trash2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, onSnapshot, query, where, doc, getDoc, deleteDoc, writeBatch } from 'firebase/firestore';
+import { collection, addDoc, onSnapshot, query, where, doc, getDoc, deleteDoc, writeBatch, getDocs, serverTimestamp, limit } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
-// CLIENTS TAB
+// CLIENTS TAB (for Providers)
 interface Client {
-    id: string;
+    id: string; // The doc ID in the `clients` collection
     name: string;
     company: string;
     email: string;
     phone: string;
     avatar: string;
-    userId: string;
+    providerId: string; // The provider's UID
 }
 
 const ClientsTab = ({ user }: { user: User | null }) => {
@@ -55,7 +55,7 @@ const ClientsTab = ({ user }: { user: User | null }) => {
         }
 
         setLoading(true);
-        const clientsQuery = query(collection(db, 'clients'), where('userId', '==', user.uid));
+        const clientsQuery = query(collection(db, 'clients'), where('providerId', '==', user.uid));
         
         const unsubscribe = onSnapshot(clientsQuery, (snapshot) => {
             const clientsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client));
@@ -89,9 +89,9 @@ const ClientsTab = ({ user }: { user: User | null }) => {
         try {
             await addDoc(collection(db, 'clients'), {
                 ...newClient,
-                userId: user.uid, 
+                providerId: user.uid, 
                 avatar: `https://placehold.co/100x100.png`,
-                createdAt: new Date(),
+                createdAt: serverTimestamp(),
             });
 
             toast({ title: 'Cliente guardado' });
@@ -132,8 +132,8 @@ const ClientsTab = ({ user }: { user: User | null }) => {
                                 <Input id="email" name="email" type="email" placeholder="ejemplo@correo.com" value={newClient.email} onChange={handleInputChange} required disabled={saving} />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="phone">Teléfono (Opcional)</Label>
-                                <Input id="phone" name="phone" type="tel" placeholder="Ej: +34 655 123 456" value={newClient.phone} onChange={handleInputChange} disabled={saving}/>
+                                <Label htmlFor="phone">Teléfono (Requerido para conectar)</Label>
+                                <Input id="phone" name="phone" type="tel" placeholder="Ej: 829-123-4567" value={newClient.phone} onChange={handleInputChange} required disabled={saving}/>
                             </div>
                         </CardContent>
                         <CardFooter>
@@ -214,10 +214,10 @@ const ClientsTab = ({ user }: { user: User | null }) => {
 };
 
 
-// PROVIDERS TAB
+// PROVIDERS TAB (for Clients)
 interface Provider {
-    id: string;
-    providerId: string;
+    id: string; // The doc ID in the subcollection `users/{uid}/providers`
+    providerId: string; // The provider's actual UID
     name?: string;
     avatar?: string;
     fallback?: string;
@@ -227,7 +227,7 @@ interface Provider {
 const ProvidersTab = ({ user }: { user: User | null }) => {
     const { toast } = useToast();
     const [providers, setProviders] = useState<Provider[]>([]);
-    const [newProviderId, setNewProviderId] = useState('');
+    const [newProviderPhone, setNewProviderPhone] = useState('');
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
@@ -239,8 +239,7 @@ const ProvidersTab = ({ user }: { user: User | null }) => {
     
         setLoading(true);
         const providersQuery = query(
-            collection(db, 'users', user.uid, 'providers'),
-            where('userId', '==', user.uid)
+            collection(db, 'users', user.uid, 'providers')
         );
     
         const unsubscribe = onSnapshot(providersQuery, async (snapshot) => {
@@ -266,7 +265,7 @@ const ProvidersTab = ({ user }: { user: User | null }) => {
             toast({
                 variant: 'destructive',
                 title: 'Error al cargar proveedores',
-                description: 'No se pudieron obtener los datos. Revisa tu conexión.'
+                description: 'No se pudieron obtener los datos.'
             });
             setLoading(false);
         });
@@ -276,40 +275,50 @@ const ProvidersTab = ({ user }: { user: User | null }) => {
 
     const handleAddProvider = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!user || !newProviderId.trim()) return;
-
-        // Prevent adding self
-        if (newProviderId.trim() === user.uid) {
-            toast({ variant: 'destructive', title: 'No puedes añadirte a ti mismo' });
-            return;
-        }
-
-        // Prevent adding duplicates
-        if (providers.some(p => p.providerId === newProviderId.trim())) {
-             toast({ variant: 'destructive', title: 'Este proveedor ya está en tu red' });
-            return;
-        }
+        if (!user || !newProviderPhone.trim()) return;
 
         setSaving(true);
         try {
-            const providerRef = doc(db, 'users', newProviderId.trim());
-            const providerSnap = await getDoc(providerRef);
+            // 1. Find the provider by phone number
+            const userQuery = query(
+                collection(db, "users"),
+                where("phoneNumber", "==", newProviderPhone.trim()),
+                limit(1)
+            );
+            const userSnapshot = await getDocs(userQuery);
 
-            if (!providerSnap.exists()) {
-                 toast({ variant: 'destructive', title: 'Proveedor no encontrado', description: 'El ID ingresado no corresponde a ningún usuario.' });
-                 setSaving(false);
-                 return;
+            if (userSnapshot.empty) {
+                toast({ variant: 'destructive', title: 'Proveedor no encontrado', description: 'El número de teléfono no corresponde a ningún usuario.' });
+                setSaving(false);
+                return;
             }
 
+            const providerData = userSnapshot.docs[0];
+            const providerId = providerData.id;
+
+            // 2. Prevent adding self
+            if (providerId === user.uid) {
+                toast({ variant: 'destructive', title: 'No puedes añadirte a ti mismo' });
+                setSaving(false);
+                return;
+            }
+
+            // 3. Prevent adding duplicates
+            if (providers.some(p => p.providerId === providerId)) {
+                toast({ variant: 'destructive', title: 'Este proveedor ya está en tu red' });
+                setSaving(false);
+                return;
+            }
+
+            // 4. Add the provider to the client's subcollection
             await addDoc(collection(db, 'users', user.uid, 'providers'), {
-                userId: user.uid,
-                providerId: newProviderId.trim(),
+                providerId: providerId,
                 status: 'potential',
-                createdAt: new Date(),
+                createdAt: serverTimestamp(),
             });
 
             toast({ title: 'Proveedor añadido a tu red' });
-            setNewProviderId('');
+            setNewProviderPhone('');
         } catch (error) {
             console.error('Error al añadir proveedor:', error);
             toast({ variant: 'destructive', title: 'Error al añadir proveedor' });
@@ -368,22 +377,23 @@ const ProvidersTab = ({ user }: { user: User | null }) => {
                             <CardTitle>Añadir Proveedor a tu Red</CardTitle>
                         </div>
                         <CardDescription>
-                            Pega el ID de un proveedor para añadirlo a tus contactos.
+                            Ingresa el número de teléfono de un proveedor para añadirlo a tus contactos.
                         </CardDescription>
                     </CardHeader>
                     <form onSubmit={handleAddProvider}>
                         <CardContent className="space-y-2">
-                            <Label htmlFor="providerId">ID del Proveedor</Label>
+                            <Label htmlFor="providerPhone">Teléfono del Proveedor</Label>
                             <Input 
-                                id="providerId" 
-                                placeholder="Pega el ID del usuario aquí" 
-                                value={newProviderId} 
-                                onChange={(e) => setNewProviderId(e.target.value)} 
+                                id="providerPhone" 
+                                placeholder="Ej: 829-123-4567" 
+                                value={newProviderPhone} 
+                                onChange={(e) => setNewProviderPhone(e.target.value)} 
                                 disabled={saving}
+                                type="tel"
                             />
                         </CardContent>
                         <CardFooter>
-                            <Button type="submit" disabled={saving || !newProviderId.trim()}>
+                            <Button type="submit" disabled={saving || !newProviderPhone.trim()}>
                                 {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Añadir a la Red
                             </Button>
@@ -471,6 +481,7 @@ export default function NetworkPage() {
     const router = useRouter();
     const [user, setUser] = useState<User | null>(null);
     const [userData, setUserData] = useState<UserData | null>(null);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
       const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
@@ -485,11 +496,12 @@ export default function NetworkPage() {
         } else {
           router.push('/login');
         }
+        setLoading(false);
       });
       return () => unsubscribeAuth();
     }, [router]);
 
-    if (!user || !userData) {
+    if (loading || !user || !userData) {
          return (
              <main className="flex-1 space-y-4 p-4 md:p-8 pt-6 flex items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />

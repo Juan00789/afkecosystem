@@ -36,7 +36,6 @@ export default function ProfilePage() {
     email: '',
     phoneNumber: '',
     photoURL: '',
-    userId: '',
     website: '',
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -55,7 +54,6 @@ export default function ProfilePage() {
             email: currentUser.email || '',
             phoneNumber: userData.phoneNumber || '',
             photoURL: userData.photoURL || currentUser.photoURL || '',
-            userId: currentUser.uid,
             website: userData.website || '',
           });
 
@@ -122,8 +120,16 @@ export default function ProfilePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-    setSaving(true);
+    if (!form.phoneNumber) {
+        toast({
+            variant: 'destructive',
+            title: 'Número de teléfono requerido',
+            description: 'El número de teléfono es necesario para que otros puedan conectarse contigo.',
+        });
+        return;
+    }
 
+    setSaving(true);
     try {
       const userRef = doc(db, 'users', user.uid);
       await setDoc(userRef, { 
@@ -153,13 +159,16 @@ export default function ProfilePage() {
   };
 
   const handleCopyId = () => {
-    if (!form.userId) return;
-    navigator.clipboard.writeText(form.userId);
+    if (!form.phoneNumber) {
+        toast({ variant: 'destructive', title: 'Falta el número de teléfono', description: 'Por favor, guarda un número de teléfono para poder copiarlo.' });
+        return;
+    };
+    navigator.clipboard.writeText(form.phoneNumber);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
     toast({
-        title: 'ID de Usuario Copiado',
-        description: 'Tu ID ha sido copiado al portapapeles.',
+        title: 'Número de Teléfono Copiado',
+        description: 'Tu número de teléfono ha sido copiado al portapapeles.',
     });
   }
 
@@ -179,7 +188,7 @@ export default function ProfilePage() {
         <CardHeader>
           <CardTitle>Tu Perfil</CardTitle>
           <CardDescription>
-            Aquí puedes ver y actualizar tu información personal y foto de perfil.
+            Actualiza tu información para que otros puedan encontrarte y conectarse contigo.
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
@@ -209,14 +218,23 @@ export default function ProfilePage() {
             </div>
             
             <div className="space-y-2">
-                <Label htmlFor="userId">Tu ID de Usuario (para compartir)</Label>
+                <Label htmlFor="phoneNumber">Tu ID Conectable (Número de Teléfono)</Label>
                 <div className="flex gap-2">
-                    <Input id="userId" value={form.userId} readOnly />
-                    <Button type="button" variant="outline" size="icon" onClick={handleCopyId} disabled={copied}>
+                    <Input 
+                        id="phoneNumber"
+                        name="phoneNumber"
+                        type="tel"
+                        value={form.phoneNumber}
+                        onChange={handleInputChange}
+                        placeholder="Ej: 829-123-4567"
+                        disabled={saving || uploading}
+                        required
+                    />
+                    <Button type="button" variant="outline" size="icon" onClick={handleCopyId} disabled={copied || !form.phoneNumber}>
                         <Copy className="h-4 w-4" />
                     </Button>
                 </div>
-                <p className="text-xs text-muted-foreground">Este es tu ID. Compártelo con tus clientes para que puedan conectarse contigo, o con otros proveedores para añadirlos a tu red.</p>
+                <p className="text-xs text-muted-foreground">Este número es tu identificador público. Compártelo con otros para que puedan conectarse contigo.</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -241,19 +259,7 @@ export default function ProfilePage() {
                     />
                 </div>
                 <div className="space-y-2">
-                    <Label htmlFor="phoneNumber">Número de Teléfono (Opcional)</Label>
-                    <Input
-                        id="phoneNumber"
-                        name="phoneNumber"
-                        type="tel"
-                        value={form.phoneNumber}
-                        onChange={handleInputChange}
-                        placeholder="Ej: 829-922-6556"
-                        disabled={saving || uploading}
-                    />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="website">Sitio Web / Dominio</Label>
+                    <Label htmlFor="website">Sitio Web / Dominio (Opcional)</Label>
                      <div className="flex items-center gap-2">
                         <Globe className="h-5 w-5 text-muted-foreground" />
                         <Input
@@ -267,14 +273,14 @@ export default function ProfilePage() {
                         />
                     </div>
                 </div>
-                 <div className="space-y-2 md:col-span-2">
+                 <div className="space-y-2">
                     <Label htmlFor="manage-connections">Gestionar Conexiones</Label>
                      <Button asChild variant="outline" className="w-full justify-start font-normal">
                         <Link href="/dashboard/network">
                             Ir a tu Red
                         </Link>
                      </Button>
-                     <p className="text-xs text-muted-foreground">Añade y gestiona tus clientes y proveedores en la sección de Red.</p>
+                     <p className="text-xs text-muted-foreground">Añade y gestiona tus clientes y proveedores.</p>
                 </div>
             </div>
           </CardContent>
@@ -289,4 +295,3 @@ export default function ProfilePage() {
     </main>
   );
 }
-
