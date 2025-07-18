@@ -1,68 +1,52 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper functions
-    function isUserAuthenticated() {
-      return request.auth != null;
-    }
-
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-    
-    function isClient(userId) {
-      return exists(/databases/$(database)/documents/users/$(userId)/clients/$(request.auth.uid));
-    }
-    
-    function isProviderForClient(clientId, providerId) {
-      let clientDoc = get(/databases/$(database)/documents/users/$(clientId));
-      return clientDoc.data.mainProviderId == providerId;
-    }
-
-    // USER PROFILES
+  
+    // USERS: Can read their own profile, anyone can get public data, can only update/delete their own
     match /users/{userId} {
-      allow get: if isUserAuthenticated();
-      allow list, update, delete: if isOwner(userId);
-      allow create: if isUserAuthenticated() && request.resource.id == request.auth.uid;
+      allow get: if request.auth != null;
+      allow list, update, delete: if request.auth.uid == userId;
+      allow create: if request.auth != null;
       
-      // Subcollection for providers linked by a client
-      match /providers/{providerDocId} {
-        allow read, write: if isOwner(userId);
+      // PROVIDERS subcollection: Only the user can manage their own list of providers
+      match /providers/{providerId} {
+        allow read, write, delete: if request.auth.uid == userId;
       }
     }
     
-    // CLIENTS (of a provider)
+    // CLIENTS: Can only be managed by the provider they are assigned to
     match /clients/{clientId} {
-      allow read, write, delete: if isOwner(request.resource.data.userId);
+      allow read, write, delete: if request.auth.uid == resource.data.userId;
+      allow list: if request.auth.uid == request.query.userId;
     }
     
-    // SERVICES (offered by a provider)
+    // SERVICES: Can only be managed by the provider who created them, anyone can read
     match /services/{serviceId} {
-        allow read: if isUserAuthenticated(); // Anyone logged in can see services
-        allow write, delete: if isOwner(request.resource.data.userId); // Only provider can manage their own services
+      allow read: if request.auth != null;
+      allow write, delete: if request.auth.uid == request.resource.data.userId;
     }
 
-    // CASES
+    // CASES: Only the provider or client involved can read/write
     match /cases/{caseId} {
-      allow read: if isOwner(resource.data.clientId) || isOwner(resource.data.providerId);
-      allow create: if isOwner(request.resource.data.clientId);
-      allow update: if isOwner(resource.data.clientId) || isOwner(resource.data.providerId);
-      
-      // Comments/Timeline within a case
+      allow read, update: if request.auth.uid == resource.data.providerId || request.auth.uid == resource.data.clientId;
+      allow create: if request.auth.uid == request.resource.data.clientId;
+      allow list: if request.auth.uid == request.query.clientId || request.auth.uid == request.query.providerId;
+
+      // COMMENTS subcollection: Only the provider or client of the case can add/read comments
       match /comments/{commentId} {
-          allow read: if isOwner(get(/databases/$(database)/documents/cases/$(caseId)).data.clientId) || isOwner(get(/databases/$(database)/documents/cases/$(caseId)).data.providerId);
-          allow create: if isOwner(request.resource.data.userId) && (isOwner(get(/databases/$(database)/documents/cases/$(caseId)).data.clientId) || isOwner(get(/databases/$(database)/documents/cases/$(caseId)).data.providerId));
+        allow read, create: if request.auth.uid == get(/databases/$(database)/documents/cases/$(caseId)).data.providerId || request.auth.uid == get(/databases/$(database)/documents/cases/$(caseId)).data.clientId;
       }
     }
     
-    // INVOICES
+    // INVOICES: Only the provider or client involved can read
     match /invoices/{invoiceId} {
-        allow read: if isOwner(resource.data.clientId) || isOwner(resource.data.providerId);
-        allow create: if isOwner(request.resource.data.providerId);
+        allow read: if request.auth.uid == resource.data.providerId || request.auth.uid == resource.data.clientId;
+        allow create: if request.auth.uid == request.resource.data.providerId;
+        allow list: if request.auth.uid == request.query.clientId || request.auth.uid == request.query.providerId;
     }
-
+    
   }
 }
+
+    

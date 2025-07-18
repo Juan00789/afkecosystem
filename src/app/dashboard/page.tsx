@@ -1,6 +1,7 @@
 
 'use client';
 
+import { useState, useEffect } from 'react';
 import {
   Card,
   CardHeader,
@@ -20,15 +21,143 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowUpRight, PlusCircle, Briefcase, Users, UserCheck, Activity } from "lucide-react";
+import { ArrowUpRight, PlusCircle, Briefcase, Users, UserCheck, Activity, Loader2, MessageSquare } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from 'next/navigation';
+import { db, auth } from '@/lib/firebase';
+import { collection, query, where, onSnapshot, getDoc, doc, or, limit, orderBy, collectionGroup } from 'firebase/firestore';
+import { onAuthStateChanged, type User } from 'firebase/auth';
+import { useToast } from '@/hooks/use-toast';
+import { formatDistanceToNow } from 'date-fns';
+import { es } from 'date-fns/locale';
 
-const cases: any[] = [];
-const activities: any[] = [];
+interface Case {
+  id: string;
+  clientName: string;
+  providerName: string;
+  services: { name: string }[];
+  status: string;
+  lastUpdate: { toDate: () => Date };
+}
+
+interface Client {
+    id: string;
+}
+
+interface ActivityItem {
+    id: string;
+    caseId: string;
+    caseName?: string;
+    text: string;
+    userName: string;
+    createdAt: { toDate: () => Date };
+}
 
 export default function DashboardPage() {
   const router = useRouter();
+  const { toast } = useToast();
+  const [user, setUser] = useState<User | null>(null);
+  const [userData, setUserData] = useState<{ activeRole?: string }>({});
+  const [loading, setLoading] = useState(true);
+
+  const [cases, setCases] = useState<Case[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [activities, setActivities] = useState<ActivityItem[]>([]);
+  
+  useEffect(() => {
+    const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
+      setUser(currentUser);
+      if (currentUser) {
+        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+        if (userDoc.exists()) {
+          setUserData(userDoc.data());
+        }
+      }
+    });
+    return () => unsubscribeAuth();
+  }, []);
+  
+   useEffect(() => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    let unsubscribeCases: () => void;
+    let unsubscribeClients: () => void;
+    let unsubscribeActivities: () => void;
+
+    // Fetch Cases
+    const casesQuery = query(
+      collection(db, 'cases'),
+      or(where('clientId', '==', user.uid), where('providerId', '==', user.uid)),
+      orderBy('lastUpdate', 'desc'),
+      limit(5)
+    );
+    unsubscribeCases = onSnapshot(casesQuery, (snapshot) => {
+      const casesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Case));
+      setCases(casesData);
+    }, (error) => {
+      console.error("Error fetching cases: ", error);
+      toast({ variant: 'destructive', title: 'Error al cargar casos' });
+    });
+
+     // Fetch Clients (only for providers)
+    if (userData.activeRole === 'provider') {
+        const clientsQuery = query(collection(db, 'clients'), where('userId', '==', user.uid));
+        unsubscribeClients = onSnapshot(clientsQuery, (snapshot) => {
+            const clientsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client));
+            setClients(clientsData);
+        }, (error) => {
+            console.error("Error fetching clients: ", error);
+            toast({ variant: 'destructive', title: 'Error al cargar clientes' });
+        });
+    }
+
+    // Fetch Recent Activity (comments from relevant cases)
+     const activityQuery = query(
+        collectionGroup(db, 'comments'), 
+        or(where('case.providerId', '==', user.uid), where('case.clientId', '==', user.uid)),
+        orderBy('createdAt', 'desc'),
+        limit(5)
+    );
+
+    // This is a placeholder, as we can't query collectionGroup effectively with rules like this.
+    // A better approach would be to have a dedicated 'activity' collection.
+    // For now, we'll leave this empty and show a placeholder message.
+    setActivities([]);
+
+
+    setLoading(false);
+
+    return () => {
+      if (unsubscribeCases) unsubscribeCases();
+      if (unsubscribeClients) unsubscribeClients();
+      if (unsubscribeActivities) unsubscribeActivities();
+    };
+  }, [user, userData.activeRole, toast]);
+
+
+  const activeCasesCount = cases.filter(c => c.status === 'En Progreso').length;
+  const isProvider = userData.activeRole === 'provider';
+
+  const getStatusVariant = (status: string) => {
+    switch (status) {
+        case 'Completado': return 'default';
+        case 'En Progreso': return 'secondary';
+        case 'Pendiente': return 'outline';
+        default: return 'destructive';
+    }
+  }
+  
+  if (loading) {
+     return (
+        <div className="flex h-screen w-full items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+     );
+  }
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -37,10 +166,12 @@ export default function DashboardPage() {
                 <h2 className="text-3xl font-bold tracking-tight">Resumen General</h2>
                 <p className="text-muted-foreground">Bienvenido de nuevo a tu centro de mando.</p>
             </div>
-            <Button onClick={() => router.push('/dashboard/cases')}>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Crear Nuevo Caso
-            </Button>
+            {isProvider && (
+              <Button onClick={() => router.push('/dashboard/services')}>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Crear Nuevo Caso
+              </Button>
+            )}
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card>
@@ -49,18 +180,18 @@ export default function DashboardPage() {
                     <Briefcase className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">0</div>
-                    <p className="text-xs text-muted-foreground">No tienes casos en progreso.</p>
+                    <div className="text-2xl font-bold">{activeCasesCount}</div>
+                    <p className="text-xs text-muted-foreground">{activeCasesCount} {activeCasesCount === 1 ? 'caso en progreso' : 'casos en progreso'}.</p>
                 </CardContent>
             </Card>
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Tus Clientes</CardTitle>
+                    <CardTitle className="text-sm font-medium">{isProvider ? 'Tus Clientes' : 'Tus Proveedores'}</CardTitle>
                     <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">0</div>
-                    <p className="text-xs text-muted-foreground">Añade tu primer cliente para empezar.</p>
+                    <div className="text-2xl font-bold">{isProvider ? clients.length : cases.length > 0 ? new Set(cases.map(c => c.providerName)).size : 0}</div>
+                    <p className="text-xs text-muted-foreground">{isProvider ? 'Clientes registrados en tu red.' : 'Proveedores con casos activos.'}</p>
                 </CardContent>
             </Card>
             <Card>
@@ -87,17 +218,17 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-7">
             <Card className="lg:col-span-4">
                 <CardHeader>
-                    <CardTitle>Casos que requieren tu atención</CardTitle>
+                    <CardTitle>Casos Recientes</CardTitle>
                     <CardDescription>
-                        Aquí te mostraré los casos que necesitan una acción de tu parte.
+                        Los últimos casos que han tenido actividad.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Cliente</TableHead>
-                                <TableHead>Servicio</TableHead>
+                                <TableHead>{isProvider ? 'Cliente' : 'Proveedor'}</TableHead>
+                                <TableHead>Servicio(s)</TableHead>
                                 <TableHead>Estado</TableHead>
                                 <TableHead>Última Actualización</TableHead>
                                 <TableHead><span className="sr-only">Acciones</span></TableHead>
@@ -105,24 +236,23 @@ export default function DashboardPage() {
                         </TableHeader>
                         <TableBody>
                             {cases.length > 0 ? (
-                              cases.map((c, i) => (
-                                <TableRow key={i}>
+                              cases.map((c) => (
+                                <TableRow key={c.id}>
                                     <TableCell>
                                         <div className="flex items-center gap-3">
                                             <Avatar className="h-9 w-9">
-                                                <AvatarImage src={c.avatar} alt={c.client} data-ai-hint="person face" />
-                                                <AvatarFallback>{c.fallback}</AvatarFallback>
+                                                <AvatarFallback>{isProvider ? c.clientName.charAt(0) : c.providerName.charAt(0)}</AvatarFallback>
                                             </Avatar>
-                                            <div className="font-medium">{c.client}</div>
+                                            <div className="font-medium">{isProvider ? c.clientName : c.providerName}</div>
                                         </div>
                                     </TableCell>
-                                    <TableCell>{c.service}</TableCell>
+                                    <TableCell>{c.services?.map(s => s.name).join(', ') || 'N/A'}</TableCell>
                                     <TableCell>
-                                        <Badge variant={c.status === "Completado" ? "default" : "secondary"}>
+                                        <Badge variant={getStatusVariant(c.status)}>
                                             {c.status}
                                         </Badge>
                                     </TableCell>
-                                    <TableCell>{c.lastUpdate}</TableCell>
+                                    <TableCell>{c.lastUpdate ? formatDistanceToNow(c.lastUpdate.toDate(), { addSuffix: true, locale: es }) : 'N/A'}</TableCell>
                                     <TableCell className="text-right">
                                       <Button asChild variant="outline" size="sm">
                                           <Link href={`/dashboard/cases/${c.id}`}>Ver Detalles</Link>
@@ -133,7 +263,7 @@ export default function DashboardPage() {
                             ) : (
                                 <TableRow>
                                     <TableCell colSpan={5} className="h-24 text-center">
-                                        No hay casos que requieran tu atención. ¡Buen trabajo!
+                                        No tienes casos registrados.
                                     </TableCell>
                                 </TableRow>
                             )}
@@ -157,23 +287,22 @@ export default function DashboardPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                     {activities.length > 0 ? (
-                        activities.map((activity, index) => (
-                            <div key={index} className="flex items-start gap-4">
+                        activities.map((activity) => (
+                            <div key={activity.id} className="flex items-start gap-4">
                                 <div className="bg-secondary p-2 rounded-full">
-                                    <activity.icon className="h-5 w-5 text-muted-foreground" />
+                                    <MessageSquare className="h-5 w-5 text-muted-foreground" />
                                 </div>
                                 <div className="flex-1">
                                     <p className="text-sm">
-                                        {activity.text}{' '}
-                                        <span className="font-medium text-primary">{activity.subject}</span>
+                                        <span className="font-medium text-primary">{activity.userName}</span> comentó en el caso <Link href={`/dashboard/cases/${activity.caseId}`} className="font-medium hover:underline">{activity.caseName || 'un caso'}</Link>: "{activity.text}"
                                     </p>
-                                    <p className="text-xs text-muted-foreground">{activity.time}</p>
+                                    <p className="text-xs text-muted-foreground">{activity.createdAt ? formatDistanceToNow(activity.createdAt.toDate(), { addSuffix: true, locale: es }) : ''}</p>
                                 </div>
                             </div>
                         ))
                     ) : (
                         <div className="flex items-center justify-center h-48 border-2 border-dashed rounded-md">
-                            <p className="text-muted-foreground">Todo tranquilo. La actividad aparecerá aquí.</p>
+                            <p className="text-muted-foreground text-center px-4">Cuando haya actividad en tus casos, aparecerá aquí.</p>
                         </div>
                     )}
                 </CardContent>
@@ -185,3 +314,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
