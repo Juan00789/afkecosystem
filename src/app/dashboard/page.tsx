@@ -20,67 +20,8 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { MoreHorizontal, ArrowUpRight, CheckCircle, Clock, FileText, MessageSquare, Briefcase, Users, Smile } from "lucide-react";
 
-const cases = [
-  {
-    client: "Ana Torres",
-    avatar: "https://placehold.co/100x100.png",
-    fallback: "AT",
-    service: "Soporte Técnico Urgente",
-    status: "En Progreso",
-    lastUpdate: "Hace 2 horas",
-  },
-  {
-    client: "Carlos Gomez",
-    avatar: "https://placehold.co/100x100.png",
-    fallback: "CG",
-    service: "Consulta de Facturación",
-    status: "Esperando Respuesta",
-    lastUpdate: "Hace 1 día",
-  },
-  {
-    client: "Luisa Fernandez",
-    avatar: "https://placehold.co/100x100.png",
-    fallback: "LF",
-    service: "Instalación de Software",
-    status: "Completado",
-    lastUpdate: "Hace 3 días",
-  },
-  {
-    client: "Javier Rodriguez",
-    avatar: "https://placehold.co/100x100.png",
-    fallback: "JR",
-    service: "Capacitación de Equipo",
-    status: "Programado",
-    lastUpdate: "Hace 1 semana",
-  },
-];
-
-const activities = [
-    {
-        icon: FileText,
-        text: "Enviaste una cotización a",
-        subject: "Empresa Innova S.A.",
-        time: "Hace 5 minutos"
-    },
-    {
-        icon: MessageSquare,
-        text: "Nuevo mensaje de",
-        subject: "Ana Torres",
-        time: "Hace 25 minutos"
-    },
-    {
-        icon: CheckCircle,
-        text: "Caso #7234 cerrado:",
-        subject: "'Consulta de Facturación'",
-        time: "Hace 2 horas"
-    },
-    {
-        icon: Clock,
-        text: "Recordatorio de seguimiento para",
-        subject: "Carlos Gomez",
-        time: "Mañana a las 10:00 AM"
-    }
-]
+const cases: any[] = [];
+const activities: any[] = [];
 
 export default function DashboardPage() {
   return (
@@ -92,8 +33,8 @@ export default function DashboardPage() {
                     <Briefcase className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">12</div>
-                    <p className="text-xs text-muted-foreground">+2 esta semana</p>
+                    <div className="text-2xl font-bold">0</div>
+                    <p className="text-xs text-muted-foreground">No hay casos abiertos</p>
                 </CardContent>
             </Card>
             <Card>
@@ -102,8 +43,8 @@ export default function DashboardPage() {
                     <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">45</div>
-                    <p className="text-xs text-muted-foreground">+5 este mes</p>
+                    <div className="text-2xl font-bold">0</div>
+                    <p className="text-xs text-muted-foreground">No hay clientes registrados</p>
                 </CardContent>
             </Card>
             <Card>
@@ -112,8 +53,8 @@ export default function DashboardPage() {
                     <Smile className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">92%</div>
-                    <p className="text-xs text-muted-foreground">Basado en 25 respuestas</p>
+                    <div className="text-2xl font-bold">N/A</div>
+                    <p className="text-xs text-muted-foreground">Sin datos de satisfacción</p>
                 </CardContent>
             </Card>
             <Card>
@@ -122,8 +63,8 @@ export default function DashboardPage() {
                     <CheckCircle className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">78%</div>
-                    <p className="text-xs text-muted-foreground">Meta: 80%</p>
+                    <div className="text-2xl font-bold">N/A</div>
+                    <p className="text-xs text-muted-foreground">Sin datos de resolución</p>
                 </CardContent>
             </Card>
         </div>
@@ -147,7 +88,8 @@ export default function DashboardPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {cases.map((c, i) => (
+                            {cases.length > 0 ? (
+                              cases.map((c, i) => (
                                 <TableRow key={i}>
                                     <TableCell>
                                         <div className="flex items-center gap-3">
@@ -171,7 +113,14 @@ export default function DashboardPage() {
                                         </Button>
                                     </TableCell>
                                 </TableRow>
-                            ))}
+                              ))
+                            ) : (
+                                <TableRow>
+                                    <TableCell colSpan={5} className="h-24 text-center">
+                                        No hay casos que requieran tu atención.
+                                    </TableCell>
+                                </TableRow>
+                            )}
                         </TableBody>
                     </Table>
                 </CardContent>
@@ -187,20 +136,26 @@ export default function DashboardPage() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    {activities.map((activity, index) => (
-                        <div key={index} className="flex items-start gap-4">
-                            <div className="bg-secondary p-2 rounded-full">
-                                <activity.icon className="h-5 w-5 text-muted-foreground" />
+                    {activities.length > 0 ? (
+                        activities.map((activity, index) => (
+                            <div key={index} className="flex items-start gap-4">
+                                <div className="bg-secondary p-2 rounded-full">
+                                    <activity.icon className="h-5 w-5 text-muted-foreground" />
+                                </div>
+                                <div className="flex-1">
+                                    <p className="text-sm">
+                                        {activity.text}{' '}
+                                        <span className="font-medium text-primary">{activity.subject}</span>
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">{activity.time}</p>
+                                </div>
                             </div>
-                            <div className="flex-1">
-                                <p className="text-sm">
-                                    {activity.text}{' '}
-                                    <span className="font-medium text-primary">{activity.subject}</span>
-                                </p>
-                                <p className="text-xs text-muted-foreground">{activity.time}</p>
-                            </div>
+                        ))
+                    ) : (
+                        <div className="flex items-center justify-center h-48 border-2 border-dashed rounded-md">
+                            <p className="text-muted-foreground">No hay actividad reciente.</p>
                         </div>
-                    ))}
+                    )}
                 </CardContent>
                  <CardFooter className="justify-end">
                     <Button variant="link">Ver toda la actividad <ArrowUpRight className="ml-2 h-4 w-4" /></Button>

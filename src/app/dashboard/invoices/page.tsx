@@ -27,40 +27,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { MoreHorizontal, PlusCircle, ArrowUpRight, Printer, Download } from 'lucide-react';
 
-const invoices = [
-  {
-    invoiceNumber: 'FAC-00123',
-    client: 'Empresa Innova S.A.',
-    date: '15 de Julio, 2024',
-    dueDate: '15 de Agosto, 2024',
-    amount: '$2,500.00',
-    status: 'Pagada',
-  },
-  {
-    invoiceNumber: 'FAC-00124',
-    client: 'Diseños Creativos',
-    date: '18 de Julio, 2024',
-    dueDate: '1 de Agosto, 2024',
-    amount: '$1,200.00',
-    status: 'Pendiente',
-  },
-  {
-    invoiceNumber: 'FAC-00125',
-    client: 'Soluciones Tech',
-    date: '20 de Julio, 2024',
-    dueDate: '20 de Agosto, 2024',
-    amount: '$3,800.00',
-    status: 'Pendiente',
-  },
-  {
-    invoiceNumber: 'FAC-00126',
-    client: 'Marketing Global',
-    date: '22 de Julio, 2024',
-    dueDate: '7 de Agosto, 2024',
-    amount: '$750.00',
-    status: 'Atrasada',
-  },
-];
+const invoices: any[] = [];
 
 const getStatusVariant = (status: string) => {
     switch (status) {
@@ -110,42 +77,50 @@ export default function InvoicesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {invoices.map((invoice) => (
-                <TableRow key={invoice.invoiceNumber}>
-                  <TableCell className="font-medium">{invoice.invoiceNumber}</TableCell>
-                  <TableCell>{invoice.client}</TableCell>
-                  <TableCell>{invoice.date}</TableCell>
-                  <TableCell>{invoice.dueDate}</TableCell>
-                  <TableCell className="text-right">{invoice.amount}</TableCell>
-                  <TableCell>
-                    <Badge variant={getStatusVariant(invoice.status)}>
-                      {invoice.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex justify-end">
-                       <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                                <MoreHorizontal className="h-4 w-4" />
-                                <span className="sr-only">Abrir menú</span>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
-                                <Printer className="mr-2 h-4 w-4" />
-                                Imprimir
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                                <Download className="mr-2 h-4 w-4" />
-                                Descargar
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                    </div>
+              {invoices.length > 0 ? (
+                invoices.map((invoice) => (
+                  <TableRow key={invoice.invoiceNumber}>
+                    <TableCell className="font-medium">{invoice.invoiceNumber}</TableCell>
+                    <TableCell>{invoice.client}</TableCell>
+                    <TableCell>{invoice.date}</TableCell>
+                    <TableCell>{invoice.dueDate}</TableCell>
+                    <TableCell className="text-right">{invoice.amount}</TableCell>
+                    <TableCell>
+                      <Badge variant={getStatusVariant(invoice.status)}>
+                        {invoice.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex justify-end">
+                         <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                  <span className="sr-only">Abrir menú</span>
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem>
+                                  <Printer className="mr-2 h-4 w-4" />
+                                  Imprimir
+                              </DropdownMenuItem>
+                              <DropdownMenuItem>
+                                  <Download className="mr-2 h-4 w-4" />
+                                  Descargar
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={7} className="h-24 text-center">
+                    No hay facturas para mostrar.
                   </TableCell>
                 </TableRow>
-              ))}
+              )}
             </TableBody>
           </Table>
         </CardContent>

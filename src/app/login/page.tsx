@@ -47,8 +47,8 @@ export default function LoginPage() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
-    email: 'juan.perez@afk.com',
-    password: 'password',
+    email: '',
+    password: '',
   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -223,5 +223,3 @@ export default function LoginPage() {
     </div>
   );
 }
-
-    
