@@ -21,6 +21,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Camera, Copy } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export default function ProfilePage() {
   const { toast } = useToast();
@@ -264,4 +265,9 @@ export default function ProfilePage() {
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Guardar Cambios
             </Button>
-          </Card
+          </CardFooter>
+        </form>
+      </Card>
+    </main>
+  );
+}
