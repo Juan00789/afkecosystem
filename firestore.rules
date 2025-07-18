@@ -2,41 +2,45 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-    
-    // Users can only read and write to their own user document.
+
+    // Reglas para la colección 'users'
     match /users/{userId} {
-      allow read, update: if isOwner(userId);
-      allow create: if request.auth.uid != null;
+      // Un usuario puede leer y escribir en su propio documento.
+      allow get, update, delete: if request.auth != null && request.auth.uid == userId;
+      // Cualquiera puede crear un documento de usuario (durante el registro).
+      allow create: if request.auth != null;
     }
 
-    // Providers can manage their clients, clients can't see other clients.
+    // Reglas para la colección 'clients'
     match /clients/{clientId} {
-      allow read, write: if isOwner(resource.data.userId);
+      // Un proveedor puede realizar todas las acciones sobre sus propios clientes.
+      allow read, write: if request.auth != null && resource.data.userId == request.auth.uid;
+      // Un proveedor puede listar los clientes que le pertenecen.
+      allow list: if request.auth != null && request.resource.data.userId == request.auth.uid;
     }
 
-    // Providers can manage their services.
-    // Clients can read services if the service's userId matches their mainProviderId.
+    // Reglas para la colección 'services'
     match /services/{serviceId} {
-      allow read: if request.auth.uid != null;
-      allow create, update, delete: if isOwner(resource.data.userId);
+      // El proveedor dueño del servicio puede actualizarlo y eliminarlo.
+      allow update, delete: if request.auth != null && get(/databases/$(database)/documents/services/$(serviceId)).data.userId == request.auth.uid;
+      // Un proveedor puede crear un nuevo servicio.
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      
+      // Un cliente puede leer los servicios si su mainProviderId coincide con el userId del servicio.
+      // Un proveedor puede leer sus propios servicios.
+      allow read: if request.auth != null && (
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.mainProviderId == resource.data.userId)
+         || resource.data.userId == request.auth.uid
+      );
     }
     
-    // Case data can be read by the owner (provider) or the assigned client.
-    match /cases/{caseId} {
-      allow read: if isOwner(resource.data.userId) || isOwner(resource.data.clientId);
-      allow create, update: if isOwner(resource.data.userId);
-
-      // Comments can be created by the provider or the client of the case.
-      // Users can only edit/delete their own comments.
-      match /comments/{commentId} {
-        allow read: if isOwner(get(/databases/$(database)/documents/cases/$(caseId)).data.userId) || isOwner(get(/databases/$(database)/documents/cases/$(caseId)).data.clientId);
-        allow create: if isOwner(request.resource.data.userId);
-        allow update, delete: if isOwner(resource.data.userId);
-      }
+    // Reglas para los comentarios dentro de los casos
+    match /cases/{caseId}/comments/{commentId} {
+      // Cualquiera autenticado puede leer y crear comentarios en un caso.
+      // Aquí se podría añadir lógica más compleja (ej. solo participantes del caso).
+      allow read, create: if request.auth != null;
     }
+
   }
 }
