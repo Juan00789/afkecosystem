@@ -37,18 +37,20 @@ export default function HiddenGamePage() {
 
   useEffect(() => {
     const checkUserAccess = async () => {
-        if (!user) {
+        if (!user || !user.email) {
             setCheckingAccess(false);
             return;
         }
 
         try {
-            // Check if the user has ever been a provider (i.e., has at least one client)
+            // Condition 1: Check if the user has ever been a provider.
+            // This is true if there's at least one client document where their UID is the 'userId'.
             const providerQuery = query(collection(db, 'clients'), where('userId', '==', user.uid), limit(1));
             const providerSnapshot = await getDocs(providerQuery);
             const hasBeenProvider = !providerSnapshot.empty;
 
-            // Check if the user has ever been a client (i.e., their email is in a client document)
+            // Condition 2: Check if the user has ever been a client.
+            // This is true if there's a client document where their email matches.
             const clientQuery = query(collection(db, 'clients'), where('email', '==', user.email), limit(1));
             const clientSnapshot = await getDocs(clientQuery);
             const hasBeenClient = !clientSnapshot.empty;
@@ -56,18 +58,24 @@ export default function HiddenGamePage() {
             setHasAccess(hasBeenClient && hasBeenProvider);
         } catch (error) {
             console.error("Error checking access:", error);
-            toast({
-                variant: 'destructive',
-                title: 'Error de verificación',
-                description: 'No se pudo verificar tu acceso al juego.',
-            });
+            // This toast might be too aggressive if it's just a permissions issue for a new user.
+            // Let's keep it silent unless it's a real unexpected error.
+            if (error instanceof Error && (error as any).code !== 'permission-denied') {
+                 toast({
+                    variant: 'destructive',
+                    title: 'Error de verificación',
+                    description: 'No se pudo verificar tu acceso al juego.',
+                });
+            }
             setHasAccess(false);
         } finally {
             setCheckingAccess(false);
         }
     };
     
-    checkUserAccess();
+    if (user) {
+        checkUserAccess();
+    }
 
   }, [user, toast]);
 
@@ -117,7 +125,7 @@ export default function HiddenGamePage() {
                 <h3 className="text-lg font-semibold mb-2">La Puerta Permanece Cerrada</h3>
                 <p className="max-w-md">
                     El Juego Oculto solo revela sus secretos a quienes han dominado la dualidad.
-                    Debes haber experimentado el rol de <span className="text-primary font-medium">proveedor</span> y el de <span className="text-primary font-medium">cliente</span> para entrar.
+                    Debes haber sido reconocido como <span className="text-primary font-medium">proveedor</span> y como <span className="text-primary font-medium">cliente</span> para entrar.
                 </p>
                 <p className="mt-2 text-sm">Completa ambos caminos y regresa.</p>
             </div>
