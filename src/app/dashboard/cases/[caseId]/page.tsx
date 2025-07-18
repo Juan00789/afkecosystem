@@ -236,7 +236,7 @@ export default function CaseDetailsPage({ params }: { params: { caseId: string }
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                         {caseData.images?.map(image => (
                             <div key={image.id} className="relative aspect-video rounded-md overflow-hidden group">
-                                <Image src={image.src} alt={`Imagen ${image.id}`} layout="fill" objectFit="cover" data-ai-hint={image.hint}/>
+                                <Image src={image.src} alt={`Imagen ${image.id}`} fill={true} className="object-cover" data-ai-hint={image.hint}/>
                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                     <p className="text-white font-semibold">Ver Imagen</p>
                                 </div>
