@@ -1,4 +1,6 @@
 
+'use client';
+
 import {
   Card,
   CardHeader,
@@ -18,14 +20,28 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { MoreHorizontal, ArrowUpRight, CheckCircle, Clock, FileText, MessageSquare, Briefcase, Users, Smile, UserCheck, Activity } from "lucide-react";
+import { ArrowUpRight, PlusCircle, Briefcase, Users, UserCheck, Activity } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from 'next/navigation';
 
 const cases: any[] = [];
 const activities: any[] = [];
 
 export default function DashboardPage() {
+  const router = useRouter();
+
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+        <div className="flex items-center justify-between">
+            <div>
+                <h2 className="text-3xl font-bold tracking-tight">Resumen General</h2>
+                <p className="text-muted-foreground">Bienvenido de nuevo a tu centro de mando.</p>
+            </div>
+            <Button onClick={() => router.push('/dashboard/cases')}>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Crear Nuevo Caso
+            </Button>
+        </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -107,10 +123,10 @@ export default function DashboardPage() {
                                         </Badge>
                                     </TableCell>
                                     <TableCell>{c.lastUpdate}</TableCell>
-                                    <TableCell>
-                                        <Button variant="ghost" size="icon">
-                                            <MoreHorizontal className="h-4 w-4" />
-                                        </Button>
+                                    <TableCell className="text-right">
+                                      <Button asChild variant="outline" size="sm">
+                                          <Link href={`/dashboard/cases/${c.id}`}>Ver Detalles</Link>
+                                      </Button>
                                     </TableCell>
                                 </TableRow>
                               ))
@@ -125,7 +141,11 @@ export default function DashboardPage() {
                     </Table>
                 </CardContent>
                 <CardFooter className="justify-end">
-                    <Button variant="link">Ver todos los casos <ArrowUpRight className="ml-2 h-4 w-4" /></Button>
+                    <Button variant="link" asChild>
+                        <Link href="/dashboard/cases">
+                            Ver todos los casos <ArrowUpRight className="ml-2 h-4 w-4" />
+                        </Link>
+                    </Button>
                 </CardFooter>
             </Card>
             <Card className="lg:col-span-3">
