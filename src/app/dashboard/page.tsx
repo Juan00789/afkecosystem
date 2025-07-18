@@ -78,7 +78,9 @@ export default function DashboardPage() {
         if (userDoc.exists()) {
           setUserData(userDoc.data());
         }
-      } else {
+      }
+      // Keep loading until user data and role are confirmed
+      if (!currentUser) {
         setLoading(false);
       }
     });
@@ -86,7 +88,7 @@ export default function DashboardPage() {
   }, []);
   
    useEffect(() => {
-    if (!user) return;
+    if (!user || !userData.activeRole) return; // Wait for user and role
 
     setLoading(true);
     
@@ -139,8 +141,13 @@ export default function DashboardPage() {
         // Fetch clients if the user is a provider
         if (userData.activeRole === 'provider') {
             const clientsQuery = query(collection(db, 'clients'), where('userId', '==', user.uid));
-            const clientsSnapshot = await getDocs(clientsQuery);
-            setClients(clientsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client)));
+            try {
+                const clientsSnapshot = await getDocs(clientsQuery);
+                setClients(clientsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client)));
+            } catch (error) {
+                console.error("Error fetching clients:", error);
+                // Optionally toast here if client list is critical
+            }
         }
 
         setLoading(false);
@@ -333,3 +340,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
