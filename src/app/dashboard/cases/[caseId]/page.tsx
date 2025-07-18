@@ -1,5 +1,6 @@
 
 'use client';
+import { useState, useEffect, FormEvent } from "react";
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -13,11 +14,43 @@ import { Textarea } from "@/components/ui/textarea"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
-import { FileUp, MessageSquare, Paperclip } from "lucide-react"
+import { FileUp, MessageSquare, Paperclip, Loader2 } from "lucide-react"
 import Image from "next/image"
+import { db, auth } from "@/lib/firebase";
+import { collection, addDoc, query, orderBy, onSnapshot, Timestamp, doc, getDoc } from "firebase/firestore";
+import { onAuthStateChanged, type User } from 'firebase/auth';
+import { useToast } from "@/hooks/use-toast";
+import { formatDistanceToNow } from 'date-fns';
+import { es } from 'date-fns/locale';
+
+interface Comment {
+    id: string;
+    text: string;
+    userId: string;
+    userName: string;
+    userFallback: string;
+    createdAt: Timestamp;
+}
+
+interface CaseData {
+    id: string;
+    client: {
+        name: string;
+        avatar: string;
+        fallback: string;
+    };
+    service: string;
+    status: string;
+    financials: {
+        total: string;
+        paid: string;
+        due: string;
+    };
+    images: { id: number; src: string; hint: string }[];
+}
 
 // Mock data, this would come from Firestore based on params.caseId
-const caseData = {
+const caseData: CaseData = {
     id: "case-001",
     client: {
         name: "Miguel de LedPod",
@@ -36,24 +69,82 @@ const caseData = {
         { id: 2, src: "https://placehold.co/600x400.png", hint: "website mockup" },
         { id: 3, src: "https://placehold.co/600x400.png", hint: "analytics report" },
     ],
-    comments: [
-        { 
-            user: "Tú", 
-            avatarFallback: "T",
-            text: "Se recibió el abono de $2,500.00. Iniciando con la actualización de perfiles y creación de contenido.",
-            time: "hace 2 horas",
-        },
-        { 
-            user: "Sistema",
-            avatarFallback: "S",
-            text: "Caso creado: Actualización de Redes Sociales para LedPod.",
-            time: "hace 1 día",
-        }
-    ]
 };
 
-
 export default function CaseDetailsPage({ params }: { params: { caseId: string } }) {
+    const { toast } = useToast();
+    const [user, setUser] = useState<User | null>(null);
+    const [userData, setUserData] = useState({ name: 'Tú', fallback: 'T'});
+    const [comments, setComments] = useState<Comment[]>([]);
+    const [newComment, setNewComment] = useState("");
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+
+    useEffect(() => {
+        const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
+            setUser(currentUser);
+            if (currentUser) {
+                const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+                if (userDoc.exists()) {
+                    const data = userDoc.data();
+                    setUserData({
+                        name: data.name || 'Usuario',
+                        fallback: (data.name || 'U').charAt(0).toUpperCase()
+                    });
+                }
+            }
+        });
+        return () => unsubscribeAuth();
+    }, []);
+
+    useEffect(() => {
+        setLoading(true);
+        const commentsQuery = query(collection(db, 'cases', params.caseId, 'comments'), orderBy('createdAt', 'asc'));
+        
+        const unsubscribe = onSnapshot(commentsQuery, (snapshot) => {
+            const commentsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Comment));
+            setComments(commentsData);
+            setLoading(false);
+        }, (error) => {
+            console.error("Error fetching comments: ", error);
+            toast({
+                variant: 'destructive',
+                title: 'Error al cargar comentarios',
+                description: 'No se pudieron obtener los datos.'
+            });
+            setLoading(false);
+        });
+
+        return () => unsubscribe();
+    }, [params.caseId, toast]);
+
+    const handleCommentSubmit = async (e: FormEvent) => {
+        e.preventDefault();
+        if (!user || !newComment.trim()) return;
+
+        setSaving(true);
+        try {
+            await addDoc(collection(db, 'cases', params.caseId, 'comments'), {
+                text: newComment,
+                userId: user.uid,
+                userName: userData.name,
+                userFallback: userData.fallback,
+                createdAt: new Date(),
+            });
+            setNewComment("");
+        } catch (error) {
+            console.error('Error al añadir comentario:', error);
+            toast({
+                variant: 'destructive',
+                title: 'Error al comentar',
+                description: 'No se pudo enviar tu comentario. Inténtalo de nuevo.',
+            });
+        } finally {
+            setSaving(false);
+        }
+    };
+
+
   return (
     <main className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="grid gap-4 md:grid-cols-3">
@@ -66,36 +157,57 @@ export default function CaseDetailsPage({ params }: { params: { caseId: string }
                     <CardDescription>Historial de actividad y comentarios.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                    {caseData.comments.map((comment, index) => (
-                        <div key={index} className="flex items-start gap-4">
+                    {loading && (
+                        <div className="flex items-center justify-center h-24">
+                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                        </div>
+                    )}
+                    {!loading && comments.length === 0 && (
+                         <div className="text-center text-muted-foreground py-8">
+                            <p>No hay comentarios todavía.</p>
+                            <p>¡Sé el primero en añadir una actualización!</p>
+                        </div>
+                    )}
+                    {comments.map((comment) => (
+                        <div key={comment.id} className="flex items-start gap-4">
                              <Avatar>
-                                <AvatarFallback>{comment.avatarFallback}</AvatarFallback>
+                                <AvatarFallback>{comment.userFallback}</AvatarFallback>
                             </Avatar>
                             <div className="w-full">
                                 <div className="flex items-center justify-between">
-                                    <p className="font-semibold">{comment.user}</p>
-                                    <p className="text-xs text-muted-foreground">{comment.time}</p>
+                                    <p className="font-semibold">{comment.userName}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                        {formatDistanceToNow(comment.createdAt.toDate(), { addSuffix: true, locale: es })}
+                                    </p>
                                 </div>
                                 <div className="p-3 bg-secondary rounded-md mt-1">
-                                    <p className="text-sm">{comment.text}</p>
+                                    <p className="text-sm whitespace-pre-wrap">{comment.text}</p>
                                 </div>
                             </div>
                         </div>
                     ))}
                 </CardContent>
                 <CardFooter>
-                    <div className="w-full flex items-start gap-4">
+                   <form onSubmit={handleCommentSubmit} className="w-full flex items-start gap-4">
                          <Avatar>
-                            <AvatarFallback>T</AvatarFallback>
+                            <AvatarFallback>{userData.fallback}</AvatarFallback>
                         </Avatar>
                         <div className="w-full space-y-2">
-                            <Textarea placeholder="Escribe un nuevo comentario o actualización..." />
+                            <Textarea 
+                                placeholder="Escribe un nuevo comentario o actualización..."
+                                value={newComment}
+                                onChange={(e) => setNewComment(e.target.value)}
+                                disabled={saving}
+                            />
                             <div className="flex justify-between items-center">
-                                <Button variant="outline" size="sm"><Paperclip className="mr-2 h-4 w-4" /> Adjuntar</Button>
-                                <Button><MessageSquare className="mr-2 h-4 w-4" /> Comentar</Button>
+                                <Button variant="outline" size="sm" type="button" disabled={saving}><Paperclip className="mr-2 h-4 w-4" /> Adjuntar</Button>
+                                <Button type="submit" disabled={saving || !newComment.trim()}>
+                                    {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    <MessageSquare className="mr-2 h-4 w-4" /> Comentar
+                                </Button>
                             </div>
                         </div>
-                    </div>
+                    </form>
                 </CardFooter>
             </Card>
 
