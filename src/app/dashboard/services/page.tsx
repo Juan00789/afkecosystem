@@ -44,20 +44,21 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion"
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
 } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import { MoreHorizontal, PlusCircle, ListTodo, Loader2, Search, Edit, Trash2 } from 'lucide-react';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, onSnapshot, query, where, doc, getDoc, updateDoc, deleteDoc, getDocs, collectionGroup } from 'firebase/firestore';
+import { collection, addDoc, onSnapshot, query, where, doc, getDoc, updateDoc, deleteDoc, getDocs, collectionGroup, Timestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged, type User } from 'firebase/auth';
@@ -97,6 +98,9 @@ export default function ServicesPage() {
 
     // For Client role
     const [providersWithServices, setProvidersWithServices] = useState<Provider[]>([]);
+    const [selectedServices, setSelectedServices] = useState<Record<string, string[]>>({});
+    const [creatingCase, setCreatingCase] = useState(false);
+
 
     const [newService, setNewService] = useState({ name: '', description: '', price: '' });
     const [loading, setLoading] = useState(true);
@@ -279,6 +283,53 @@ export default function ServicesPage() {
         setEditingService(service);
         setIsEditDialogOpen(true);
     }
+    
+    const handleServiceSelection = (providerId: string, serviceId: string, isChecked: boolean) => {
+        setSelectedServices(prev => {
+            const currentSelection = prev[providerId] || [];
+            if (isChecked) {
+                return { ...prev, [providerId]: [...currentSelection, serviceId] };
+            } else {
+                return { ...prev, [providerId]: currentSelection.filter(id => id !== serviceId) };
+            }
+        });
+    };
+
+    const handleCreateCase = async (provider: Provider) => {
+        if (!user || !userData) return;
+        const servicesToRequest = selectedServices[provider.providerId] || [];
+        if (servicesToRequest.length === 0) return;
+
+        setCreatingCase(true);
+        try {
+            const selectedServiceDetails = provider.services?.filter(s => servicesToRequest.includes(s.id));
+            
+            const newCaseRef = await addDoc(collection(db, 'cases'), {
+                clientId: user.uid,
+                clientName: userData.name || 'Cliente sin nombre',
+                providerId: provider.providerId,
+                providerName: provider.name || 'Proveedor sin nombre',
+                services: selectedServiceDetails,
+                status: 'Pendiente',
+                createdAt: Timestamp.now(),
+                lastUpdate: Timestamp.now(),
+            });
+
+            toast({
+                title: 'Solicitud enviada',
+                description: `Se ha creado un nuevo caso con ${provider.name}.`,
+            });
+            setSelectedServices(prev => ({ ...prev, [provider.providerId]: [] })); // Clear selection for this provider
+            router.push(`/dashboard/cases/${newCaseRef.id}`);
+
+        } catch (error) {
+            console.error('Error creating case: ', error);
+            toast({ variant: 'destructive', title: 'Error al crear el caso' });
+        } finally {
+            setCreatingCase(false);
+        }
+    };
+
 
     const isProvider = userData?.activeRole === 'provider';
 
@@ -418,7 +469,7 @@ export default function ServicesPage() {
                     <CardTitle>Catálogo de Servicios de tu Red</CardTitle>
                 </div>
                 <CardDescription>
-                    Explora los servicios ofrecidos por los proveedores que has añadido a tu red.
+                    Explora y selecciona los servicios que necesitas de tus proveedores.
                 </CardDescription>
             </CardHeader>
             <CardContent>
@@ -439,6 +490,7 @@ export default function ServicesPage() {
                                     <Table>
                                         <TableHeader>
                                             <TableRow>
+                                                <TableHead className="w-[50px]"></TableHead>
                                                 <TableHead>Servicio</TableHead>
                                                 <TableHead>Descripción</TableHead>
                                                 <TableHead className="text-right">Precio</TableHead>
@@ -447,6 +499,13 @@ export default function ServicesPage() {
                                         <TableBody>
                                             {provider.services?.map(service => (
                                                 <TableRow key={service.id}>
+                                                     <TableCell>
+                                                        <Checkbox 
+                                                            id={`service-${service.id}`}
+                                                            onCheckedChange={(checked) => handleServiceSelection(provider.providerId, service.id, !!checked)}
+                                                            checked={(selectedServices[provider.providerId] || []).includes(service.id)}
+                                                        />
+                                                    </TableCell>
                                                     <TableCell className="font-medium">{service.name}</TableCell>
                                                     <TableCell className="text-muted-foreground">{service.description}</TableCell>
                                                     <TableCell className="text-right">{service.price}</TableCell>
@@ -454,6 +513,15 @@ export default function ServicesPage() {
                                             ))}
                                         </TableBody>
                                     </Table>
+                                    <div className="flex justify-end pt-4">
+                                        <Button 
+                                            onClick={() => handleCreateCase(provider)}
+                                            disabled={creatingCase || !(selectedServices[provider.providerId] && selectedServices[provider.providerId].length > 0)}
+                                        >
+                                            {creatingCase && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                            Solicitar Servicios Seleccionados
+                                        </Button>
+                                    </div>
                                 </AccordionContent>
                             </AccordionItem>
                         ))}

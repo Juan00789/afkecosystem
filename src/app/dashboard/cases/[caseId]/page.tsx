@@ -17,7 +17,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { FileUp, MessageSquare, Paperclip, Loader2, Send } from "lucide-react"
 import Image from "next/image"
 import { db, auth } from "@/lib/firebase";
-import { collection, addDoc, query, orderBy, onSnapshot, Timestamp, doc, getDoc } from "firebase/firestore";
+import { collection, addDoc, query, orderBy, onSnapshot, Timestamp, doc, getDoc, DocumentData } from "firebase/firestore";
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from 'date-fns';
@@ -42,35 +42,24 @@ interface Comment {
 
 interface CaseData {
     id: string;
-    client: {
-        name: string;
-        avatar: string;
-        fallback: string;
-    };
-    service: string;
+    clientName: string;
+    providerName: string;
+    services: { name: string, price: string }[];
     status: string;
-    financials: {
+    financials?: {
         total: string;
         paid: string;
         due: string;
     };
-    images: { id: number; src: string; hint: string }[];
+    images?: { id: number; src: string; hint: string }[];
 }
 
-// Mock data removed, this will come from Firestore based on params.caseId
-const caseData: CaseData = {
-    id: "",
-    client: { name: "", avatar: "", fallback: "" },
-    service: "",
-    status: "",
-    financials: { total: "", paid: "", due: "" },
-    images: [],
-};
 
 export default function CaseDetailsPage({ params }: { params: { caseId: string } }) {
     const { toast } = useToast();
     const [user, setUser] = useState<User | null>(null);
     const [userData, setUserData] = useState({ name: 'Tú', fallback: 'T', activeRole: 'provider' });
+    const [caseData, setCaseData] = useState<CaseData | null>(null);
     const [comments, setComments] = useState<Comment[]>([]);
     const [newComment, setNewComment] = useState("");
     const [loading, setLoading] = useState(true);
@@ -95,10 +84,22 @@ export default function CaseDetailsPage({ params }: { params: { caseId: string }
     }, []);
 
     useEffect(() => {
+        if (!params.caseId) return;
+
         setLoading(true);
+        // Fetch case data
+        const caseDocRef = doc(db, 'cases', params.caseId);
+        const unsubscribeCase = onSnapshot(caseDocRef, (docSnap) => {
+            if (docSnap.exists()) {
+                setCaseData({ id: docSnap.id, ...docSnap.data() } as CaseData);
+            } else {
+                toast({ variant: 'destructive', title: 'Caso no encontrado' });
+            }
+        });
+
+        // Fetch comments
         const commentsQuery = query(collection(db, 'cases', params.caseId, 'comments'), orderBy('createdAt', 'asc'));
-        
-        const unsubscribe = onSnapshot(commentsQuery, (snapshot) => {
+        const unsubscribeComments = onSnapshot(commentsQuery, (snapshot) => {
             const commentsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Comment));
             setComments(commentsData);
             setLoading(false);
@@ -112,20 +113,23 @@ export default function CaseDetailsPage({ params }: { params: { caseId: string }
             setLoading(false);
         });
 
-        return () => unsubscribe();
+        return () => {
+            unsubscribeCase();
+            unsubscribeComments();
+        };
     }, [params.caseId, toast]);
 
     const handleCommentSubmit = async (e: FormEvent) => {
         e.preventDefault();
-        if (!user || !newComment.trim()) return;
+        if (!user || !newComment.trim() || !caseData) return;
 
         setSaving(true);
         try {
             await addDoc(collection(db, 'cases', params.caseId, 'comments'), {
                 text: newComment,
                 userId: user.uid,
-                userName: userData.activeRole === 'client' ? caseData.client.name : userData.name,
-                userFallback: userData.activeRole === 'client' ? caseData.client.fallback : userData.fallback,
+                userName: userData.name,
+                userFallback: userData.fallback,
                 createdAt: Timestamp.now(),
             });
             setNewComment("");
@@ -140,7 +144,14 @@ export default function CaseDetailsPage({ params }: { params: { caseId: string }
             setSaving(false);
         }
     };
-
+    
+    if (loading || !caseData) {
+        return (
+            <main className="flex-1 flex items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </main>
+        )
+    }
 
   return (
     <main className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -154,12 +165,7 @@ export default function CaseDetailsPage({ params }: { params: { caseId: string }
                     <CardDescription>Historial de actividad y comunicaciones.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                    {loading && (
-                        <div className="flex items-center justify-center h-24">
-                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                        </div>
-                    )}
-                    {!loading && comments.length === 0 && (
+                    {!comments.length && (
                          <div className="text-center text-muted-foreground py-8">
                             <p>No hay comentarios todavía.</p>
                             <p>¡Sé el primero en añadir una actualización!</p>
@@ -187,9 +193,7 @@ export default function CaseDetailsPage({ params }: { params: { caseId: string }
                 <CardFooter>
                    <form onSubmit={handleCommentSubmit} className="w-full flex items-start gap-4">
                          <Avatar>
-                             <AvatarFallback>
-                                {userData.activeRole === 'client' ? caseData.client.fallback : userData.fallback}
-                             </AvatarFallback>
+                             <AvatarFallback>{userData.fallback}</AvatarFallback>
                         </Avatar>
                         <div className="w-full space-y-2">
                              <Textarea 
@@ -230,7 +234,7 @@ export default function CaseDetailsPage({ params }: { params: { caseId: string }
                 </CardHeader>
                 <CardContent>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                        {caseData.images.map(image => (
+                        {caseData.images?.map(image => (
                             <div key={image.id} className="relative aspect-video rounded-md overflow-hidden group">
                                 <Image src={image.src} alt={`Imagen ${image.id}`} layout="fill" objectFit="cover" data-ai-hint={image.hint}/>
                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
@@ -252,16 +256,18 @@ export default function CaseDetailsPage({ params }: { params: { caseId: string }
             <Card>
                 <CardHeader className="flex flex-row items-center gap-4 space-y-0">
                     <Avatar className="h-12 w-12">
-                        <AvatarImage src={caseData.client.avatar} data-ai-hint="company logo" />
-                        <AvatarFallback>{caseData.client.fallback}</AvatarFallback>
+                        {/* <AvatarImage src={caseData.client.avatar} data-ai-hint="company logo" /> */}
+                        <AvatarFallback>{caseData.clientName.charAt(0)}</AvatarFallback>
                     </Avatar>
                     <div>
-                        <CardTitle>{caseData.client.name}</CardTitle>
-                        <CardDescription>{caseData.service}</CardDescription>
+                        <CardTitle>{caseData.clientName}</CardTitle>
+                        <CardDescription>
+                            {caseData.services.map(s => s.name).join(', ')}
+                        </CardDescription>
                     </div>
                 </CardHeader>
                 <CardContent>
-                     <Badge>En Progreso</Badge>
+                     <Badge>{caseData.status}</Badge>
                 </CardContent>
                 <Separator />
                 <CardContent className="pt-6">
@@ -269,15 +275,15 @@ export default function CaseDetailsPage({ params }: { params: { caseId: string }
                    <div className="space-y-2 text-sm">
                        <div className="flex justify-between">
                            <span className="text-muted-foreground">Monto Total:</span>
-                           <span className="font-medium">${caseData.financials.total}</span>
+                           <span className="font-medium">{caseData.financials?.total || 'N/A'}</span>
                        </div>
                        <div className="flex justify-between">
                            <span className="text-muted-foreground">Abonado:</span>
-                           <span className="font-medium text-primary">${caseData.financials.paid}</span>
+                           <span className="font-medium text-primary">{caseData.financials?.paid || 'N/A'}</span>
                        </div>
                        <div className="flex justify-between">
                            <span className="text-muted-foreground">Pendiente:</span>
-                           <span className="font-medium">${caseData.financials.due}</span>
+                           <span className="font-medium">{caseData.financials?.due || 'N/A'}</span>
                        </div>
                    </div>
                 </CardContent>
@@ -289,4 +295,4 @@ export default function CaseDetailsPage({ params }: { params: { caseId: string }
       </div>
     </main>
   );
-  
+}
