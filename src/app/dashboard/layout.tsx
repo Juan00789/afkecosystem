@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import {
   SidebarProvider,
   Sidebar,
@@ -14,12 +14,29 @@ import {
 } from "@/components/ui/sidebar";
 import { Logo } from "@/components/logo";
 import { UserNav } from "@/components/user-nav";
-import { Home, Users, Briefcase, FileText, Settings, CreditCard, Bell, Receipt } from "lucide-react";
+import { Home, Users, Briefcase, FileText, Settings, CreditCard, Bell, Receipt, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { onAuthStateChanged, type User } from 'firebase/auth';
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { useRouter } from 'next/navigation';
+import { RoleSwitcher } from '@/components/role-switcher';
+
+const providerLinks = [
+    { href: "/dashboard", icon: <Home />, label: "Dashboard", tooltip: "Dashboard" },
+    { href: "/dashboard/clients", icon: <Users />, label: "Clientes", tooltip: "Clientes" },
+    { href: "/dashboard/cases", icon: <Briefcase />, label: "Casos", tooltip: "Casos" },
+    { href: "/dashboard/quotes", icon: <FileText />, label: "Cotizaciones", tooltip: "Cotizaciones" },
+    { href: "/dashboard/invoices", icon: <Receipt />, label: "Facturas", tooltip: "Facturas" },
+    { href: "/dashboard/billing", icon: <CreditCard />, label: "Contabilidad", tooltip: "Contabilidad" },
+];
+
+const clientLinks = [
+    { href: "/dashboard", icon: <Home />, label: "Inicio", tooltip: "Inicio" },
+    { href: "/dashboard/explore", icon: <Search />, label: "Explorar", tooltip: "Explorar Servicios" },
+    { href: "/dashboard/my-cases", icon: <Briefcase />, label: "Mis Casos", tooltip: "Mis Casos" },
+    { href: "/dashboard/my-invoices", icon: <Receipt />, label: "Mis Facturas", tooltip: "Mis Facturas" },
+];
 
 
 export default function DashboardLayout({
@@ -31,6 +48,7 @@ export default function DashboardLayout({
   const [user, setUser] = useState<User | null>(null);
   const [userName, setUserName] = useState('¡Hola!');
   const [loading, setLoading] = useState(true);
+  const [activeRole, setActiveRole] = useState('provider');
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -41,8 +59,16 @@ export default function DashboardLayout({
         if (docSnap.exists()) {
           const userData = docSnap.data();
           setUserName(userData.name ? `¡Hola, ${userData.name.split(' ')[0]}!` : (currentUser.displayName ? `¡Hola, ${currentUser.displayName.split(' ')[0]}!` : '¡Hola!'));
+          setActiveRole(userData.activeRole || 'provider');
         } else {
            setUserName(currentUser.displayName ? `¡Hola, ${currentUser.displayName.split(' ')[0]}!` : '¡Hola!');
+           // Ensure user doc is created if it doesn't exist
+           await setDoc(docRef, { 
+             name: currentUser.displayName, 
+             email: currentUser.email,
+             activeRole: 'provider',
+             roles: ['provider']
+            }, { merge: true });
         }
       } else {
         router.push('/login');
@@ -51,6 +77,21 @@ export default function DashboardLayout({
     });
      return () => unsubscribe();
   }, [router]);
+  
+  const handleRoleChange = async (newRole: string) => {
+    if (user) {
+        setActiveRole(newRole);
+        const userRef = doc(db, 'users', user.uid);
+        await setDoc(userRef, { activeRole: newRole }, { merge: true });
+        // You might want to force a reload or redirect to reflect the new role's dashboard
+        router.push('/dashboard');
+    }
+  };
+
+  const navLinks = useMemo(() => {
+      return activeRole === 'provider' ? providerLinks : clientLinks;
+  }, [activeRole]);
+
 
   if (loading) {
     return <div className="flex h-screen w-full items-center justify-center">Cargando...</div>;
@@ -80,42 +121,14 @@ export default function DashboardLayout({
         </SidebarHeader>
         <SidebarContent>
           <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton href="/dashboard" tooltip="Dashboard">
-                <Home />
-                Dashboard
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton href="/dashboard/clients" tooltip="Clientes">
-                <Users />
-                Clientes
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton href="/dashboard/cases" tooltip="Casos">
-                <Briefcase />
-                Casos
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton href="/dashboard/quotes" tooltip="Cotizaciones">
-                <FileText />
-                Cotizaciones
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton href="/dashboard/invoices" tooltip="Facturas">
-                <Receipt />
-                Facturas
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton href="/dashboard/billing" tooltip="Contabilidad">
-                <CreditCard />
-                Contabilidad
-              </SidebarMenuButton>
-            </SidebarMenuItem>
+            {navLinks.map((link) => (
+               <SidebarMenuItem key={link.href}>
+                 <SidebarMenuButton href={link.href} tooltip={link.tooltip}>
+                   {link.icon}
+                   {link.label}
+                 </SidebarMenuButton>
+               </SidebarMenuItem>
+            ))}
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter>
@@ -135,7 +148,11 @@ export default function DashboardLayout({
           <div className="flex-1">
             <h1 className="text-lg font-semibold md:text-xl">{userName}</h1>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4">
+            <RoleSwitcher 
+                currentRole={activeRole} 
+                onRoleChange={handleRoleChange} 
+             />
             <Button variant="ghost" size="icon" className="rounded-full">
                 <Bell className="h-5 w-5" />
                 <span className="sr-only">Toggle notifications</span>
