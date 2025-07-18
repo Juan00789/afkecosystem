@@ -218,3 +218,12 @@ Dev App Server is now running.
 
 Issues? Report them at https://github.com/firebase/firebase-tools/issues and attach the *-debug.log files.
  
+[info] i  firestore: Change detected, updating rules... 
+[debug] [2025-07-18T21:08:48.991Z] >>> [apiv2][query] PUT http://127.0.0.1:8080/emulator/v1/projects/demo-app:securityRules [none]
+[debug] [2025-07-18T21:08:48.992Z] >>> [apiv2][body] PUT http://127.0.0.1:8080/emulator/v1/projects/demo-app:securityRules {"ignore_errors":true,"rules":{"files":[{"name":"security.rules","content":"rules_version = '2';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n    // Permite a los usuarios leer y escribir sus propios datos de perfil\n    match /users/{userId} {\n      allow read, write: if request.auth != null && request.auth.uid == userId;\n    }\n\n    // Permite a los usuarios autenticados crear, leer, actualizar y borrar\n    // sus propios clientes. Nadie más puede ver los clientes de otros.\n    match /clients/{clientId} {\n      allow read, update, delete: if request.auth != null && request.auth.uid == resource.data.userId;\n      allow create: if request.auth != null;\n    }\n    \n    // Permite a los usuarios autenticados gestionar sus propios servicios.\n    match /services/{serviceId} {\n      allow read, update, delete: if request.auth != null && request.auth.uid == resource.data.userId;\n      allow create: if request.auth != null;\n    }\n  }\n}\n"}]}}
+[debug] [2025-07-18T21:08:49.021Z] Jul 18, 2025 9:08:49 PM io.gapi.emulators.netty.HttpVersionRoutingHandler channelRead
+INFO: Detected non-HTTP/2 connection.
+ {"metadata":{"emulator":{"name":"firestore"},"message":"Jul 18, 2025 9:08:49 PM io.gapi.emulators.netty.HttpVersionRoutingHandler channelRead\nINFO: Detected non-HTTP/2 connection.\n"}}
+[debug] [2025-07-18T21:08:49.919Z] Jul 18, 2025 9:08:49 PM io.gapi.emulators.netty.HttpVersionRoutingHandler channelRead
+INFO: Detected HTTP/2 connection.
+ {"metadata":{"emulator":{"name":"firestore"},"message":"Jul 18, 2025 9:08:49 PM io.gapi.emulators.netty.HttpVersionRoutingHandler channelRead\nINFO: Detected HTTP/2 connection.\n"}}
