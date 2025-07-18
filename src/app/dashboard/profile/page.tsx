@@ -19,7 +19,7 @@ import { onAuthStateChanged, type User, updateProfile } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Camera, Copy } from 'lucide-react';
+import { Loader2, Camera, Copy, Globe } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -37,6 +37,7 @@ export default function ProfilePage() {
     phoneNumber: '',
     photoURL: '',
     userId: '',
+    website: '',
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -55,6 +56,7 @@ export default function ProfilePage() {
             phoneNumber: userData.phoneNumber || '',
             photoURL: userData.photoURL || currentUser.photoURL || '',
             userId: currentUser.uid,
+            website: userData.website || '',
           });
 
         } catch (error) {
@@ -127,6 +129,7 @@ export default function ProfilePage() {
       await setDoc(userRef, { 
         name: form.name,
         phoneNumber: form.phoneNumber,
+        website: form.website,
       }, { merge: true });
 
       if (auth.currentUser) {
@@ -249,7 +252,22 @@ export default function ProfilePage() {
                         disabled={saving || uploading}
                     />
                 </div>
-                 <div className="space-y-2">
+                <div className="space-y-2">
+                    <Label htmlFor="website">Sitio Web / Dominio</Label>
+                     <div className="flex items-center gap-2">
+                        <Globe className="h-5 w-5 text-muted-foreground" />
+                        <Input
+                            id="website"
+                            name="website"
+                            type="text"
+                            value={form.website}
+                            onChange={handleInputChange}
+                            placeholder="Ej: misitioincreible.com"
+                            disabled={saving || uploading}
+                        />
+                    </div>
+                </div>
+                 <div className="space-y-2 md:col-span-2">
                     <Label htmlFor="manage-connections">Gestionar Conexiones</Label>
                      <Button asChild variant="outline" className="w-full justify-start font-normal">
                         <Link href="/dashboard/network">
@@ -271,3 +289,4 @@ export default function ProfilePage() {
     </main>
   );
 }
+
