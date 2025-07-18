@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -21,59 +21,110 @@ import {
 } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { MoreHorizontal, PlusCircle, UserPlus, Users } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, UserPlus, Users, Loader2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { db } from '@/lib/firebase';
+import { collection, addDoc, getDocs, onSnapshot, QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
+import { auth } from '@/lib/firebase';
+import { onAuthStateChanged, type User } from 'firebase/auth';
+import { useRouter } from 'next/navigation';
 
-
-const initialClients = [
-    {
-        id: 'CLI-001',
-        name: 'Elena Ríos',
-        company: 'Innovaciones Digitales S.L.',
-        email: 'elena.rios@innovadigital.es',
-        phone: '+34 655 123 456',
-        avatar: 'https://placehold.co/100x100.png'
-    },
-    {
-        id: 'CLI-002',
-        name: 'Marcos Soler',
-        company: 'Soler Asesores',
-        email: 'marcos@solerasesores.com',
-        phone: '+34 677 789 012',
-        avatar: 'https://placehold.co/100x100.png'
-    },
-    {
-        id: 'CLI-003',
-        name: 'Beatriz Navarro',
-        company: 'Construcciones B.N.',
-        email: 'beatriz.navarro@construccionesbn.com',
-        phone: '+34 699 345 678',
-        avatar: 'https://placehold.co/100x100.png'
-    }
-]
+interface Client {
+    id: string;
+    name: string;
+    company: string;
+    email: string;
+    phone: string;
+    avatar: string;
+    userId: string;
+}
 
 export default function ClientsPage() {
-
-    const [clients, setClients] = useState(initialClients);
+    const { toast } = useToast();
+    const router = useRouter();
+    const [user, setUser] = useState<User | null>(null);
+    const [clients, setClients] = useState<Client[]>([]);
     const [newClient, setNewClient] = useState({ name: '', company: '', email: '', phone: '' });
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+
+    useEffect(() => {
+      const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+        if (currentUser) {
+          setUser(currentUser);
+        } else {
+          router.push('/login');
+        }
+      });
+      return () => unsubscribeAuth();
+    }, [router]);
+
+    useEffect(() => {
+        if (!user) return;
+
+        setLoading(true);
+        const clientsCollection = collection(db, 'clients');
+        
+        const unsubscribe = onSnapshot(clientsCollection, (snapshot) => {
+            const clientsData = snapshot.docs
+              .map(doc => ({ id: doc.id, ...doc.data() } as Client))
+              .filter(client => client.userId === user.uid); // Filtra por el ID del usuario logueado
+            
+            setClients(clientsData);
+            setLoading(false);
+        }, (error) => {
+            console.error("Error fetching clients: ", error);
+            toast({
+                variant: 'destructive',
+                title: 'Error al cargar clientes',
+                description: 'No se pudieron obtener los datos. Revisa tu conexión.'
+            });
+            setLoading(false);
+        });
+
+        return () => unsubscribe();
+    }, [user, toast]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         setNewClient(prev => ({...prev, [name]: value}));
     }
 
-    const handleAddClient = (e: React.FormEvent) => {
+    const handleAddClient = async (e: React.FormEvent) => {
         e.preventDefault();
-        // Aquí iría la lógica para guardar en Firestore
-        console.log('Nuevo cliente a añadir:', newClient);
-        // Por ahora, solo lo añadimos al estado local como ejemplo
-        const clientToAdd = {
-            id: `CLI-00${clients.length + 1}`,
-            ...newClient,
-            avatar: `https://placehold.co/100x100.png`
-        };
-        setClients(prev => [...prev, clientToAdd]);
-        setNewClient({ name: '', company: '', email: '', phone: '' }); // Reset form
+        if (!user) {
+            toast({
+                variant: 'destructive',
+                title: 'No estás autenticado',
+                description: 'Debes iniciar sesión para añadir clientes.'
+            });
+            return;
+        }
+        setSaving(true);
+        try {
+            await addDoc(collection(db, 'clients'), {
+                ...newClient,
+                userId: user.uid, // Asocia el cliente con el usuario actual
+                avatar: `https://placehold.co/100x100.png`,
+                createdAt: new Date(),
+            });
+
+            toast({
+                title: 'Cliente guardado',
+                description: 'El nuevo cliente ha sido añadido a tu lista.',
+            });
+            setNewClient({ name: '', company: '', email: '', phone: '' }); // Reset form
+        } catch (error) {
+            console.error('Error al añadir cliente:', error);
+            toast({
+                variant: 'destructive',
+                title: 'Error al guardar',
+                description: 'No se pudo añadir el cliente. Inténtalo de nuevo.',
+            });
+        } finally {
+            setSaving(false);
+        }
     }
 
   return (
@@ -101,24 +152,24 @@ export default function ClientsPage() {
                         <CardContent className="space-y-4">
                             <div className="space-y-2">
                                 <Label htmlFor="name">Nombre Completo</Label>
-                                <Input id="name" name="name" placeholder="Ej: Elena Ríos" value={newClient.name} onChange={handleInputChange} required />
+                                <Input id="name" name="name" placeholder="Ej: Elena Ríos" value={newClient.name} onChange={handleInputChange} required disabled={saving} />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="company">Empresa (Opcional)</Label>
-                                <Input id="company" name="company" placeholder="Ej: Innovaciones Digitales" value={newClient.company} onChange={handleInputChange} />
+                                <Input id="company" name="company" placeholder="Ej: Innovaciones Digitales" value={newClient.company} onChange={handleInputChange} disabled={saving} />
                             </div>
                              <div className="space-y-2">
                                 <Label htmlFor="email">Correo Electrónico</Label>
-                                <Input id="email" name="email" type="email" placeholder="ejemplo@correo.com" value={newClient.email} onChange={handleInputChange} required />
+                                <Input id="email" name="email" type="email" placeholder="ejemplo@correo.com" value={newClient.email} onChange={handleInputChange} required disabled={saving} />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="phone">Teléfono (Opcional)</Label>
-                                <Input id="phone" name="phone" type="tel" placeholder="Ej: +34 655 123 456" value={newClient.phone} onChange={handleInputChange}/>
+                                <Input id="phone" name="phone" type="tel" placeholder="Ej: +34 655 123 456" value={newClient.phone} onChange={handleInputChange} disabled={saving}/>
                             </div>
                         </CardContent>
                         <CardFooter>
-                            <Button type="submit">
-                                <PlusCircle className="mr-2 h-4 w-4" />
+                            <Button type="submit" disabled={saving}>
+                                {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Guardar Cliente
                             </Button>
                         </CardFooter>
@@ -137,6 +188,11 @@ export default function ClientsPage() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
+                        {loading ? (
+                             <div className="flex items-center justify-center h-48">
+                                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                             </div>
+                        ) : (
                         <Table>
                             <TableHeader>
                                 <TableRow>
@@ -147,7 +203,7 @@ export default function ClientsPage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {clients.map((client) => (
+                                {clients.length > 0 ? clients.map((client) => (
                                     <TableRow key={client.id}>
                                         <TableCell>
                                             <div className="flex items-center gap-3">
@@ -171,9 +227,16 @@ export default function ClientsPage() {
                                             </Button>
                                         </TableCell>
                                     </TableRow>
-                                ))}
+                                )) : (
+                                    <TableRow>
+                                        <TableCell colSpan={4} className="h-24 text-center">
+                                            No tienes clientes registrados todavía.
+                                        </TableCell>
+                                    </TableRow>
+                                )}
                             </TableBody>
                         </Table>
+                        )}
                     </CardContent>
                 </Card>
             </div>
