@@ -2,7 +2,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Briefcase, FileText, Users } from 'lucide-react';
 import Link from 'next/link';
 
 const WhatsAppIcon = () => (
@@ -73,7 +73,39 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section id="contact" className="py-20 md:py-32 bg-secondary">
+        <section id="features" className="py-20 md:py-32 bg-secondary">
+          <div className="container">
+            <div className="text-center max-w-2xl mx-auto">
+              <h2 className="text-3xl md:text-4xl font-bold">Un Centro de Mando para tu Negocio</h2>
+              <p className="mt-3 text-muted-foreground">Todo lo que necesitas para ofrecer un servicio excepcional y gestionar tu operación de manera eficiente.</p>
+            </div>
+            <div className="mt-12 grid gap-8 md:grid-cols-3">
+              <div className="flex flex-col items-center text-center p-6 border rounded-lg bg-card">
+                <div className="p-3 bg-primary/10 rounded-full mb-4">
+                  <Users className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="text-xl font-bold mb-2">Gestión de Clientes</h3>
+                <p className="text-muted-foreground">Añade, visualiza y gestiona la información de tus clientes en un solo lugar.</p>
+              </div>
+              <div className="flex flex-col items-center text-center p-6 border rounded-lg bg-card">
+                 <div className="p-3 bg-primary/10 rounded-full mb-4">
+                  <Briefcase className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="text-xl font-bold mb-2">Casos y Soporte</h3>
+                <p className="text-muted-foreground">Lleva un registro claro de cada interacción y resuelve las necesidades de tus clientes.</p>
+              </div>
+              <div className="flex flex-col items-center text-center p-6 border rounded-lg bg-card">
+                 <div className="p-3 bg-primary/10 rounded-full mb-4">
+                  <FileText className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="text-xl font-bold mb-2">Cotizaciones con IA</h3>
+                <p className="text-muted-foreground">Genera cotizaciones profesionales en segundos con la ayuda de inteligencia artificial.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="contact" className="py-20 md:py-32">
           <div className="container max-w-2xl">
               <div className="text-center">
                   <h2 className="text-3xl md:text-4xl font-bold">¿Listo para empezar?</h2>
