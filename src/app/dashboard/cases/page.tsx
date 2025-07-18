@@ -1,42 +1,131 @@
+
 'use client';
 
-import { Button } from '@/components/ui/button';
 import {
   Card,
-  CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
-import { Briefcase, Rocket } from 'lucide-react';
+  CardDescription,
+  CardContent,
+  CardFooter
+} from "@/components/ui/card";
+import {
+  Table,
+  TableHeader,
+  TableRow,
+  TableHead,
+  TableBody,
+  TableCell,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { MoreHorizontal, ArrowUpRight, PlusCircle } from "lucide-react";
+import Link from "next/link";
+
+
+// Mock data - in the future this will come from Firestore
+const cases = [
+    {
+        id: "case-001",
+        client: "LedPod",
+        service: "Actualización de Redes Sociales",
+        status: "En Progreso",
+        lastUpdate: "hace 2 horas",
+        avatar: "https://placehold.co/100x100.png",
+        fallback: "LP",
+        amount: "$2,500.00"
+    }
+];
+
+const getStatusVariant = (status: string) => {
+    switch (status) {
+        case 'Completado':
+            return 'default';
+        case 'En Progreso':
+            return 'secondary';
+        case 'Pendiente':
+            return 'outline';
+        default:
+            return 'destructive';
+    }
+}
+
 
 export default function CasesPage() {
   return (
     <main className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      <Card className="max-w-4xl mx-auto">
+      <div className="flex items-center justify-between">
+        <div>
+            <h2 className="text-3xl font-bold tracking-tight">Gestión de Casos</h2>
+            <p className="text-muted-foreground">Administra los casos y solicitudes de tus clientes.</p>
+        </div>
+        <Button>
+          <PlusCircle className="mr-2 h-4 w-4" />
+          Crear Nuevo Caso
+        </Button>
+      </div>
+
+      <Card>
         <CardHeader>
-          <div className="flex items-center gap-4">
-            <Briefcase className="h-8 w-8 text-primary" />
-            <div>
-              <CardTitle>Gestión de Casos</CardTitle>
-              <CardDescription>
-                Administra los casos y solicitudes de tus clientes.
-              </CardDescription>
-            </div>
-          </div>
+          <CardTitle>Mis Casos</CardTitle>
+          <CardDescription>
+            Un listado de todos tus casos activos y pasados.
+          </CardDescription>
         </CardHeader>
-        <CardContent className="text-center">
-            <div className="flex flex-col items-center justify-center h-48 border-2 border-dashed rounded-md p-6 bg-secondary/50">
-                <Rocket className="h-10 w-10 text-primary mb-4" />
-                <h3 className="text-lg font-semibold mb-2">Módulo de Casos Próximamente</h3>
-                <p className="text-muted-foreground mb-4 max-w-sm">
-                    Estamos trabajando en un sistema completo para que puedas gestionar los casos de tus clientes de manera eficiente. ¡Pronto estará disponible!
-                </p>
-                <Button disabled>
-                    Función en Desarrollo
-                </Button>
-            </div>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Cliente</TableHead>
+                <TableHead>Servicio</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead className="hidden md:table-cell">Última Actualización</TableHead>
+                 <TableHead className="text-right">Monto</TableHead>
+                <TableHead><span className="sr-only">Acciones</span></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {cases.length > 0 ? (
+                cases.map((c) => (
+                  <TableRow key={c.id}>
+                     <TableCell>
+                        <div className="flex items-center gap-3">
+                            <Avatar className="h-9 w-9">
+                                <AvatarImage src={c.avatar} alt={c.client} data-ai-hint="company logo" />
+                                <AvatarFallback>{c.fallback}</AvatarFallback>
+                            </Avatar>
+                            <span className="font-medium">{c.client}</span>
+                        </div>
+                    </TableCell>
+                    <TableCell>{c.service}</TableCell>
+                    <TableCell>
+                      <Badge variant={getStatusVariant(c.status)}>
+                        {c.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">{c.lastUpdate}</TableCell>
+                    <TableCell className="text-right">{c.amount}</TableCell>
+                    <TableCell className="text-right">
+                      <Button asChild variant="outline" size="sm">
+                          <Link href={`/dashboard/cases/${c.id}`}>Ver Detalles</Link>
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={6} className="h-24 text-center">
+                    No tienes casos registrados. ¡Crea uno para empezar!
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
         </CardContent>
+        <CardFooter className="justify-end">
+            <Button variant="link">Ver todos los casos <ArrowUpRight className="ml-2 h-4 w-4" /></Button>
+        </CardFooter>
       </Card>
     </main>
   );
