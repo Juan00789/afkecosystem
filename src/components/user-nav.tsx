@@ -18,39 +18,44 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { onAuthStateChanged, signOut, type User } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 
 export function UserNav() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
-  const [userData, setUserData] = useState<{ name?: string, email?: string, fallback?: string }>({});
+  const [userData, setUserData] = useState<{ name?: string, email?: string, fallback?: string, photoURL?: string }>({});
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
-        const docRef = doc(db, 'users', currentUser.uid);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          setUserData({
-            name: data.name || currentUser.displayName,
-            email: currentUser.email || undefined,
-            fallback: (data.name || currentUser.displayName || 'U').charAt(0).toUpperCase()
-          });
-        } else {
+        const userDocRef = doc(db, 'users', currentUser.uid);
+        const unsubscribeSnapshot = onSnapshot(userDocRef, (docSnap) => {
+          if (docSnap.exists()) {
+            const data = docSnap.data();
             setUserData({
-            name: currentUser.displayName || undefined,
-            email: currentUser.email || undefined,
-            fallback: (currentUser.displayName || 'U').charAt(0).toUpperCase()
-          });
-        }
+              name: data.name || currentUser.displayName,
+              email: currentUser.email || undefined,
+              fallback: (data.name || currentUser.displayName || 'U').charAt(0).toUpperCase(),
+              photoURL: data.photoURL || currentUser.photoURL || undefined
+            });
+          } else {
+            setUserData({
+              name: currentUser.displayName || undefined,
+              email: currentUser.email || undefined,
+              fallback: (currentUser.displayName || 'U').charAt(0).toUpperCase(),
+              photoURL: currentUser.photoURL || undefined
+            });
+          }
+        });
+        // Detach listener on cleanup
+        return () => unsubscribeSnapshot();
       } else {
         setUserData({});
       }
     });
-    return () => unsubscribe();
+    return () => unsubscribeAuth();
   }, []);
 
   const handleSignOut = async () => {
@@ -72,7 +77,7 @@ export function UserNav() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <Avatar className="h-9 w-9">
-            <AvatarImage src="/avatar.png" alt="@agent" data-ai-hint="profile picture" />
+            <AvatarImage src={userData.photoURL} alt={userData.name} />
             <AvatarFallback>{userData.fallback || 'U'}</AvatarFallback>
           </Avatar>
         </Button>

@@ -1,12 +1,24 @@
-
 rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // Permitir lectura y escritura a cualquier usuario autenticado.
-    // Para mayor seguridad en producción, se podrían restringir las rutas y tamaños de archivo.
-    // Ejemplo: match /users/{userId}/{allPaths=**} si los archivos se guardan por usuario.
-    match /{allPaths=**} {
+    // Reglas para las fotos de perfil de los usuarios
+    // Permite que un usuario autenticado escriba (suba, actualice, elimine)
+    // un archivo en la carpeta profile_pictures, siempre y cuando el nombre del archivo
+    // coincida con su propio UID. Esto asegura que los usuarios solo puedan modificar
+    // su propia foto de perfil.
+    // La lectura se permite a cualquier usuario autenticado para que los perfiles
+    // puedan mostrar las imágenes de otros.
+    match /profile_pictures/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Reglas para los archivos de los casos
+    // Permite que un usuario autenticado lea y escriba archivos dentro de la carpeta
+    // de un caso específico. En un futuro, esto se podría restringir para que
+    // solo los participantes del caso puedan acceder.
+    match /cases/{caseId}/{fileName} {
       allow read, write: if request.auth != null;
     }
   }
