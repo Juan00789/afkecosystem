@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Logo } from "@/components/logo";
 import { UserNav } from "@/components/user-nav";
-import { Home, Users, Briefcase, FileText, Settings, CreditCard, Bell, Receipt, Search } from "lucide-react";
+import { Home, Users, Briefcase, FileText, Settings, CreditCard, Bell, Receipt, Search, ListTodo } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { doc, getDoc, setDoc } from "firebase/firestore";
@@ -28,6 +28,7 @@ const providerLinks = [
     { href: "/dashboard/clients", icon: <Users />, label: "Clientes", tooltip: "Clientes" },
     { href: "/dashboard/cases", icon: <Briefcase />, label: "Casos", tooltip: "Casos" },
     { href: "/dashboard/quotes", icon: <FileText />, label: "Cotizaciones", tooltip: "Cotizaciones" },
+    { href: "/dashboard/services", icon: <ListTodo />, label: "Servicios", tooltip: "Servicios" },
     { href: "/dashboard/invoices", icon: <Receipt />, label: "Facturas", tooltip: "Facturas" },
     { href: "/dashboard/billing", icon: <CreditCard />, label: "Contabilidad", tooltip: "Contabilidad" },
 ];

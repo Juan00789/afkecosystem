@@ -1,0 +1,226 @@
+
+'use client';
+
+import { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  CardFooter
+} from '@/components/ui/card';
+import {
+  Table,
+  TableHeader,
+  TableRow,
+  TableHead,
+  TableBody,
+  TableCell,
+} from '@/components/ui/table';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { MoreHorizontal, PlusCircle, ListTodo, Loader2 } from 'lucide-react';
+import { db } from '@/lib/firebase';
+import { collection, addDoc, onSnapshot, query, where } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
+import { auth } from '@/lib/firebase';
+import { onAuthStateChanged, type User } from 'firebase/auth';
+import { useRouter } from 'next/navigation';
+
+interface Service {
+    id: string;
+    name: string;
+    description: string;
+    price: string;
+    userId: string;
+}
+
+export default function ServicesPage() {
+    const { toast } = useToast();
+    const router = useRouter();
+    const [user, setUser] = useState<User | null>(null);
+    const [services, setServices] = useState<Service[]>([]);
+    const [newService, setNewService] = useState({ name: '', description: '', price: '' });
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+
+    useEffect(() => {
+      const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+        if (currentUser) {
+          setUser(currentUser);
+        } else {
+          router.push('/login');
+        }
+      });
+      return () => unsubscribeAuth();
+    }, [router]);
+
+    useEffect(() => {
+        if (!user) {
+            setLoading(false);
+            return;
+        }
+
+        setLoading(true);
+        const servicesQuery = query(collection(db, 'services'), where('userId', '==', user.uid));
+        
+        const unsubscribe = onSnapshot(servicesQuery, (snapshot) => {
+            const servicesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Service));
+            setServices(servicesData);
+            setLoading(false);
+        }, (error) => {
+            console.error("Error fetching services: ", error);
+            toast({
+                variant: 'destructive',
+                title: 'Error al cargar servicios',
+                description: 'No se pudieron obtener los datos. Revisa tu conexión.'
+            });
+            setLoading(false);
+        });
+
+        return () => unsubscribe();
+    }, [user, toast]);
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const { name, value } = e.target;
+        setNewService(prev => ({...prev, [name]: value}));
+    }
+
+    const handleAddService = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!user) {
+            toast({
+                variant: 'destructive',
+                title: 'No estás autenticado',
+                description: 'Debes iniciar sesión para añadir servicios.'
+            });
+            return;
+        }
+        setSaving(true);
+        try {
+            await addDoc(collection(db, 'services'), {
+                ...newService,
+                userId: user.uid, 
+                createdAt: new Date(),
+            });
+
+            toast({
+                title: 'Servicio guardado',
+                description: 'El nuevo servicio ha sido añadido a tu lista.',
+            });
+            setNewService({ name: '', description: '', price: '' }); 
+        } catch (error) {
+            console.error('Error al añadir servicio:', error);
+            toast({
+                variant: 'destructive',
+                title: 'Error al guardar',
+                description: 'No se pudo añadir el servicio. Inténtalo de nuevo.',
+            });
+        } finally {
+            setSaving(false);
+        }
+    }
+
+  return (
+    <main className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+        <div className="flex items-center justify-between">
+            <div>
+                <h2 className="text-3xl font-bold tracking-tight">Gestión de Servicios</h2>
+                <p className="text-muted-foreground">Añade y administra los servicios que ofreces a tus clientes.</p>
+            </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+            <div className="lg:col-span-1">
+                <Card>
+                    <CardHeader>
+                        <div className="flex items-center gap-3">
+                            <PlusCircle className="h-6 w-6 text-primary"/>
+                            <CardTitle>Añadir Nuevo Servicio</CardTitle>
+                        </div>
+                        <CardDescription>
+                            Define un nuevo servicio para tu catálogo.
+                        </CardDescription>
+                    </CardHeader>
+                    <form onSubmit={handleAddService}>
+                        <CardContent className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="name">Nombre del Servicio</Label>
+                                <Input id="name" name="name" placeholder="Ej: Consultoría SEO" value={newService.name} onChange={handleInputChange} required disabled={saving} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="description">Descripción (Opcional)</Label>
+                                <Textarea id="description" name="description" placeholder="Describe en qué consiste el servicio." value={newService.description} onChange={handleInputChange} disabled={saving} />
+                            </div>
+                             <div className="space-y-2">
+                                <Label htmlFor="price">Precio / Tarifa</Label>
+                                <Input id="price" name="price" placeholder="Ej: $50/hora o $500 (fijo)" value={newService.price} onChange={handleInputChange} required disabled={saving} />
+                            </div>
+                        </CardContent>
+                        <CardFooter>
+                            <Button type="submit" disabled={saving}>
+                                {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Guardar Servicio
+                            </Button>
+                        </CardFooter>
+                    </form>
+                </Card>
+            </div>
+            <div className="lg:col-span-2">
+                <Card>
+                    <CardHeader>
+                         <div className="flex items-center gap-3">
+                            <ListTodo className="h-6 w-6 text-primary"/>
+                            <CardTitle>Mis Servicios</CardTitle>
+                        </div>
+                        <CardDescription>
+                            Listado de todos tus servicios registrados.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {loading ? (
+                             <div className="flex items-center justify-center h-48">
+                                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                             </div>
+                        ) : (
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Servicio</TableHead>
+                                    <TableHead className="hidden md:table-cell">Descripción</TableHead>
+                                    <TableHead className="text-right">Precio</TableHead>
+                                    <TableHead><span className="sr-only">Acciones</span></TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {services.length > 0 ? services.map((service) => (
+                                    <TableRow key={service.id}>
+                                        <TableCell className="font-medium">{service.name}</TableCell>
+                                        <TableCell className="hidden md:table-cell text-muted-foreground">{service.description}</TableCell>
+                                        <TableCell className="text-right">{service.price}</TableCell>
+                                        <TableCell className="text-right">
+                                            <Button variant="ghost" size="icon">
+                                                <MoreHorizontal className="h-4 w-4" />
+                                            </Button>
+                                        </TableCell>
+                                    </TableRow>
+                                )) : (
+                                    <TableRow>
+                                        <TableCell colSpan={4} className="h-24 text-center">
+                                            No tienes servicios registrados todavía.
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                        )}
+                    </CardContent>
+                </Card>
+            </div>
+        </div>
+    </main>
+  );
+}
