@@ -43,8 +43,8 @@ interface Client {
 const initialClient: Client[] = [
     {
         id: '1',
-        name: 'Ledpop_Decorspop',
-        company: 'Ledpop',
+        name: 'Miguel',
+        company: 'LedPod',
         email: 'ventas@ledpop.com',
         phone: '849-886-5556',
         avatar: `https://placehold.co/100x100.png`,
@@ -90,7 +90,9 @@ export default function ClientsPage() {
             setClients(prev => {
                 const existingIds = new Set(prev.map(c => c.id));
                 const newClients = clientsData.filter(c => !existingIds.has(c.id));
-                return [...prev, ...newClients];
+                // Make sure initialClient is not added again if it was already there
+                const baseClients = initialClient.filter(c => !clientsData.some(cd => cd.userId === 'demo' && c.userId === 'demo'));
+                return [...baseClients, ...clientsData];
             });
 
             setLoading(false);
@@ -213,7 +215,7 @@ export default function ClientsPage() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        {loading && clients.length === 0 ? (
+                        {loading ? (
                              <div className="flex items-center justify-center h-48">
                                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                              </div>
@@ -269,3 +271,5 @@ export default function ClientsPage() {
     </main>
   );
 }
+
+    
