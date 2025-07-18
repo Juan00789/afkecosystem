@@ -24,7 +24,7 @@ import { Label } from '@/components/ui/label';
 import { MoreHorizontal, PlusCircle, UserPlus, Users, Loader2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, onSnapshot } from 'firebase/firestore';
+import { collection, addDoc, onSnapshot, query, where } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged, type User } from 'firebase/auth';
@@ -40,23 +40,11 @@ interface Client {
     userId: string;
 }
 
-const initialClient: Client[] = [
-    {
-        id: '1',
-        name: 'Miguel',
-        company: 'LedPod',
-        email: 'ventas@ledpop.com',
-        phone: '849-886-5556',
-        avatar: `https://placehold.co/100x100.png`,
-        userId: 'demo'
-    }
-]
-
 export default function ClientsPage() {
     const { toast } = useToast();
     const router = useRouter();
     const [user, setUser] = useState<User | null>(null);
-    const [clients, setClients] = useState<Client[]>(initialClient);
+    const [clients, setClients] = useState<Client[]>([]);
     const [newClient, setNewClient] = useState({ name: '', company: '', email: '', phone: '' });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -79,22 +67,11 @@ export default function ClientsPage() {
         }
 
         setLoading(true);
-        const clientsCollection = collection(db, 'clients');
+        const clientsQuery = query(collection(db, 'clients'), where('userId', '==', user.uid));
         
-        const unsubscribe = onSnapshot(clientsCollection, (snapshot) => {
-            const clientsData = snapshot.docs
-              .map(doc => ({ id: doc.id, ...doc.data() } as Client))
-              .filter(client => client.userId === user.uid); 
-            
-            // Combine initial client with fetched clients, avoiding duplicates if demo user exists
-            setClients(prev => {
-                const existingIds = new Set(prev.map(c => c.id));
-                const newClients = clientsData.filter(c => !existingIds.has(c.id));
-                // Make sure initialClient is not added again if it was already there
-                const baseClients = initialClient.filter(c => !clientsData.some(cd => cd.userId === 'demo' && c.userId === 'demo'));
-                return [...baseClients, ...clientsData];
-            });
-
+        const unsubscribe = onSnapshot(clientsQuery, (snapshot) => {
+            const clientsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client));
+            setClients(clientsData);
             setLoading(false);
         }, (error) => {
             console.error("Error fetching clients: ", error);
@@ -126,16 +103,12 @@ export default function ClientsPage() {
         }
         setSaving(true);
         try {
-            const docRef = await addDoc(collection(db, 'clients'), {
+            await addDoc(collection(db, 'clients'), {
                 ...newClient,
                 userId: user.uid, 
                 avatar: `https://placehold.co/100x100.png`,
                 createdAt: new Date(),
             });
-
-            // Optimistically update UI
-            setClients(prev => [...prev, { id: docRef.id, ...newClient, avatar: `https://placehold.co/100x100.png`, userId: user.uid }]);
-
 
             toast({
                 title: 'Cliente guardado',
@@ -271,5 +244,3 @@ export default function ClientsPage() {
     </main>
   );
 }
-
-    
