@@ -49,7 +49,6 @@ interface Client {
 interface ActivityItem {
     id: string;
     caseId: string;
-    caseName: string;
     text: string;
     userName: string;
     createdAt: Timestamp;
@@ -74,25 +73,20 @@ export default function DashboardPage() {
         if (userDoc.exists()) {
           setUserData(userDoc.data());
         }
+      } else {
+        setLoading(false);
       }
     });
     return () => unsubscribeAuth();
   }, []);
   
    useEffect(() => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
+    if (!user) return;
 
     setLoading(true);
-    let unsubscribeCases: () => void;
-    let unsubscribeClients: () => void;
-    let unsubscribeActivities: (() => void) | undefined;
-
     const fetchDashboardData = async () => {
         try {
-            // 1. Fetch Cases for both roles
+            // Fetch Cases for both roles, ordered by last update
             const casesQuery = query(
               collection(db, 'cases'),
               or(where('clientId', '==', user.uid), where('providerId', '==', user.uid)),
@@ -102,7 +96,7 @@ export default function DashboardPage() {
             const casesData = casesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Case));
             setCases(casesData);
             
-            // 2. Fetch Clients (only for providers)
+            // Fetch Clients (only for providers)
             if (userData.activeRole === 'provider') {
                 const clientsQuery = query(collection(db, 'clients'), where('userId', '==', user.uid));
                 const clientsSnapshot = await getDocs(clientsQuery);
@@ -110,41 +104,9 @@ export default function DashboardPage() {
                 setClients(clientsData);
             }
 
-            // 3. Fetch Recent Activity from the fetched cases
-            if (casesData.length > 0) {
-                const caseIds = casesData.map(c => c.id);
-                // We'll fetch comments for the 5 most recent cases to keep it performant
-                const recentCaseIds = caseIds.slice(0, 5); 
-                
-                const commentsQuery = query(
-                    collectionGroup(db, 'comments'),
-                    where('caseId', 'in', recentCaseIds),
-                    orderBy('createdAt', 'desc'),
-                    limit(5)
-                );
-
-                unsubscribeActivities = onSnapshot(commentsQuery, (snapshot) => {
-                    const activityData = snapshot.docs.map(doc => {
-                       const data = doc.data();
-                       const parentCase = casesData.find(c => c.id === data.caseId);
-                       return {
-                           id: doc.id,
-                           caseId: data.caseId,
-                           caseName: parentCase?.services.map(s => s.name).join(', ') || 'un caso',
-                           text: data.text,
-                           userName: data.userName,
-                           createdAt: data.createdAt
-                       } as ActivityItem;
-                    });
-                    setActivities(activityData);
-                });
-            } else {
-                setActivities([]);
-            }
-
         } catch (error) {
-            console.error("Error fetching dashboard data: ", error);
-            toast({ variant: 'destructive', title: 'Error al cargar el panel' });
+            console.error("Error fetching cases/clients: ", error);
+            toast({ variant: 'destructive', title: 'Error al cargar datos del panel' });
         } finally {
             setLoading(false);
         }
@@ -152,8 +114,35 @@ export default function DashboardPage() {
     
     fetchDashboardData();
 
+    // Separate useEffect for activities listener to avoid re-fetching all data on new comment.
+    // This will listen for comments where the current user is either the client or provider.
+    const activityQuery = query(
+        collectionGroup(db, 'comments'),
+        or(where('clientId', '==', user.uid), where('providerId', '==', user.uid)),
+        orderBy('createdAt', 'desc'),
+        limit(5)
+    );
+
+    const unsubscribeActivities = onSnapshot(activityQuery, (snapshot) => {
+        const activityData = snapshot.docs.map(doc => {
+           const data = doc.data();
+           return {
+               id: doc.id,
+               caseId: data.caseId,
+               text: data.text,
+               userName: data.userName,
+               createdAt: data.createdAt
+           } as ActivityItem;
+        });
+        setActivities(activityData);
+    }, (error) => {
+        console.error("Error fetching recent activity: ", error);
+        toast({ variant: 'destructive', title: 'Error al cargar actividad reciente' });
+    });
+
+
     return () => {
-      if (unsubscribeActivities) unsubscribeActivities();
+      unsubscribeActivities();
     };
   }, [user, userData.activeRole, toast]);
 

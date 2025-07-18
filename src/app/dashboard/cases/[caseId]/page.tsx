@@ -49,6 +49,8 @@ interface Comment {
     userFallback: string;
     createdAt: Timestamp;
     caseId: string;
+    clientId: string;
+    providerId: string;
 }
 
 interface CaseData {
@@ -147,7 +149,9 @@ export default function CaseDetailsPage({ params }: { params: { caseId: string }
                 userName: userData.name,
                 userFallback: userData.fallback,
                 createdAt: Timestamp.now(),
-                caseId: params.caseId, // Add caseId for activity feed queries
+                caseId: params.caseId,
+                clientId: caseData.clientId,
+                providerId: caseData.providerId,
             });
 
             // Also update the lastUpdate field on the case
@@ -199,6 +203,8 @@ export default function CaseDetailsPage({ params }: { params: { caseId: string }
                 userFallback: 'S',
                 createdAt: Timestamp.now(),
                 caseId: params.caseId,
+                clientId: caseData.clientId,
+                providerId: caseData.providerId,
             });
 
              // Also update the lastUpdate field on the case

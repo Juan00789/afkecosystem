@@ -1,53 +1,53 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
   
-    // UTILITY: Get user role
-    function getRole(userId) {
-      return get(/databases/$(database)/documents/users/$(userId)).data.activeRole;
-    }
-
-    // Users can read their own profile and authenticated users can get basic info of others
+    // USERS: Users can only read/write their own profile data.
+    // They can be looked up (get) by any authenticated user (e.g., to see a provider's name).
     match /users/{userId} {
       allow get: if request.auth != null;
-      allow list, update, delete: if request.auth.uid == userId;
-      allow create: if request.auth.uid == userId;
+      allow list, update, delete, create: if request.auth.uid == userId;
       
-      // Clients can manage their list of providers
+      // PROVIDERS (subcollection): User can manage their own list of providers.
       match /providers/{providerId} {
         allow read, write: if request.auth.uid == userId;
       }
     }
 
-    // Providers can manage their own clients
+    // CLIENTS: Providers can manage their own clients.
     match /clients/{clientId} {
-      allow read, write: if request.auth.uid == resource.data.userId;
+      allow read, write: if request.auth.uid == request.resource.data.userId;
     }
-
-    // Providers can manage their own services
+    
+    // SERVICES: Any authenticated user can read services. Only owner can write.
     match /services/{serviceId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth.uid == resource.data.userId;
+        allow read: if request.auth != null;
+        allow write: if request.auth.uid == request.resource.data.userId;
     }
     
-    // Cases can be created by clients, and read/updated by either client or provider
+    // CASES: Only the client or provider involved in the case can read/write it.
     match /cases/{caseId} {
-      allow create: if getRole(request.auth.uid) == 'client' && request.resource.data.clientId == request.auth.uid;
-      allow read, update: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
-      
-      // Comments can be added by either party and read by either party
-      match /comments/{commentId} {
-        allow read, create: if request.auth.uid == get(/databases/$(database)/documents/cases/$(caseId)).data.clientId || request.auth.uid == get(/databases/$(database)/documents/cases/$(caseId)).data.providerId;
-      }
+        allow read, update: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
+        allow create: if request.auth.uid == request.resource.data.clientId;
+        
+        // COMMENTS (subcollection): Only participants of the case can read/write comments.
+        match /comments/{commentId} {
+             allow read, create: if request.auth.uid == get(/databases/$(database)/documents/cases/$(caseId)).data.clientId || request.auth.uid == get(/databases/$(database)/documents/cases/$(caseId)).data.providerId;
+        }
     }
     
-    // Invoices can be managed by the provider and read by the client
-    match /invoices/{invoiceId} {
-       allow create: if getRole(request.auth.uid) == 'provider' && request.resource.data.providerId == request.auth.uid;
+     // COMMENTS (collectionGroup): Allow users to query their relevant comments for activity feeds.
+    match /{path=**}/comments/{commentId} {
        allow read: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
-       allow update: if request.auth.uid == resource.data.providerId;
     }
 
+    // INVOICES: Only the client or provider involved can read the invoice. Only provider can create.
+    match /invoices/{invoiceId} {
+        allow read: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
+        allow create: if request.auth.uid == request.resource.data.providerId;
+        allow update, delete: if request.auth.uid == resource.data.providerId;
+    }
   }
 }
