@@ -25,18 +25,7 @@ import Link from "next/link";
 
 
 // Mock data - in the future this will come from Firestore
-const cases = [
-    {
-        id: "case-001",
-        client: "LedPod",
-        service: "Actualización de Redes Sociales",
-        status: "En Progreso",
-        lastUpdate: "hace 2 horas",
-        avatar: "https://placehold.co/100x100.png",
-        fallback: "LP",
-        amount: "$2,500.00"
-    }
-];
+const cases: any[] = [];
 
 const getStatusVariant = (status: string) => {
     switch (status) {

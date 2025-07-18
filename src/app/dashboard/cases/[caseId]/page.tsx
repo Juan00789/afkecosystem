@@ -57,26 +57,14 @@ interface CaseData {
     images: { id: number; src: string; hint: string }[];
 }
 
-// Mock data, this would come from Firestore based on params.caseId
+// Mock data removed, this will come from Firestore based on params.caseId
 const caseData: CaseData = {
-    id: "case-001",
-    client: {
-        name: "Miguel de LedPod",
-        avatar: "https://placehold.co/100x100.png",
-        fallback: "ML",
-    },
-    service: "Actualización de Redes Sociales",
-    status: "En Progreso",
-    financials: {
-        total: "5,000.00",
-        paid: "2,500.00",
-        due: "2,500.00",
-    },
-    images: [
-        { id: 1, src: "https://placehold.co/600x400.png", hint: "social media" },
-        { id: 2, src: "https://placehold.co/600x400.png", hint: "website mockup" },
-        { id: 3, src: "https://placehold.co/600x400.png", hint: "analytics report" },
-    ],
+    id: "",
+    client: { name: "", avatar: "", fallback: "" },
+    service: "",
+    status: "",
+    financials: { total: "", paid: "", due: "" },
+    images: [],
 };
 
 export default function CaseDetailsPage({ params }: { params: { caseId: string } }) {
