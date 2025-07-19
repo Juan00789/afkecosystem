@@ -22,7 +22,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   }
 
   if (!user) {
-    router.push('/auth/sign-in');
+    // AuthProvider will handle the redirect.
+    // We return null here to prevent rendering the dashboard layout for non-users.
     return null;
   }
 
