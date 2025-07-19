@@ -24,10 +24,11 @@ import { useToast } from '@/hooks/use-toast';
 import { generateQuote, type GenerateQuoteOutput } from '@/ai/flows/quote-flow';
 import { textToSpeech } from '@/ai/flows/tts-flow';
 import type { TextToSpeechOutput } from '@/ai/flows/tts-flow.schema';
-import { Loader2, Volume2 } from 'lucide-react';
+import { Loader2, Volume2, Download } from 'lucide-react';
 import { db, getFirebaseAuth } from '@/lib/firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
+import { jsPDF } from 'jspdf';
 
 interface Client {
   id: string;
@@ -150,6 +151,32 @@ export function QuotesPage() {
     } finally {
         setGeneratingAudio(false);
     }
+  }
+
+  const handleDownloadPdf = () => {
+    if (!quote?.quoteText) return;
+
+    const doc = new jsPDF();
+    const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
+    const pageWidth = doc.internal.pageSize.width || doc.internal.pageSize.getWidth();
+    const margin = 20;
+    const maxLineWidth = pageWidth - margin * 2;
+    
+    doc.setFontSize(12);
+
+    const textLines = doc.splitTextToSize(quote.quoteText, maxLineWidth);
+    
+    let y = margin;
+    textLines.forEach((line: string) => {
+        if (y > pageHeight - margin) {
+            doc.addPage();
+            y = margin;
+        }
+        doc.text(line, margin, y);
+        y += 7; // Line height
+    });
+
+    doc.save('cotizacion.pdf');
   }
 
   return (
@@ -286,7 +313,7 @@ export function QuotesPage() {
               )}
           </CardContent>
           <CardFooter className="justify-between">
-             <div>
+             <div className="flex gap-2">
                 <Button 
                     onClick={handleGenerateAudio}
                     disabled={!quote || loading || generatingAudio}
@@ -295,6 +322,14 @@ export function QuotesPage() {
                     {(generatingAudio) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     <Volume2 className="mr-2 h-4 w-4" />
                     {audio ? 'Volver a generar' : 'Escuchar'}
+                </Button>
+                 <Button 
+                    onClick={handleDownloadPdf}
+                    disabled={!quote || loading}
+                    variant="outline"
+                >
+                    <Download className="mr-2 h-4 w-4" />
+                    Descargar PDF
                 </Button>
              </div>
              <Button disabled={!quote || loading}>Guardar y Enviar</Button>
