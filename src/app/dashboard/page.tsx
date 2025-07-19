@@ -74,7 +74,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
 
   const [cases, setCases] = useState<Case[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
+  const [clientCount, setClientCount] = useState(0);
+  const [providerCount, setProviderCount] = useState(0);
   const [services, setServices] = useState<Service[]>([]);
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   
@@ -98,26 +99,39 @@ export default function DashboardPage() {
     if (!user || !userData.activeRole) {
         setCases([]);
         setActivities([]);
-        setClients([]);
+        setClientCount(0);
+        setProviderCount(0);
         setServices([]);
+        setLoading(false);
         return;
     }
 
     setLoading(true);
-    
-    // Unified listener for cases
-    const casesQuery = query(
-      collection(db, 'cases'),
-      or(where('clientId', '==', user.uid), where('providerId', '==', user.uid)),
-      orderBy('lastUpdate', 'desc')
-    );
 
-    const unsubscribeCases = onSnapshot(casesQuery, async (snapshot) => {
-        const casesData = await Promise.all(snapshot.docs.map(async (docSnap) => {
-            const caseItem = { id: docSnap.id, ...docSnap.data() } as Case;
-            
-            // Fetch the last comment for each case to build the activity feed
-            const commentsQuery = query(
+    // Fetch cases as a client
+    const casesAsClientQuery = query(
+      collection(db, 'cases'),
+      where('clientId', '==', user.uid)
+    );
+    const unsubscribeCasesAsClient = onSnapshot(casesAsClientQuery, async (clientSnapshot) => {
+        const clientCases = clientSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Case));
+
+        // Fetch cases as a provider
+        const casesAsProviderQuery = query(
+            collection(db, 'cases'),
+            where('providerId', '==', user.uid)
+        );
+        const providerSnapshot = await getDocs(casesAsProviderQuery);
+        const providerCases = providerSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Case));
+
+        // Combine, deduplicate, and sort
+        const allCasesMap = new Map<string, Case>();
+        [...clientCases, ...providerCases].forEach(c => allCasesMap.set(c.id, c));
+        const combinedCases = Array.from(allCasesMap.values()).sort((a, b) => b.lastUpdate.toMillis() - a.lastUpdate.toMillis());
+
+        // Fetch last comments for combined cases
+        const casesWithComments = await Promise.all(combinedCases.map(async (caseItem) => {
+             const commentsQuery = query(
                 collection(db, 'cases', caseItem.id, 'comments'),
                 orderBy('createdAt', 'desc'),
                 limit(1)
@@ -134,52 +148,54 @@ export default function DashboardPage() {
             return caseItem;
         }));
 
-        setCases(casesData);
+        setCases(casesWithComments);
 
-        // Derive activities from the cases with last comments
-        const activityData = casesData
+        // Derive activities
+        const activityData = casesWithComments
             .filter(c => c.lastComment)
             .map(c => ({
-                id: c.id + c.lastComment!.createdAt.seconds, // Create a unique key
+                id: c.id + c.lastComment!.createdAt.seconds,
                 caseId: c.id,
                 text: c.lastComment!.text,
                 userName: c.lastComment!.userName,
                 createdAt: c.lastComment!.createdAt,
             }))
-            .sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis()) // Re-sort just in case
+            .sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis())
             .slice(0, 5);
-        
         setActivities(activityData);
 
-        // Fetch related data based on role
-        if (userData.activeRole === 'provider') {
-            const clientsQuery = query(collection(db, 'clients'), where('providerId', '==', user.uid));
-             const unsubscribeClients = onSnapshot(clientsQuery, (snapshot) => {
-                setClients(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client)));
-            });
-        }
-        
-        const servicesQuery = query(collection(db, 'services'), where('userId', '==', user.uid));
-        const unsubscribeServices = onSnapshot(servicesQuery, (snapshot) => {
-            setServices(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Service)));
-        });
+        // Set provider count from unique providers in cases
+        setProviderCount(new Set(combinedCases.map(c => c.providerId)).size);
 
         setLoading(false);
-        
-        return () => {
-            unsubscribeCases();
-            // unsubscribeClients(); // This would cause an error if not defined
-            unsubscribeServices();
-        };
-
     }, (error) => {
-        console.error("Error fetching dashboard data: ", error);
-        toast({ variant: 'destructive', title: 'Error al cargar datos del panel', description: 'Por favor, intenta recargar la página.' });
+        console.error("Error fetching dashboard cases: ", error);
+        toast({ variant: 'destructive', title: 'Error al cargar casos', description: 'Por favor, intenta recargar la página.' });
         setLoading(false);
     });
 
+    // Fetch clients (for providers)
+    let unsubscribeClients = () => {};
+    if (userData.activeRole === 'provider') {
+        const clientsQuery = query(collection(db, 'clients'), where('providerId', '==', user.uid));
+        unsubscribeClients = onSnapshot(clientsQuery, (snapshot) => {
+            setClientCount(snapshot.size);
+        });
+    }
+
+    // Fetch services (for providers)
+    let unsubscribeServices = () => {};
+     if (userData.activeRole === 'provider') {
+        const servicesQuery = query(collection(db, 'services'), where('userId', '==', user.uid));
+        unsubscribeServices = onSnapshot(servicesQuery, (snapshot) => {
+            setServices(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Service)));
+        });
+    }
+
     return () => {
-      unsubscribeCases();
+      unsubscribeCasesAsClient();
+      unsubscribeClients();
+      unsubscribeServices();
     };
   }, [user, userData.activeRole, toast]);
 
@@ -214,9 +230,9 @@ export default function DashboardPage() {
                 <p className="text-muted-foreground">Bienvenido de nuevo a tu centro de mando.</p>
             </div>
             <Button asChild>
-                <Link href="/dashboard/services">
+                <Link href={isProvider ? "/dashboard/services" : "/dashboard/explore"}>
                     <PlusCircle className="mr-2 h-4 w-4" />
-                    Crear/Ver Servicios
+                    {isProvider ? "Crear/Ver Servicios" : "Explorar Servicios"}
                 </Link>
             </Button>
         </div>
@@ -237,7 +253,7 @@ export default function DashboardPage() {
                     <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">{isProvider ? clients.length : new Set(cases.map(c => c.providerId)).size}</div>
+                    <div className="text-2xl font-bold">{isProvider ? clientCount : providerCount}</div>
                     <p className="text-xs text-muted-foreground">{isProvider ? 'Clientes registrados en tu red.' : 'Proveedores con casos activos.'}</p>
                 </CardContent>
             </Card>
