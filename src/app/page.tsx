@@ -16,7 +16,7 @@ const modules = [
     icon: <Heart className="h-8 w-8 text-primary" />,
     title: 'Moneda',
     description: 'Reputación emocional como valor. Ayudar también recompensa.',
-    href: '/', // Update this when the page is created
+    href: '/dashboard/moneda', 
   },
   {
     icon: <BookOpen className="h-8 w-8 text-primary" />,

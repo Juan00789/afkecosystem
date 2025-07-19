@@ -14,6 +14,7 @@ import {
   CandlestickChart,
   Handshake,
   BookOpen,
+  Heart,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -42,6 +43,7 @@ export function Header({}: HeaderProps) {
   const navLinks = [
     { href: '/dashboard', label: 'Dashboard', icon: Home },
     { href: '/dashboard/broki', label: 'Broki', icon: Handshake },
+    { href: '/dashboard/moneda', label: 'Moneda', icon: Heart },
     { href: '/dashboard/contenido', label: 'Contenido', icon: BookOpen },
     { href: '/dashboard/network', label: 'Network', icon: Users },
     { href: '/dashboard/services', label: 'Services', icon: Briefcase },
