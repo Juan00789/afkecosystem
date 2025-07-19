@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
-import { collection, query, where, getDocs, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, serverTimestamp, doc, getDoc, documentId } from 'firebase/firestore';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -65,7 +65,7 @@ function CreateCaseFormComponent() {
         const providerIds = userData.network?.providers || [];
         
         if (providerIds.length > 0) {
-            const providersQuery = query(collection(db, 'users'), where('uid', 'in', providerIds));
+            const providersQuery = query(collection(db, 'users'), where(documentId(), 'in', providerIds));
             const providersSnapshot = await getDocs(providersQuery);
             const providersList = providersSnapshot.docs.map(doc => ({
                 id: doc.id,
