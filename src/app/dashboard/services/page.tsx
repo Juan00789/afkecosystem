@@ -304,6 +304,10 @@ export default function ServicesPage() {
         setCreatingCase(true);
         try {
             const selectedServiceDetails = provider.services?.filter(s => servicesToRequest.includes(s.id));
+            const total = selectedServiceDetails?.reduce((acc, service) => {
+                const price = parseFloat(service.price.replace(/[^0-9.-]+/g,""));
+                return isNaN(price) ? acc : acc + price;
+            }, 0) || 0;
             
             const newCaseRef = await addDoc(collection(db, 'cases'), {
                 clientId: user.uid,
@@ -314,18 +318,23 @@ export default function ServicesPage() {
                 status: 'Pendiente',
                 createdAt: Timestamp.now(),
                 lastUpdate: Timestamp.now(),
+                financials: {
+                    total: `$${total.toFixed(2)}`,
+                    paid: '$0.00',
+                    due: `$${total.toFixed(2)}`
+                }
             });
 
             toast({
                 title: 'Solicitud enviada',
                 description: `Se ha creado un nuevo caso con ${provider.name}.`,
             });
-            setSelectedServices(prev => ({ ...prev, [provider.providerId]: [] })); // Clear selection for this provider
+            setSelectedServices(prev => ({ ...prev, [provider.providerId]: [] }));
             router.push(`/dashboard/cases/${newCaseRef.id}`);
 
         } catch (error) {
             console.error('Error creating case: ', error);
-            toast({ variant: 'destructive', title: 'Error al crear el caso' });
+            toast({ variant: 'destructive', title: 'Error al crear el caso', description: 'Por favor, revisa las reglas de seguridad de Firestore y los datos del caso.' });
         } finally {
             setCreatingCase(false);
         }
