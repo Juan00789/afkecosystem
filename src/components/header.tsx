@@ -12,6 +12,7 @@ import {
   LogOut,
   Menu,
   CandlestickChart,
+  Handshake,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -39,6 +40,7 @@ export function Header({}: HeaderProps) {
 
   const navLinks = [
     { href: '/dashboard', label: 'Dashboard', icon: Home },
+    { href: '/dashboard/broki', label: 'Broki', icon: Handshake },
     { href: '/dashboard/network', label: 'Network', icon: Users },
     { href: '/dashboard/services', label: 'Services', icon: Briefcase },
     { href: '/dashboard/quotes', label: 'Quotes', icon: FileText },
