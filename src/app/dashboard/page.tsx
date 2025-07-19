@@ -71,6 +71,7 @@ export default function DashboardPage() {
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   
   useEffect(() => {
+    setLoading(true);
     const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
@@ -79,16 +80,23 @@ export default function DashboardPage() {
           setUserData(userDoc.data());
         }
       }
-      // Keep loading until user data and role are confirmed
-      if (!currentUser) {
-        setLoading(false);
-      }
+      // This was the issue: loading state was not being updated correctly.
+      // Now, we ensure loading is set to false after the auth check is complete.
+      setLoading(false); 
     });
     return () => unsubscribeAuth();
   }, []);
   
    useEffect(() => {
-    if (!user || !userData.activeRole) return; // Wait for user and role
+    if (!user || !userData.activeRole) {
+        // Don't set loading to true here, let the initial state handle it.
+        // If we set it to true, we need a guaranteed path to set it to false.
+        // The auth hook already handles the initial loading.
+        setCases([]);
+        setActivities([]);
+        setClients([]);
+        return;
+    }
 
     setLoading(true);
     
@@ -360,5 +368,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
