@@ -9,6 +9,7 @@ import {
   Settings,
   CandlestickChart,
   Handshake,
+  BookOpen,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -22,6 +23,7 @@ import {
 const navLinks = [
   { href: '/dashboard', label: 'Dashboard', icon: Home },
   { href: '/dashboard/broki', label: 'Broki', icon: Handshake },
+  { href: '/dashboard/contenido', label: 'Contenido', icon: BookOpen },
   { href: '/dashboard/network', label: 'Network', icon: Users },
   { href: '/dashboard/services', label: 'Services', icon: Briefcase },
   { href: '/dashboard/quotes', label: 'Quotes', icon: FileText },

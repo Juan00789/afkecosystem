@@ -16,19 +16,19 @@ const modules = [
     icon: <Heart className="h-8 w-8 text-primary" />,
     title: 'Moneda',
     description: 'Reputación emocional como valor. Ayudar también recompensa.',
-    href: '/',
+    href: '/', // Update this when the page is created
   },
   {
     icon: <BookOpen className="h-8 w-8 text-primary" />,
     title: 'Contenido',
     description: 'Galería de memorias vivas. Lo que se comparte, se siente.',
-    href: '/',
+    href: '/dashboard/contenido',
   },
   {
     icon: <Sparkles className="h-8 w-8 text-primary" />,
     title: 'Oniara',
     description: 'Centro espiritual del sistema. Protege la intención desde lo invisible.',
-    href: '/',
+    href: '/', // Update this when the page is created
   },
 ];
 
