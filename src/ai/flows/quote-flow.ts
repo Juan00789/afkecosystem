@@ -14,6 +14,7 @@ const GenerateQuoteInputSchema = z.object({
   clientName: z.string().describe('The full name of the client.'),
   providerName: z.string().describe('The full name of the service provider.'),
   projectDetails: z.string().describe('A detailed description of the project or service requested by the client.'),
+  bankDetails: z.string().optional().describe('Optional: The bank details of the provider for payment instructions.'),
 });
 export type GenerateQuoteInput = z.infer<typeof GenerateQuoteInputSchema>;
 
@@ -59,7 +60,15 @@ The project details are as follows:
 Client: {{clientName}}
 Provider: {{providerName}}
 
-Please generate a complete quote structure. Calculate the subtotal by summing up all item totals. Calculate an 18% tax on the subtotal. Finally, provide the grand total. You may add professional notes at the end, for example, payment instructions or terms of service.
+Please generate a complete quote structure. Calculate the subtotal by summing up all item totals. Calculate an 18% tax on the subtotal. Finally, provide the grand total. 
+
+{{#if bankDetails}}
+In the notes section, please include the following payment information as provided:
+{{bankDetails}}
+You can also add other professional notes like terms of service.
+{{else}}
+You may add professional notes at the end, for example, payment instructions or terms of service.
+{{/if}}
 `,
 });
 

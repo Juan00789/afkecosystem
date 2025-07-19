@@ -91,17 +91,17 @@ export function QuotesPage() {
       const clientDoc = await getDoc(doc(db, 'users', data.clientId));
       const clientName = clientDoc.data()?.displayName || 'Valued Client';
 
+      let bankDetails;
+      if (userProfile.bankInfo?.bankName && userProfile.bankInfo?.accountNumber) {
+        bankDetails = `Payment Information:\nBank: ${userProfile.bankInfo.bankName}\nAccount: ${userProfile.bankInfo.accountNumber}`;
+      }
+
       const quote = await generateQuote({
         clientName: clientName,
         providerName: userProfile.displayName || 'Me',
         projectDetails: data.projectDetails,
+        bankDetails: bankDetails,
       });
-
-      // Pre-fill notes with bank info if available
-      if (userProfile.bankInfo?.bankName && userProfile.bankInfo?.accountNumber) {
-        const bankDetails = `Payment Information:\nBank: ${userProfile.bankInfo.bankName}\nAccount: ${userProfile.bankInfo.accountNumber}`;
-        quote.notes = quote.notes ? `${quote.notes}\n\n${bankDetails}` : bankDetails;
-      }
       
       setGeneratedQuote(quote);
     } catch (error) {
