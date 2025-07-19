@@ -23,6 +23,7 @@ import {
   updateDoc,
   arrayUnion,
   getDoc,
+  documentId,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
@@ -38,14 +39,14 @@ export function AddUserDialog({ roleToAdd, onUserAdded }: AddUserDialogProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
-  const [identifier, setIdentifier] = useState(''); // Can be email or phone
+  const [identifier, setIdentifier] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleAddUser = async () => {
     if (!identifier.trim() || !user) {
       toast({
         title: 'Error',
-        description: 'Please enter a valid email or phone number.',
+        description: 'Please enter a valid User ID, email, or phone number.',
         variant: 'destructive',
       });
       return;
@@ -53,18 +54,27 @@ export function AddUserDialog({ roleToAdd, onUserAdded }: AddUserDialogProps) {
     setLoading(true);
 
     try {
-      // Determine if the identifier is an email or a phone number
-      const isEmail = identifier.includes('@');
-      const fieldToQuery = isEmail ? 'email' : 'phoneNumber';
+      const trimmedIdentifier = identifier.trim();
+      let q;
+      let fieldToQuery: string;
 
-      const usersRef = collection(db, 'users');
-      const q = query(usersRef, where(fieldToQuery, '==', identifier.trim()));
+      if (trimmedIdentifier.includes('@')) {
+        fieldToQuery = 'email';
+        q = query(collection(db, 'users'), where(fieldToQuery, '==', trimmedIdentifier));
+      } else if (trimmedIdentifier.match(/^\+?[0-9\s-()]+$/)) {
+        fieldToQuery = 'phoneNumber';
+         q = query(collection(db, 'users'), where(fieldToQuery, '==', trimmedIdentifier));
+      } else {
+        fieldToQuery = 'User ID';
+        q = query(collection(db, 'users'), where(documentId(), '==', trimmedIdentifier));
+      }
+
       const querySnapshot = await getDocs(q);
 
       if (querySnapshot.empty) {
         toast({
           title: 'Not Found',
-          description: `No user found with this ${isEmail ? 'email' : 'phone number'}.`,
+          description: `No user found with this ${fieldToQuery}.`,
           variant: 'destructive',
         });
         return;
@@ -100,7 +110,6 @@ export function AddUserDialog({ roleToAdd, onUserAdded }: AddUserDialogProps) {
         });
         return;
       }
-
 
       // Update current user's document
       await updateDoc(currentUserRef, {
@@ -143,21 +152,21 @@ export function AddUserDialog({ roleToAdd, onUserAdded }: AddUserDialogProps) {
         <DialogHeader>
           <DialogTitle>Add a new {roleToAdd}</DialogTitle>
           <DialogDescription>
-            Enter the email or phone number of the user you want to add to your
-            network. They must already have an account.
+            Enter the User ID, email, or phone number of the user you want to add.
+            They must already have an account.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="identifier" className="text-right">
-              Email/Phone
+              ID/Email/Phone
             </Label>
             <Input
               id="identifier"
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
               className="col-span-3"
-              placeholder="user@example.com or +1..."
+              placeholder="User ID, email, or phone"
             />
           </div>
         </div>

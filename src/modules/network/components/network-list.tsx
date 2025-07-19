@@ -1,7 +1,7 @@
 // src/modules/network/components/network-list.tsx
 'use client';
 import { useState, useEffect } from 'react';
-import { collection, doc, getDoc, query, where, getDocs, updateDoc, arrayRemove } from 'firebase/firestore';
+import { collection, doc, getDoc, query, where, getDocs, updateDoc, arrayRemove, documentId } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
 import type { UserProfile } from '@/modules/auth/types';
@@ -58,9 +58,9 @@ export function NetworkList({ roleToList, refreshTrigger, onUserRemoved }: Netwo
 
 
           if (userIds.length > 0) {
-            const usersQuery = query(collection(db, 'users'), where('uid', 'in', userIds));
+            const usersQuery = query(collection(db, 'users'), where(documentId(), 'in', userIds));
             const usersSnapshot = await getDocs(usersQuery);
-            const usersList = usersSnapshot.docs.map(doc => doc.data() as UserProfile);
+            const usersList = usersSnapshot.docs.map(doc => ({ ...doc.data(), uid: doc.id } as UserProfile));
             setUsers(usersList);
           } else {
             setUsers([]);
