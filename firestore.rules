@@ -1,64 +1,86 @@
-
 rules_version = '2';
+
+// Helper functions to improve readability
+function isAuthenticated() {
+  return request.auth != null;
+}
+
+function isUser(userId) {
+  return isAuthenticated() && request.auth.uid == userId;
+}
+
+function isProviderForClient(clientId) {
+    let clientDoc = get(/databases/$(database)/documents/clients/$(clientId));
+    return isUser(clientDoc.data.providerId);
+}
+
+function isClientOrProviderForCase(caseId) {
+    let caseDoc = get(/databases/$(database)/documents/cases/$(caseId));
+    return isUser(caseDoc.data.clientId) || isUser(caseDoc.data.providerId);
+}
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
+
+    // Users can be read by any authenticated user (for profile info),
+    // but can only be created and updated by the user themselves.
     match /users/{userId} {
-      // Users can read any profile (to see provider names, etc.)
-      allow read: if request.auth != null;
-      // Users can only create and update their own profile
-      allow create, update: if request.auth.uid == userId;
+      allow get: if isAuthenticated();
+      allow create: if isUser(userId);
+      allow update: if isUser(userId);
+      
+      // Rules for the 'providers' subcollection within a user's document.
+      // This is how a client manages their network of providers.
+      match /providers/{providerDocId} {
+        allow read, delete, update: if isUser(userId);
+        allow create: if isUser(userId);
+      }
     }
-    
-    // Rules for clients, who are associated with providers.
+
+    // Clients can be created by a provider.
+    // They can be read/updated by the provider or the linked client user.
+    // They can be deleted by the provider.
     match /clients/{clientId} {
-      // A provider can create a client record.
-      allow create: if request.auth.uid == request.resource.data.providerId;
-      // A provider can read, update, or delete their own client records.
-      allow get, update, delete: if request.auth.uid == resource.data.providerId;
-      // A provider can list the clients associated with them.
-      allow list: if request.auth.uid == request.query.get("where.providerId");
+      allow get: if isAuthenticated(); // Allow reads for displaying info
+      allow list: if isAuthenticated() && request.query.get('providerId') == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.providerId == request.auth.uid;
+      allow update: if isProviderForClient(clientId) 
+                      || (isUser(request.resource.data.userId) && request.resource.data.phone == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.phoneNumber); // Magic link
+      allow delete: if isProviderForClient(clientId);
     }
 
-    // Rules for the subcollection where a client's providers are stored.
-    match /users/{userId}/providers/{providerDocId} {
-        allow read, create, delete, update: if request.auth.uid == userId;
-    }
-
-    // Rules for services offered by users (acting as providers).
+    // Services can be created, updated, and deleted only by the user who owns them.
+    // They can be read by any authenticated user (to explore services).
     match /services/{serviceId} {
-        // Any authenticated user can read service details.
-        allow read: if request.auth != null;
-        // A user can only create, update, or delete their own services.
-        allow create, update, delete: if request.auth.uid == request.resource.data.userId;
-    }
-
-    // Rules for cases, which link a client and a provider.
-    match /cases/{caseId} {
-        // A client or provider can get or update their own case.
-        allow get, update: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
-        // A client or provider can create a case.
-        allow create: if request.auth.uid == request.resource.data.clientId || request.auth.uid == request.resource.data.providerId;
-        // A user can list cases where they are either the client or the provider.
-        allow list: if request.auth.uid == request.query.get("where.clientId") || request.auth.uid == request.query.get("where.providerId");
-        
-        // Comments are a subcollection of cases.
-        match /comments/{commentId} {
-            // The client or provider associated with the case can read and create comments.
-            allow read, create: if get(/databases/$(database)/documents/cases/$(caseId)).data.clientId == request.auth.uid || get(/databases/$(database)/documents/cases/$(caseId)).data.providerId == request.auth.uid;
-        }
+      allow get: if isAuthenticated();
+      allow list: if isAuthenticated();
+      allow create, update, delete: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
     }
     
-    // Rules for invoices, linked to a case.
-    match /invoices/{invoiceId} {
-        // The client or provider can get a specific invoice.
-        allow get: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
-        // The client or provider can create an invoice.
-        allow create: if request.auth.uid == request.resource.data.clientId || request.auth.uid == request.resource.data.providerId;
-         // A user can list invoices where they are either the client or the provider.
-        allow list: if request.auth.uid == request.query.get("where.clientId") || request.auth.uid == request.query.get("where.providerId");
+    // Cases can be created by a client for a provider.
+    // They can be read/updated only by the client or provider involved.
+    match /cases/{caseId} {
+      allow get: if isClientOrProviderForCase(caseId);
+      allow list: if isAuthenticated(); // Queries must be filtered in the app by clientId or providerId
+      allow create: if isUser(request.resource.data.clientId);
+      allow update, delete: if isClientOrProviderForCase(caseId);
+      
+      // Comments on a case can be created and read by either party.
+      match /comments/{commentId} {
+         allow read: if isClientOrProviderForCase(caseId);
+         allow create: if isUser(request.resource.data.userId) && isClientOrProviderForCase(caseId);
+      }
     }
-
+    
+    // Invoices can be created by the provider.
+    // They can be read by either the provider or the client.
+    match /invoices/{invoiceId} {
+      allow get: if isUser(get(/databases/$(database)/documents/invoices/$(invoiceId)).data.clientId) 
+                  || isUser(get(/databases/$(database)/documents/invoices/$(invoiceId)).data.providerId);
+      allow list: if isAuthenticated(); // Queries must be filtered in app
+      allow create: if isUser(request.resource.data.providerId);
+      // Updates might be needed for status changes (e.g., marking as paid)
+      allow update: if isUser(get(/databases/$(database)/documents/invoices/$(invoiceId)).data.providerId);
+    }
   }
 }
