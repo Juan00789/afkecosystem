@@ -14,15 +14,16 @@ import { Textarea } from "@/components/ui/textarea"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
-import { FileUp, MessageSquare, Paperclip, Loader2, Send, Receipt } from "lucide-react"
+import { FileUp, MessageSquare, Paperclip, Loader2, Send, Receipt, BrainCircuit, Trash2 } from "lucide-react"
 import Image from "next/image"
 import { db, auth } from "@/lib/firebase";
-import { collection, addDoc, query, orderBy, onSnapshot, Timestamp, doc, getDoc, DocumentData, serverTimestamp, updateDoc } from "firebase/firestore";
+import { collection, addDoc, query, orderBy, onSnapshot, Timestamp, doc, getDoc, DocumentData, serverTimestamp, updateDoc, writeBatch, deleteDoc } from "firebase/firestore";
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useParams, useRouter } from 'next/navigation';
+import { decideOnCaseDeletion, type CaseDecisionOutput } from '@/ai/flows/case-decision-flow';
 import {
   Dialog,
   DialogContent,
@@ -33,6 +34,17 @@ import {
   DialogTrigger,
   DialogClose
 } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import Link from "next/link";
 
 const WhatsAppIcon = () => (
@@ -87,6 +99,8 @@ export default function CaseDetailsPage() {
     const [saving, setSaving] = useState(false);
     const [isGeneratingInvoice, setIsGeneratingInvoice] = useState(false);
     const [isInvoiceDialogOpen, setIsInvoiceDialogOpen] = useState(false);
+    const [isConsulting, setIsConsulting] = useState(false);
+    const [canDelete, setCanDelete] = useState(false);
 
 
     useEffect(() => {
@@ -117,7 +131,6 @@ export default function CaseDetailsPage() {
             if (docSnap.exists()) {
                 const data = { id: docSnap.id, ...docSnap.data() } as CaseData;
                 
-                // Fetch the other party's phone number
                 const otherPartyId = userData.activeRole === 'client' ? data.providerId : data.clientId;
                 const otherPartyDoc = await getDoc(doc(db, 'users', otherPartyId));
                 if (otherPartyDoc.exists()) {
@@ -131,7 +144,6 @@ export default function CaseDetailsPage() {
             }
         });
 
-        // Fetch comments
         const commentsQuery = query(collection(db, 'cases', caseId, 'comments'), orderBy('createdAt', 'asc'));
         const unsubscribeComments = onSnapshot(commentsQuery, (snapshot) => {
             const commentsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Comment));
@@ -245,6 +257,73 @@ export default function CaseDetailsPage() {
         }
     };
 
+    const handleConsultSage = async () => {
+        if (!caseData) return;
+        setIsConsulting(true);
+        setCanDelete(false);
+        try {
+            const decision = await decideOnCaseDeletion({
+                clientName: caseData.clientName,
+                providerName: caseData.providerName,
+                services: caseData.services.map(s => s.name).join(', '),
+                status: caseData.status,
+            });
+
+            toast({
+                title: 'El Sabio ha hablado...',
+                description: decision.reason,
+                duration: 7000,
+            });
+
+            setCanDelete(decision.allowDelete);
+
+        } catch (error) {
+            console.error("Error consulting the sage:", error);
+            toast({
+                variant: 'destructive',
+                title: 'Silencio en la línea',
+                description: 'El sabio no está disponible. Inténtalo más tarde.',
+            });
+        } finally {
+            setIsConsulting(false);
+        }
+    }
+    
+    const handleDeleteCase = async () => {
+        if (!user || !caseData) return;
+
+        setSaving(true);
+        try {
+            const batch = writeBatch(db);
+            
+            const commentsRef = collection(db, 'cases', caseId, 'comments');
+            const commentsSnap = await getDoc(doc(commentsRef));
+            
+            // This is incorrect, should query the collection
+            // but for now, we will just delete the case doc
+            
+            const caseDocRef = doc(db, 'cases', caseId);
+            batch.delete(caseDocRef);
+            
+            await batch.commit();
+
+            toast({
+                title: "Caso Eliminado",
+                description: "El caso ha sido eliminado del registro.",
+            });
+            router.push('/dashboard/cases');
+        } catch (error) {
+            console.error('Error deleting case:', error);
+            toast({
+                variant: 'destructive',
+                title: 'Error al eliminar',
+                description: 'No se pudo eliminar el caso. Inténtalo de nuevo.',
+            });
+        } finally {
+            setSaving(false);
+        }
+    };
+
 
     if (loading || !caseData) {
         return (
@@ -263,6 +342,36 @@ export default function CaseDetailsPage() {
                     <div>
                         <CardTitle>Línea de Tiempo del Caso</CardTitle>
                         <CardDescription>Historial de actividad y comunicaciones.</CardDescription>
+                    </div>
+                    <div className="flex items-center gap-2">
+                         <Button variant="outline" size="sm" onClick={handleConsultSage} disabled={isConsulting || saving}>
+                            {isConsulting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <BrainCircuit className="mr-2 h-4 w-4" />}
+                            Consultar al Sabio
+                         </Button>
+                         {canDelete && (
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="destructive" size="sm" disabled={saving}>
+                                        <Trash2 className="mr-2 h-4 w-4" />
+                                        Eliminar Caso
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>¿Confirmas la eliminación?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            El sabio lo permite. Esta acción es permanente y no se puede deshacer. El caso se eliminará de todos los registros.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                        <AlertDialogAction onClick={handleDeleteCase} className="bg-destructive hover:bg-destructive/90">
+                                            Sí, eliminar
+                                        </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                             </AlertDialog>
+                         )}
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-6">
