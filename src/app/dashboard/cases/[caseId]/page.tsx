@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { FileUp, MessageSquare, Paperclip, Loader2, Send, Receipt, BrainCircuit, Trash2 } from "lucide-react"
 import Image from "next/image"
-import { db, auth } from "@/lib/firebase";
+import { db, getFirebaseAuth } from "@/lib/firebase";
 import { collection, addDoc, query, orderBy, onSnapshot, Timestamp, doc, getDoc, DocumentData, serverTimestamp, updateDoc, writeBatch, deleteDoc } from "firebase/firestore";
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { useToast } from "@/hooks/use-toast";
@@ -104,6 +104,7 @@ export default function CaseDetailsPage() {
 
 
     useEffect(() => {
+        const auth = getFirebaseAuth();
         const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
             setUser(currentUser);
             if (currentUser) {

@@ -25,7 +25,7 @@ import { generateQuote, type GenerateQuoteOutput } from '@/ai/flows/quote-flow';
 import { textToSpeech } from '@/ai/flows/tts-flow';
 import type { TextToSpeechOutput } from '@/ai/flows/tts-flow.schema';
 import { Loader2, Volume2 } from 'lucide-react';
-import { db, auth } from '@/lib/firebase';
+import { db, getFirebaseAuth } from '@/lib/firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
 
@@ -51,6 +51,7 @@ export function QuotesPage() {
   const [audio, setAudio] = useState<TextToSpeechOutput | null>(null);
 
    useEffect(() => {
+    const auth = getFirebaseAuth();
     const unsubscribeAuth = auth.onAuthStateChanged((currentUser) => {
       setUser(currentUser);
       if (!currentUser) {

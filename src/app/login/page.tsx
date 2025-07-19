@@ -16,7 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Logo } from '@/components/logo';
 import { useState, useEffect } from 'react';
 import { signInWithEmailAndPassword, signInWithRedirect, getRedirectResult, GoogleAuthProvider, GithubAuthProvider, OAuthProvider, type AuthProvider } from 'firebase/auth';
-import { auth, db } from '@/lib/firebase';
+import { getFirebaseAuth, db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
@@ -95,6 +95,7 @@ export default function LoginPage() {
     const handleRedirectResult = async () => {
       setLoading(true);
       try {
+        const auth = getFirebaseAuth();
         const result = await getRedirectResult(auth);
         if (result) {
           const user = result.user;
@@ -122,6 +123,7 @@ export default function LoginPage() {
 
   const handleSocialLogin = async (provider: AuthProvider) => {
     setLoading(true);
+    const auth = getFirebaseAuth();
     await signInWithRedirect(auth, provider).catch(handleError);
   };
 
@@ -129,6 +131,7 @@ export default function LoginPage() {
     event.preventDefault();
     setLoading(true);
     try {
+      const auth = getFirebaseAuth();
       await signInWithEmailAndPassword(auth, form.email, form.password);
       router.push('/dashboard');
     } catch (error: any) {

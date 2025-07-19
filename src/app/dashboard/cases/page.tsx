@@ -23,7 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ArrowUpRight, PlusCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { db, auth } from '@/lib/firebase';
+import { db, getFirebaseAuth } from '@/lib/firebase';
 import { collection, query, where, onSnapshot, getDoc, doc, or } from 'firebase/firestore';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
@@ -63,6 +63,7 @@ export default function CasesPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const auth = getFirebaseAuth();
     const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {

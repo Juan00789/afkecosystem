@@ -24,7 +24,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ArrowUpRight, PlusCircle, Briefcase, Users, UserCheck, Activity, Loader2, MessageSquare, ExternalLink, ListTodo } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from 'next/navigation';
-import { db, auth } from '@/lib/firebase';
+import { db, getFirebaseAuth } from '@/lib/firebase';
 import { collection, query, where, onSnapshot, getDoc, doc, or, limit, orderBy, getDocs, collectionGroup, Timestamp } from 'firebase/firestore';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
@@ -80,6 +80,7 @@ export default function DashboardPage() {
   
   useEffect(() => {
     setLoading(true);
+    const auth = getFirebaseAuth();
     const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {

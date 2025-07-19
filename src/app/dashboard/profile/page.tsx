@@ -14,7 +14,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { auth, db, storage } from '@/lib/firebase';
+import { getFirebaseAuth, db, storage } from '@/lib/firebase';
 import { onAuthStateChanged, type User, updateProfile } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -42,6 +42,7 @@ export default function ProfilePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    const auth = getFirebaseAuth();
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
         setUser(currentUser);
@@ -98,6 +99,7 @@ export default function ProfilePage() {
       const userRef = doc(db, 'users', user.uid);
       await updateDoc(userRef, { photoURL });
       
+      const auth = getFirebaseAuth();
       if (auth.currentUser) {
         await updateProfile(auth.currentUser, { photoURL });
       }
@@ -140,6 +142,7 @@ export default function ProfilePage() {
         website: form.website,
       }, { merge: true });
 
+      const auth = getFirebaseAuth();
       if (auth.currentUser) {
         await updateProfile(auth.currentUser, { displayName: form.name });
       }

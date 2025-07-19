@@ -60,7 +60,7 @@ import { MoreHorizontal, PlusCircle, Loader2, Edit, Trash2, DollarSign } from 'l
 import { db } from '@/lib/firebase';
 import { collection, addDoc, onSnapshot, query, where, doc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { auth } from '@/lib/firebase';
+import { getFirebaseAuth } from '@/lib/firebase';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 
@@ -85,6 +85,7 @@ export default function ServicesPage() {
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
     useEffect(() => {
+      const auth = getFirebaseAuth();
       const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
         if (currentUser) {
           setUser(currentUser);

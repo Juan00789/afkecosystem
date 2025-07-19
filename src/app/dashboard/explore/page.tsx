@@ -28,7 +28,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, Search } from 'lucide-react';
-import { db, auth } from '@/lib/firebase';
+import { db, getFirebaseAuth } from '@/lib/firebase';
 import { collection, addDoc, onSnapshot, query, where, doc, getDoc, updateDoc, deleteDoc, getDocs, collectionGroup, Timestamp, serverTimestamp, limit } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { onAuthStateChanged, type User } from 'firebase/auth';
@@ -73,6 +73,7 @@ export default function ExplorePage() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+      const auth = getFirebaseAuth();
       const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
         if (currentUser) {
           setUser(currentUser);

@@ -19,7 +19,7 @@ import { Home, Briefcase, FileText, Settings, CreditCard, Bell, Receipt, Search,
 import { Button } from "@/components/ui/button";
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { doc, getDoc, setDoc } from "firebase/firestore";
-import { auth, db } from "@/lib/firebase";
+import { getFirebaseAuth, db } from "@/lib/firebase";
 import { useRouter, usePathname } from 'next/navigation';
 import { RoleSwitcher } from '@/components/role-switcher';
 import Link from 'next/link';
@@ -49,6 +49,7 @@ export default function DashboardLayout({
   const [activeRole, setActiveRole] = useState('provider');
 
   useEffect(() => {
+    const auth = getFirebaseAuth();
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
         setUser(currentUser);

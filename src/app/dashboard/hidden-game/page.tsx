@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { converseHiddenGame, type HiddenGameOutput } from '@/ai/flows/hidden-game-flow';
 import { Loader2, Sparkles, Lock, Key } from 'lucide-react';
-import { auth, db } from '@/lib/firebase';
+import { getFirebaseAuth, db } from '@/lib/firebase';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { doc, getDoc, collection, query, where, getDocs, limit } from 'firebase/firestore';
 
@@ -29,6 +29,7 @@ export default function HiddenGamePage() {
   const [conversation, setConversation] = useState<HiddenGameOutput | null>(null);
 
   useEffect(() => {
+    const auth = getFirebaseAuth();
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
         setUser(currentUser);
     });

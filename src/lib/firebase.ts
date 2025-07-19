@@ -1,7 +1,7 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp, getApps, getApp, type FirebaseOptions } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
-import { getAuth } from "firebase/auth";
+import { initializeAuth, getAuth, browserPopupRedirectResolver, type Auth } from "firebase/auth";
 import { getStorage } from "firebase/storage";
 import { firebaseConfig as importedConfig } from './firebase-config';
 
@@ -14,6 +14,19 @@ if (!firebaseConfig || !firebaseConfig.apiKey || firebaseConfig.apiKey.includes(
 
 // Initialize Firebase safely
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+
+let auth: Auth;
+
+// This function ensures that Auth is only initialized on the client side.
+export const getFirebaseAuth = () => {
+    if (!auth) {
+        auth = initializeAuth(app, {
+            persistence: browserPopupRedirectResolver,
+        });
+    }
+    return auth;
+};
+
+
 export const db = getFirestore(app);
-export const auth = getAuth(app);
 export const storage = getStorage(app);

@@ -26,7 +26,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, onSnapshot, query, where, doc, getDoc, deleteDoc, writeBatch, getDocs, serverTimestamp, limit } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { auth } from '@/lib/firebase';
+import { getFirebaseAuth } from '@/lib/firebase';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 
@@ -477,6 +477,7 @@ export default function NetworkPage() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+      const auth = getFirebaseAuth();
       const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
         if (currentUser) {
           setUser(currentUser);

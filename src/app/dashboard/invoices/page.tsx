@@ -26,7 +26,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { MoreHorizontal, PlusCircle, ArrowUpRight, Printer, Download, Loader2 } from 'lucide-react';
-import { db, auth } from '@/lib/firebase';
+import { db, getFirebaseAuth } from '@/lib/firebase';
 import { collection, query, where, onSnapshot, or } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
@@ -64,6 +64,7 @@ export default function InvoicesPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const auth = getFirebaseAuth();
     const unsubscribeAuth = auth.onAuthStateChanged(setUser);
     return () => unsubscribeAuth();
   }, []);

@@ -14,7 +14,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Logo } from '@/components/logo';
-import { auth, db } from '@/lib/firebase';
+import { getFirebaseAuth, db } from '@/lib/firebase';
 import { createUserWithEmailAndPassword, signInWithRedirect, getRedirectResult, GoogleAuthProvider, GithubAuthProvider, OAuthProvider, type AuthProvider } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { useState, useEffect } from 'react';
@@ -94,6 +94,7 @@ export default function SignupPage() {
     const handleRedirectResult = async () => {
       setLoading(true);
       try {
+        const auth = getFirebaseAuth();
         const result = await getRedirectResult(auth);
         if (result) {
           const user = result.user;
@@ -122,6 +123,7 @@ export default function SignupPage() {
 
   const handleSocialLogin = async (provider: AuthProvider) => {
     setLoading(true);
+    const auth = getFirebaseAuth();
     await signInWithRedirect(auth, provider).catch(handleError);
   };
 
@@ -130,6 +132,7 @@ export default function SignupPage() {
     setLoading(true);
 
     try {
+      const auth = getFirebaseAuth();
       const userCredential = await createUserWithEmailAndPassword(auth, form.email, form.password);
       const user = userCredential.user;
 

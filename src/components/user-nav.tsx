@@ -17,7 +17,7 @@ import { CreditCard, LifeBuoy, LogOut, Settings, User as UserIcon } from 'lucide
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { onAuthStateChanged, signOut, type User } from 'firebase/auth';
-import { auth, db } from '@/lib/firebase';
+import { getFirebaseAuth, db } from '@/lib/firebase';
 import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 
@@ -27,6 +27,7 @@ export function UserNav() {
   const [userData, setUserData] = useState<{ name?: string, email?: string, fallback?: string, photoURL?: string }>({});
 
   useEffect(() => {
+    const auth = getFirebaseAuth();
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
@@ -60,6 +61,7 @@ export function UserNav() {
 
   const handleSignOut = async () => {
     try {
+      const auth = getFirebaseAuth();
       await signOut(auth);
       router.push('/login');
     } catch (error) {
