@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const profileSchema = z.object({
@@ -46,15 +46,20 @@ export function ProfilePage() {
       bankName: '',
       accountNumber: '',
     },
-    values: userProfile ? {
+  });
+
+  useEffect(() => {
+    if (userProfile) {
+      reset({
         displayName: userProfile.displayName || '',
         phoneNumber: userProfile.phoneNumber || '',
         companyName: userProfile.companyName || '',
         website: userProfile.website || '',
         bankName: userProfile.bankInfo?.bankName || '',
         accountNumber: userProfile.bankInfo?.accountNumber || '',
-    } : undefined,
-  });
+      });
+    }
+  }, [userProfile, reset]);
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -101,7 +106,9 @@ export function ProfilePage() {
         await setDoc(userDocRef, profileData, { merge: true });
 
         toast({ title: 'Success', description: 'Your profile has been updated.' });
-        reset(data); // Resets form dirty state
+        
+        // After successful save, reset form to new state to make isDirty false
+        reset(data);
         setPhoto(null);
         setPhotoPreview(null);
     } catch (error) {
@@ -112,7 +119,7 @@ export function ProfilePage() {
     }
   };
   
-  if (loading) {
+  if (loading && !userProfile) {
     return <div>Loading profile...</div>
   }
 
