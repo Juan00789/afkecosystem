@@ -75,7 +75,9 @@ export function ProfilePage() {
         let photoURL = userProfile?.photoURL;
 
         if (photo) {
-            const storageRef = ref(storage, `avatars/${user.uid}`);
+            const fileExtension = photo.name.split('.').pop();
+            const fileName = `${user.uid}.${fileExtension}`;
+            const storageRef = ref(storage, `avatars/${fileName}`);
             const snapshot = await uploadBytes(storageRef, photo);
             photoURL = await getDownloadURL(snapshot.ref);
             await updateProfile(user, { photoURL });
