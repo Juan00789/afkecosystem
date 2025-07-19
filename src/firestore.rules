@@ -1,0 +1,56 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Users can only read/update their own profile.
+    // Any authenticated user can query the users collection to find others.
+    match /users/{userId} {
+      allow read, update: if request.auth.uid == userId;
+      allow create: if request.auth.uid != null;
+      allow list: if request.auth.uid != null;
+
+      // A user can manage their own list of providers.
+      match /providers/{providerId} {
+        allow read, create, delete, list: if request.auth.uid == userId;
+      }
+    }
+
+    // Clients can be created and read by the provider they are associated with.
+    // Any authenticated user can list clients to check for access to the hidden game.
+    match /clients/{clientId} {
+      allow read, create: if request.auth.uid == request.resource.data.providerId;
+      allow list: if request.auth.uid != null;
+    }
+    
+    // Services can be created, read, updated, and deleted by the user who owns them.
+    // Any authenticated user can list services to explore them.
+    match /services/{serviceId} {
+      allow read, list: if request.auth.uid != null;
+      allow create, update, delete: if request.auth.uid == request.resource.data.userId;
+    }
+
+    // Invoices can be read by either the client or the provider.
+    // Invoices can only be created by the provider.
+    match /invoices/{invoiceId} {
+      allow read: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
+      allow create: if request.auth.uid == request.resource.data.providerId;
+    }
+
+    // Cases can be read by either party.
+    // Cases can be created by the client.
+    // The provider can update the case.
+    match /cases/{caseId} {
+      allow read: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
+      allow create: if request.auth.uid == request.resource.data.clientId;
+      allow update: if request.auth.uid == resource.data.providerId;
+      allow delete: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
+
+      // Comments can be read by either party involved in the case.
+      // Comments can be created by either party involved in the case.
+      match /comments/{commentId} {
+        allow read, create: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
+      }
+    }
+  }
+}
