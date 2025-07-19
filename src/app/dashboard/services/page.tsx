@@ -66,7 +66,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { MoreHorizontal, PlusCircle, ListTodo, Loader2, Search, Edit, Trash2, DollarSign } from 'lucide-react';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, onSnapshot, query, where, doc, getDoc, updateDoc, deleteDoc, getDocs, collectionGroup, Timestamp, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, onSnapshot, query, where, doc, getDoc, updateDoc, deleteDoc, getDocs, collectionGroup, Timestamp, serverTimestamp, limit } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged, type User } from 'firebase/auth';
@@ -88,7 +88,8 @@ interface UserData {
 }
 
 interface ClientForProvider {
-    id: string; // The client's UID from the users collection.
+    id: string; 
+    userId: string;
     name: string;
 }
 
@@ -164,7 +165,16 @@ export default function ServicesPage() {
                  try {
                     const clientsQuery = query(collection(db, 'clients'), where('providerId', '==', user.uid));
                     const clientsSnapshot = await getDocs(clientsQuery);
-                    const clientsData = clientsSnapshot.docs.map(doc => ({ id: doc.id, name: doc.data().name || 'Cliente sin nombre' }));
+                    
+                    const clientsData = clientsSnapshot.docs.map(doc => {
+                        const data = doc.data();
+                        return { 
+                            id: doc.id,
+                            name: data.name || 'Cliente sin nombre',
+                            userId: data.userId || null 
+                        };
+                    }).filter(client => client.userId); // Ensure we only keep clients with a valid user ID
+
                     setMyClients(clientsData);
                 } catch(error) {
                     console.error("Error fetching clients:", error);
@@ -201,8 +211,10 @@ export default function ServicesPage() {
 
                     const groupedProviders = providerConnections.map(conn => {
                         const providerUser = providersDataMap.get(conn.providerId);
+                        if (!providerUser) return null; // Skip if user data not found
+                        
                         const providerServices = allServices.filter(s => s.userId === conn.providerId);
-                        if (!providerUser || providerServices.length === 0) return null;
+                        
                         return {
                             id: conn.providerId,
                             providerId: conn.providerId,
@@ -326,7 +338,6 @@ export default function ServicesPage() {
             const serviceSource = isProviderInitiated ? myServices : providersWithServices.find(p => p.providerId === partyId)?.services || [];
             const selectedServiceDetails = serviceSource.filter(s => servicesToRequestIds.includes(s.id));
 
-            // Helper to format currency
             const formatCurrency = (value: number, currency: string) => {
                 return new Intl.NumberFormat('en-US', {
                     style: 'currency',
@@ -346,21 +357,20 @@ export default function ServicesPage() {
                 .map(([currency, total]) => formatCurrency(total, currency))
                 .join(' + ');
 
-            let clientDocId;
-            if(isProviderInitiated) {
-                const clientsQuery = query(collection(db, 'clients'), where('__name__', '==', partyId), limit(1));
-                const clientSnap = await getDocs(clientsQuery);
-                if(clientSnap.empty || !clientSnap.docs[0].data().userId) {
-                     toast({ variant: 'destructive', title: 'Error de Cliente', description: 'No se pudo encontrar el ID de usuario para este cliente.' });
-                     setCreatingCase(false);
-                     return;
+            let clientUserId;
+            if (isProviderInitiated) {
+                const client = myClients.find(c => c.id === partyId);
+                if (!client || !client.userId) {
+                    toast({ variant: 'destructive', title: 'Error de Cliente', description: 'No se pudo encontrar el ID de usuario para este cliente.' });
+                    setCreatingCase(false);
+                    return;
                 }
-                clientDocId = clientSnap.docs[0].data().userId;
+                clientUserId = client.userId;
             }
 
 
             const newCaseData = {
-                clientId: isProviderInitiated ? clientDocId : user.uid,
+                clientId: isProviderInitiated ? clientUserId : user.uid,
                 clientName: isProviderInitiated ? partyName : userData.name,
                 providerId: isProviderInitiated ? user.uid : partyId,
                 providerName: isProviderInitiated ? userData.name : partyName,
@@ -414,7 +424,7 @@ export default function ServicesPage() {
                     <CardContent className="space-y-4">
                         <div>
                             <Label htmlFor="client-select">Cliente</Label>
-                            <Select onValueChange={setSelectedClient} disabled={myClients.length === 0}>
+                            <Select onValueChange={setSelectedClient} value={selectedClient || ""} disabled={myClients.length === 0}>
                                 <SelectTrigger id="client-select">
                                     <SelectValue placeholder={myClients.length > 0 ? "Elige un cliente" : "No tienes clientes"} />
                                 </SelectTrigger>
@@ -595,39 +605,47 @@ export default function ServicesPage() {
                                     </div>
                                 </AccordionTrigger>
                                 <AccordionContent>
-                                    <Table>
-                                        <TableHeader><TableRow>
-                                            <TableHead className="w-[50px]"></TableHead>
-                                            <TableHead>Servicio</TableHead>
-                                            <TableHead>Descripción</TableHead>
-                                            <TableHead className="text-right">Precio</TableHead>
-                                        </TableRow></TableHeader>
-                                        <TableBody>
-                                            {provider.services?.map(service => (
-                                                <TableRow key={service.id}>
-                                                     <TableCell>
-                                                        <Checkbox 
-                                                            id={`service-${service.id}`}
-                                                            onCheckedChange={(checked) => handleServiceSelection(provider.providerId, service.id, !!checked)}
-                                                            checked={(selectedServices[provider.providerId] || []).includes(service.id)}
-                                                        />
-                                                    </TableCell>
-                                                    <TableCell className="font-medium">{service.name}</TableCell>
-                                                    <TableCell className="text-muted-foreground">{service.description}</TableCell>
-                                                    <TableCell className="text-right">{service.price} {service.currency}</TableCell>
-                                                </TableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
-                                    <div className="flex justify-end pt-4">
-                                        <Button 
-                                            onClick={() => handleCreateCase(provider.providerId, provider.name || 'Proveedor', false)}
-                                            disabled={creatingCase || !(selectedServices[provider.providerId] && selectedServices[provider.providerId].length > 0)}
-                                        >
-                                            {creatingCase && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                            Solicitar Servicios Seleccionados
-                                        </Button>
-                                    </div>
+                                    {provider.services && provider.services.length > 0 ? (
+                                        <>
+                                            <Table>
+                                                <TableHeader><TableRow>
+                                                    <TableHead className="w-[50px]"></TableHead>
+                                                    <TableHead>Servicio</TableHead>
+                                                    <TableHead>Descripción</TableHead>
+                                                    <TableHead className="text-right">Precio</TableHead>
+                                                </TableRow></TableHeader>
+                                                <TableBody>
+                                                    {provider.services.map(service => (
+                                                        <TableRow key={service.id}>
+                                                            <TableCell>
+                                                                <Checkbox 
+                                                                    id={`service-${service.id}`}
+                                                                    onCheckedChange={(checked) => handleServiceSelection(provider.providerId, service.id, !!checked)}
+                                                                    checked={(selectedServices[provider.providerId] || []).includes(service.id)}
+                                                                />
+                                                            </TableCell>
+                                                            <TableCell className="font-medium">{service.name}</TableCell>
+                                                            <TableCell className="text-muted-foreground">{service.description}</TableCell>
+                                                            <TableCell className="text-right">{service.price} {service.currency}</TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                            <div className="flex justify-end pt-4">
+                                                <Button 
+                                                    onClick={() => handleCreateCase(provider.providerId, provider.name || 'Proveedor', false)}
+                                                    disabled={creatingCase || !(selectedServices[provider.providerId] && selectedServices[provider.providerId].length > 0)}
+                                                >
+                                                    {creatingCase && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                                    Solicitar Servicios Seleccionados
+                                                </Button>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="text-center text-muted-foreground p-4">
+                                            Este proveedor no tiene servicios publicados todavía.
+                                        </div>
+                                    )}
                                 </AccordionContent>
                             </AccordionItem>
                         ))}
@@ -636,7 +654,7 @@ export default function ServicesPage() {
                     <div className="h-48 flex flex-col items-center justify-center text-center text-muted-foreground border-2 border-dashed rounded-lg">
                         <p>No hay servicios disponibles en tu red.</p>
                         <p className="text-sm mt-1">
-                           Para ver servicios, <Link href="/dashboard/network" className="text-primary underline">añade proveedores a tu red</Link> y asegúrate de que tengan servicios publicados.
+                           Para ver servicios, <Link href="/dashboard/network" className="text-primary underline">añade proveedores a tu red</Link>.
                         </p>
                     </div>
                 )}
