@@ -2,62 +2,44 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-  
-    // Users can read public profiles.
-    // Users can only create and manage their own profile.
-    // Users can only manage their own network of providers.
+    
     match /users/{userId} {
       allow read: if true;
-      allow create: if request.auth.uid == userId;
+      allow create: if request.auth != null;
       allow update: if request.auth.uid == userId;
 
       match /providers/{providerDocId} {
-        allow read, delete: if request.auth.uid == userId;
-        allow create: if request.auth.uid == userId;
-        allow update: if request.auth.uid == userId && resource.data.status != data.status;
+        allow read, create, delete: if request.auth.uid == userId;
+        allow update: if request.auth.uid == userId;
       }
     }
     
-    // Providers can create clients.
-    // Providers can only manage their own clients.
-    // A new user can link themselves to a pre-registered client doc.
     match /clients/{clientId} {
-      allow read, delete, update: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.providerId == request.auth.uid;
-      allow create: if request.resource.data.providerId == request.auth.uid;
-       
-      // Allow a new user to update a pre-registered client to link their UID
-      allow update: if request.auth.uid == request.resource.data.userId && data.userId == null;
+      allow create: if request.auth != null && request.resource.data.providerId == request.auth.uid;
+      allow read, update: if request.auth != null && 
+                             (resource.data.providerId == request.auth.uid || 
+                              (request.resource.data.userId != null && request.resource.data.userId == request.auth.uid));
+      allow delete: if request.auth != null && resource.data.providerId == request.auth.uid;
     }
     
-    // Services are public to read for the landing page.
-    // Only the owner can manage their services.
-    match /services/{serviceId} {
-      allow get: if request.auth != null;
-      allow list: if true;
-      allow create, update, delete: if request.auth.uid == request.resource.data.userId;
-    }
-    
-    // Only the client or provider involved in a case can access it.
     match /cases/{caseId} {
-      allow get, delete: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
-      allow create: if request.auth.uid == request.resource.data.clientId;
-      allow update: if (request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId)
-                      && !('clientId' in request.resource.data)
-                      && !('providerId' in request.resource.data);
-                      
-      // Comments can only be added by the client or provider of the case.
+      allow create: if request.auth != null && (request.resource.data.clientId == request.auth.uid || request.resource.data.providerId == request.auth.uid);
+      allow get, list: if request.auth != null && (resource.data.clientId == request.auth.uid || resource.data.providerId == request.auth.uid);
+      allow update, delete: if request.auth != null && (resource.data.clientId == request.auth.uid || resource.data.providerId == request.auth.uid);
+      
       match /comments/{commentId} {
-        allow read, create: if request.auth.uid == get(/databases/$(database)/documents/cases/$(caseId)).data.clientId || request.auth.uid == get(/databases/$(database)/documents/cases/$(caseId)).data.providerId;
+        allow read, create: if request.auth != null && (resource.data.clientId == request.auth.uid || resource.data.providerId == request.auth.uid);
       }
     }
     
-    // Only the client or provider involved in an invoice can read it.
-    // Only the provider can create it.
+    match /services/{serviceId} {
+      allow read: if true;
+      allow create, update, delete: if request.auth != null && request.resource.data.userId == request.auth.uid;
+    }
+
     match /invoices/{invoiceId} {
-       allow get: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
-       allow list: if request.query.where.field == 'clientId' && request.query.where.value == request.auth.uid ||
-                     request.query.where.field == 'providerId' && request.query.where.value == request.auth.uid;
-       allow create: if request.auth.uid == request.resource.data.providerId;
+        allow create: if request.auth != null;
+        allow get, list: if request.auth != null && (resource.data.clientId == request.auth.uid || resource.data.providerId == request.auth.uid);
     }
   }
 }
