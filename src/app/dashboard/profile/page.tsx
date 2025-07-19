@@ -19,7 +19,7 @@ import { onAuthStateChanged, type User, updateProfile } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Camera, Copy, Globe, Key, Building, Landmark } from 'lucide-react';
+import { Loader2, Camera, Copy, Globe, Key, Building, Landmark, Hash } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -39,7 +39,8 @@ export default function ProfilePage() {
     photoURL: '',
     website: '',
     uid: '',
-    bankAccount: '',
+    bankName: '',
+    accountNumber: '',
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -61,7 +62,8 @@ export default function ProfilePage() {
             photoURL: userData.photoURL || currentUser.photoURL || '',
             website: userData.website || '',
             uid: currentUser.uid,
-            bankAccount: userData.bankAccount || '',
+            bankName: userData.bankName || '',
+            accountNumber: userData.accountNumber || '',
           });
 
         } catch (error) {
@@ -145,7 +147,8 @@ export default function ProfilePage() {
         company: form.company,
         phoneNumber: form.phoneNumber,
         website: form.website,
-        bankAccount: form.bankAccount,
+        bankName: form.bankName,
+        accountNumber: form.accountNumber,
       }, { merge: true });
 
       const auth = getFirebaseAuth();
@@ -204,7 +207,7 @@ export default function ProfilePage() {
             <div className="flex justify-center">
               <div className="relative">
                 <Avatar className="h-32 w-32 cursor-pointer" onClick={handleAvatarClick}>
-                  <AvatarImage src={form.photoURL} alt={form.name} />
+                  <AvatarImage src={form.photoURL} alt={form.name} data-ai-hint="person face" />
                   <AvatarFallback className="text-4xl">{fallback}</AvatarFallback>
                 </Avatar>
                 <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity" onClick={handleAvatarClick}>
@@ -291,15 +294,30 @@ export default function ProfilePage() {
                         required
                     />
                 </div>
-                 <div className="space-y-2">
-                    <Label htmlFor="bankAccount">Cuenta Bancaria (Opcional)</Label>
+                <div className="space-y-2">
+                    <Label htmlFor="bankName">Nombre del Banco (Opcional)</Label>
                      <div className="flex items-center gap-2">
                         <Landmark className="h-5 w-5 text-muted-foreground" />
                         <Input
-                            id="bankAccount"
-                            name="bankAccount"
+                            id="bankName"
+                            name="bankName"
                             type="text"
-                            value={form.bankAccount}
+                            value={form.bankName}
+                            onChange={handleInputChange}
+                            placeholder="Ej: Banco Popular"
+                            disabled={saving || uploading}
+                        />
+                    </div>
+                </div>
+                 <div className="space-y-2">
+                    <Label htmlFor="accountNumber">Número de Cuenta (Opcional)</Label>
+                     <div className="flex items-center gap-2">
+                        <Hash className="h-5 w-5 text-muted-foreground" />
+                        <Input
+                            id="accountNumber"
+                            name="accountNumber"
+                            type="text"
+                            value={form.accountNumber}
                             onChange={handleInputChange}
                             placeholder="Ej: 123-456789-0"
                             disabled={saving || uploading}
