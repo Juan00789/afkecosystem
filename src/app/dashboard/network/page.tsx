@@ -128,8 +128,8 @@ const ClientsTab = ({ user }: { user: User | null }) => {
                                 <Input id="company" name="company" placeholder="Ej: Innovaciones Digitales" value={newClient.company} onChange={handleInputChange} disabled={saving} />
                             </div>
                              <div className="space-y-2">
-                                <Label htmlFor="email">Correo Electrónico</Label>
-                                <Input id="email" name="email" type="email" placeholder="ejemplo@correo.com" value={newClient.email} onChange={handleInputChange} required disabled={saving} />
+                                <Label htmlFor="email">Correo Electrónico (Opcional)</Label>
+                                <Input id="email" name="email" type="email" placeholder="ejemplo@correo.com" value={newClient.email} onChange={handleInputChange} disabled={saving} />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="phone">Teléfono (para contacto directo por WhatsApp)</Label>
