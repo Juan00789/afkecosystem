@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Briefcase, FileText, Users, Search, Handshake, Loader2 } from 'lucide-react';
+import { ArrowRight, Briefcase, FileText, Users, Search, Handshake, Loader2, MessageCircle } from 'lucide-react';
 import Link from 'next/link';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, query, where, limit } from 'firebase/firestore';
@@ -126,7 +126,7 @@ export default function LandingPage() {
               ¿Buscas a alguien que te atienda o quieres empezar a atender?
             </h1>
             <p className="mt-4 text-lg md:text-xl text-muted-foreground">
-              La plataforma que conecta a proveedores de servicios con clientes que necesitan soluciones.
+              La plataforma que conecta a proveedores de servicios con clientes que necesitan soluciones. Sin esperas. Sin intermediarios.
             </p>
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
               <Button size="lg" asChild variant="outline">
@@ -148,30 +148,30 @@ export default function LandingPage() {
         <section id="features" className="py-20 md:py-32 bg-secondary">
           <div className="container">
             <div className="text-center max-w-2xl mx-auto">
-              <h2 className="text-3xl md:text-4xl font-bold">Un Centro de Mando para tu Negocio</h2>
-              <p className="mt-3 text-muted-foreground">Todo lo que necesitas para ofrecer un servicio excepcional y gestionar tu operación de manera eficiente.</p>
+              <h2 className="text-3xl md:text-4xl font-bold">Más Rápido, Más Directo</h2>
+              <p className="mt-3 text-muted-foreground">Olvídate de las secretarias y las esperas. Aquí, la comunicación es inmediata.</p>
             </div>
             <div className="mt-12 grid gap-8 md:grid-cols-3">
               <div className="flex flex-col items-center text-center p-6 border rounded-lg bg-card">
                 <div className="p-3 bg-primary/10 rounded-full mb-4">
+                  <MessageCircle className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="text-xl font-bold mb-2">Contacto Directo</h3>
+                <p className="text-muted-foreground">Habla con tu proveedor a través de la plataforma o directamente a su número. Así de fácil.</p>
+              </div>
+              <div className="flex flex-col items-center text-center p-6 border rounded-lg bg-card">
+                 <div className="p-3 bg-primary/10 rounded-full mb-4">
                   <Users className="h-8 w-8 text-primary" />
                 </div>
-                <h3 className="text-xl font-bold mb-2">Gestión de Clientes</h3>
-                <p className="text-muted-foreground">Añade, visualiza y gestiona la información de tus clientes en un solo lugar.</p>
+                <h3 className="text-xl font-bold mb-2">Sin Intermediarios</h3>
+                <p className="text-muted-foreground">Tu mensaje va directo a la persona que puede resolver tu problema, sin filtros ni demoras.</p>
               </div>
               <div className="flex flex-col items-center text-center p-6 border rounded-lg bg-card">
                  <div className="p-3 bg-primary/10 rounded-full mb-4">
                   <Briefcase className="h-8 w-8 text-primary" />
                 </div>
-                <h3 className="text-xl font-bold mb-2">Casos y Soporte</h3>
-                <p className="text-muted-foreground">Lleva un registro claro de cada interacción y resuelve las necesidades de tus clientes.</p>
-              </div>
-              <div className="flex flex-col items-center text-center p-6 border rounded-lg bg-card">
-                 <div className="p-3 bg-primary/10 rounded-full mb-4">
-                  <FileText className="h-8 w-8 text-primary" />
-                </div>
-                <h3 className="text-xl font-bold mb-2">Cotizaciones con IA</h3>
-                <p className="text-muted-foreground">Genera cotizaciones profesionales en segundos con la ayuda de inteligencia artificial.</p>
+                <h3 className="text-xl font-bold mb-2">Gestión Simplificada</h3>
+                <p className="text-muted-foreground">Desde la cotización hasta el seguimiento, todo en un solo lugar para que te enfoques en lo importante.</p>
               </div>
             </div>
           </div>

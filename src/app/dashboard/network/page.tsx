@@ -132,7 +132,7 @@ const ClientsTab = ({ user }: { user: User | null }) => {
                                 <Input id="email" name="email" type="email" placeholder="ejemplo@correo.com" value={newClient.email} onChange={handleInputChange} required disabled={saving} />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="phone">Teléfono (Requerido para conectar)</Label>
+                                <Label htmlFor="phone">Teléfono (para contacto directo por WhatsApp)</Label>
                                 <Input id="phone" name="phone" type="tel" placeholder="Ej: 829-123-4567" value={newClient.phone} onChange={handleInputChange} required disabled={saving}/>
                             </div>
                         </CardContent>

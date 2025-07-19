@@ -495,7 +495,7 @@ export default function CaseDetailsPage() {
 
         <div className="md:col-span-1 space-y-4">
             <Card>
-                <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0 pb-4">
+                <CardHeader>
                     <div className="flex items-center gap-4">
                         <Avatar className="h-12 w-12">
                             <AvatarFallback>{(userData.activeRole === 'provider' ? caseData.clientName : caseData.providerName).charAt(0)}</AvatarFallback>
@@ -507,15 +507,18 @@ export default function CaseDetailsPage() {
                             </CardDescription>
                         </div>
                     </div>
-                    {caseData.otherPartyPhoneNumber && (
-                        <Button asChild variant="outline" size="icon" className="bg-[#25D366] hover:bg-[#1DAE5A] text-white border-0">
-                           <Link href={`https://wa.me/${caseData.otherPartyPhoneNumber.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer">
-                             <WhatsAppIcon />
-                           </Link>
-                        </Button>
+                     {caseData.otherPartyPhoneNumber && (
+                        <div className="pt-4">
+                            <Button asChild className="w-full bg-[#25D366] hover:bg-[#1DAE5A] text-white">
+                               <Link href={`https://wa.me/${caseData.otherPartyPhoneNumber.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer">
+                                 <WhatsAppIcon /> <span className="ml-2">Contactar por WhatsApp</span>
+                               </Link>
+                            </Button>
+                        </div>
                     )}
                 </CardHeader>
-                <CardContent>
+                <Separator />
+                <CardContent className="pt-6">
                      <Badge>{caseData.status}</Badge>
                 </CardContent>
                 <Separator />
