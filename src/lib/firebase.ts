@@ -15,16 +15,12 @@ if (!firebaseConfig || !firebaseConfig.apiKey || firebaseConfig.apiKey.includes(
 // Initialize Firebase safely
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
-let auth: Auth;
+// Initialize Auth and export it for use in other parts of the app
+// This singleton instance will be used across the app
+const auth = getAuth(app);
 
-// This function ensures that Auth is only initialized on the client side.
+// This function can be used to get the auth instance, ensuring it's initialized.
 export const getFirebaseAuth = () => {
-    if (!auth) {
-        // Use browserLocalPersistence which is SSR-friendly
-        auth = initializeAuth(app, {
-            persistence: browserLocalPersistence,
-        });
-    }
     return auth;
 };
 
