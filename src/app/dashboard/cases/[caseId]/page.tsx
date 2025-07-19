@@ -14,15 +14,15 @@ import { Textarea } from "@/components/ui/textarea"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
-import { FileUp, MessageSquare, Paperclip, Loader2, Send, Receipt } from "lucide-react"
+import { FileUp, MessageSquare, Paperclip, Loader2, Send, Receipt, Trash2 } from "lucide-react"
 import Image from "next/image"
 import { db, auth } from "@/lib/firebase";
-import { collection, addDoc, query, orderBy, onSnapshot, Timestamp, doc, getDoc, DocumentData, serverTimestamp, updateDoc } from "firebase/firestore";
+import { collection, addDoc, query, orderBy, onSnapshot, Timestamp, doc, getDoc, DocumentData, serverTimestamp, updateDoc, deleteDoc, writeBatch, getDocs } from "firebase/firestore";
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import {
   Dialog,
   DialogContent,
@@ -33,6 +33,17 @@ import {
   DialogTrigger,
   DialogClose
 } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 const WhatsAppIcon = () => (
     <svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 fill-current">
@@ -73,6 +84,7 @@ interface CaseData {
 
 export default function CaseDetailsPage() {
     const params = useParams();
+    const router = useRouter();
     const caseId = params.caseId as string;
     const { toast } = useToast();
     const [user, setUser] = useState<User | null>(null);
@@ -115,6 +127,7 @@ export default function CaseDetailsPage() {
                 setCaseData({ id: docSnap.id, ...docSnap.data() } as CaseData);
             } else {
                 toast({ variant: 'destructive', title: 'Caso no encontrado' });
+                router.push('/dashboard/cases');
             }
         });
 
@@ -138,7 +151,7 @@ export default function CaseDetailsPage() {
             unsubscribeCase();
             unsubscribeComments();
         };
-    }, [caseId, toast]);
+    }, [caseId, toast, router]);
 
     const handleCommentSubmit = async (e: FormEvent) => {
         e.preventDefault();
@@ -236,6 +249,44 @@ export default function CaseDetailsPage() {
         }
     };
 
+    const handleDeleteCase = async () => {
+        if (!user || !caseData || userData.activeRole !== 'client') return;
+
+        setSaving(true);
+        try {
+            const caseRef = doc(db, 'cases', caseId);
+            const commentsRef = collection(db, 'cases', caseId, 'comments');
+            
+            // Delete all comments in a batch
+            const commentsSnapshot = await getDocs(commentsRef);
+            const batch = writeBatch(db);
+            commentsSnapshot.forEach((doc) => {
+                batch.delete(doc.ref);
+            });
+            await batch.commit();
+
+            // Delete the case itself
+            await deleteDoc(caseRef);
+
+            toast({
+                title: "Caso eliminado",
+                description: "El caso y todos sus comentarios han sido eliminados.",
+            });
+
+            router.push('/dashboard/cases');
+
+        } catch (error) {
+             console.error('Error al eliminar el caso:', error);
+            toast({
+                variant: 'destructive',
+                title: 'Error al eliminar',
+                description: 'No se pudo eliminar el caso. Inténtalo de nuevo.',
+            });
+        } finally {
+            setSaving(false);
+        }
+    };
+
     if (loading || !caseData) {
         return (
             <main className="flex-1 flex items-center justify-center">
@@ -251,9 +302,36 @@ export default function CaseDetailsPage() {
         <div className="md:col-span-2 space-y-4">
             {/* Comments/Timeline Card */}
             <Card>
-                <CardHeader>
-                    <CardTitle>Línea de Tiempo del Caso</CardTitle>
-                    <CardDescription>Historial de actividad y comunicaciones.</CardDescription>
+                <CardHeader className="flex flex-row justify-between items-start">
+                    <div>
+                        <CardTitle>Línea de Tiempo del Caso</CardTitle>
+                        <CardDescription>Historial de actividad y comunicaciones.</CardDescription>
+                    </div>
+                     {userData.activeRole === 'client' && (
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="destructive" size="sm" disabled={saving}>
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Cancelar Caso
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>¿Estás absolutamente seguro?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        Esta acción no se puede deshacer. Se eliminará permanentemente este caso y todos sus mensajes.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel disabled={saving}>No, mantener</AlertDialogCancel>
+                                    <AlertDialogAction onClick={handleDeleteCase} disabled={saving}>
+                                        {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                        Sí, eliminar caso
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    )}
                 </CardHeader>
                 <CardContent className="space-y-6">
                     {!comments.length && (
@@ -410,5 +488,7 @@ export default function CaseDetailsPage() {
     </main>
   );
 }
+
+    
 
     
