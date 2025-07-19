@@ -45,6 +45,13 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion"
 import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import {
     Table,
     TableBody,
     TableCell,
@@ -79,7 +86,12 @@ interface UserData {
     activeRole?: 'provider' | 'client';
 }
 
-interface Provider {
+interface ClientForProvider {
+    id: string; // The client's UID from the users collection.
+    name: string;
+}
+
+interface ProviderForClient {
     id: string; // Document ID from providers subcollection
     providerId: string; // The actual UID of the provider user
     name?: string;
@@ -95,14 +107,16 @@ export default function ServicesPage() {
     const [userData, setUserData] = useState<UserData | null>(null);
     
     // For Provider role
-    const [services, setServices] = useState<Service[]>([]);
-
+    const [myServices, setMyServices] = useState<Service[]>([]);
+    const [myClients, setMyClients] = useState<ClientForProvider[]>([]);
+    const [selectedClient, setSelectedClient] = useState<string | null>(null);
+    
     // For Client role
-    const [providersWithServices, setProvidersWithServices] = useState<Provider[]>([]);
+    const [providersWithServices, setProvidersWithServices] = useState<ProviderForClient[]>([]);
+
+    // Shared state
     const [selectedServices, setSelectedServices] = useState<Record<string, string[]>>({});
     const [creatingCase, setCreatingCase] = useState(false);
-
-
     const [newService, setNewService] = useState({ name: '', description: '', price: '' });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -126,38 +140,50 @@ export default function ServicesPage() {
       return () => unsubscribeAuth();
     }, [router]);
     
-    // Combined data fetching effect
     useEffect(() => {
-        if (!user || !userData) {
+        if (!user || !userData?.activeRole) {
             setLoading(false);
             return;
         }
 
         setLoading(true);
 
-        // --- PROVIDER LOGIC ---
         if (userData.activeRole === 'provider') {
-            const servicesQuery = query(collection(db, 'services'), where('userId', '==', user.uid));
-            const unsubscribe = onSnapshot(servicesQuery, (snapshot) => {
-                const servicesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Service));
-                setServices(servicesData);
-                setLoading(false);
-            }, (error) => {
-                console.error("Error fetching services: ", error);
-                toast({ variant: 'destructive', title: 'Error al cargar servicios' });
-                setLoading(false);
-            });
-            return () => unsubscribe();
+            const fetchProviderData = async () => {
+                try {
+                    // Fetch services
+                    const servicesQuery = query(collection(db, 'services'), where('userId', '==', user.uid));
+                    const servicesSnapshot = await getDocs(servicesQuery);
+                    setMyServices(servicesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Service)));
+
+                    // Fetch clients
+                    const clientsQuery = query(collection(db, 'clients'), where('providerId', '==', user.uid));
+                    const clientsSnapshot = await getDocs(clientsQuery);
+                    const clientIds = clientsSnapshot.docs.map(doc => doc.data().userId).filter(Boolean); // Filter out potential undefined
+                    
+                    if (clientIds.length > 0) {
+                        const usersQuery = query(collection(db, 'users'), where('__name__', 'in', clientIds));
+                        const usersSnapshot = await getDocs(usersQuery);
+                        setMyClients(usersSnapshot.docs.map(doc => ({ id: doc.id, name: doc.data().name || 'Cliente sin nombre' })));
+                    } else {
+                         setMyClients([]);
+                    }
+                } catch (error) {
+                    console.error("Error fetching provider data:", error);
+                    toast({ variant: 'destructive', title: 'Error al cargar datos' });
+                } finally {
+                    setLoading(false);
+                }
+            };
+            fetchProviderData();
         }
 
-        // --- CLIENT LOGIC ---
         if (userData.activeRole === 'client') {
-            const fetchProvidersAndServices = async () => {
+            const fetchClientData = async () => {
                 try {
-                    // 1. Get all provider connections for the current user
                     const providersQuery = query(collection(db, 'users', user.uid, 'providers'));
                     const providersSnapshot = await getDocs(providersQuery);
-                    const providerConnections = providersSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as { id: string, providerId: string }));
+                    const providerConnections = providersSnapshot.docs.map(d => d.data() as { providerId: string });
                     const providerIds = providerConnections.map(p => p.providerId);
 
                     if (providerIds.length === 0) {
@@ -166,40 +192,29 @@ export default function ServicesPage() {
                         return;
                     }
 
-                    // 2. Fetch user data for all providers in one go
                     const usersQuery = query(collection(db, 'users'), where('__name__', 'in', providerIds));
                     const usersSnapshot = await getDocs(usersQuery);
-                    const providersDataMap = new Map<string, any>();
-                    usersSnapshot.forEach(doc => providersDataMap.set(doc.id, doc.data()));
+                    const providersDataMap = new Map<string, any>(usersSnapshot.docs.map(d => [d.id, d.data()]));
 
-                    // 3. Fetch all services from these providers in one query
                     const servicesQuery = query(collection(db, 'services'), where('userId', 'in', providerIds));
                     const servicesSnapshot = await getDocs(servicesQuery);
                     const allServices = servicesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Service));
-                    
-                    // 4. Group services by provider and filter providers with no services
-                    const groupedProviders: Provider[] = providerConnections
-                        .map(connection => {
-                            const providerUser = providersDataMap.get(connection.providerId);
-                            const providerServices = allServices.filter(s => s.userId === connection.providerId);
-                            
-                            if (!providerUser || providerServices.length === 0) {
-                                return null;
-                            }
 
-                            return {
-                                id: connection.id,
-                                providerId: connection.providerId,
-                                name: providerUser?.name || 'Proveedor Desconocido',
-                                avatar: providerUser?.photoURL || `https://placehold.co/100x100.png`,
-                                fallback: (providerUser?.name || 'P').charAt(0).toUpperCase(),
-                                services: providerServices,
-                            };
-                        })
-                        .filter((p): p is Provider => p !== null);
+                    const groupedProviders = providerConnections.map(conn => {
+                        const providerUser = providersDataMap.get(conn.providerId);
+                        const providerServices = allServices.filter(s => s.userId === conn.providerId);
+                        if (!providerUser || providerServices.length === 0) return null;
+                        return {
+                            id: conn.providerId,
+                            providerId: conn.providerId,
+                            name: providerUser.name || 'Proveedor Desconocido',
+                            avatar: providerUser.photoURL || `https://placehold.co/100x100.png`,
+                            fallback: (providerUser.name || 'P').charAt(0).toUpperCase(),
+                            services: providerServices,
+                        };
+                    }).filter((p): p is ProviderForClient => p !== null);
 
                     setProvidersWithServices(groupedProviders);
-
                 } catch (error) {
                     console.error("Error fetching providers and services: ", error);
                     toast({ variant: 'destructive', title: 'Error al cargar proveedores' });
@@ -207,11 +222,9 @@ export default function ServicesPage() {
                     setLoading(false);
                 }
             };
-            
-            fetchProvidersAndServices();
+            fetchClientData();
         }
-
-    }, [user, userData, toast]);
+    }, [user, userData?.activeRole, toast]);
 
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -227,17 +240,15 @@ export default function ServicesPage() {
 
     const handleAddService = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!user) {
-            toast({ variant: 'destructive', title: 'No estás autenticado' });
-            return;
-        }
+        if (!user) return;
         setSaving(true);
         try {
-            await addDoc(collection(db, 'services'), {
+            const docRef = await addDoc(collection(db, 'services'), {
                 ...newService,
                 userId: user.uid, 
-                createdAt: new Date(),
+                createdAt: Timestamp.now(),
             });
+            setMyServices(prev => [...prev, {id: docRef.id, ...newService, userId: user.uid}]);
             toast({ title: 'Servicio guardado' });
             setNewService({ name: '', description: '', price: '' }); 
         } catch (error) {
@@ -259,6 +270,7 @@ export default function ServicesPage() {
                 description: editingService.description,
                 price: editingService.price,
             });
+            setMyServices(prev => prev.map(s => s.id === editingService.id ? editingService : s));
             toast({ title: 'Servicio actualizado' });
             setIsEditDialogOpen(false);
             setEditingService(null);
@@ -273,6 +285,7 @@ export default function ServicesPage() {
     const handleDeleteService = async (serviceId: string) => {
          try {
             await deleteDoc(doc(db, 'services', serviceId));
+            setMyServices(prev => prev.filter(s => s.id !== serviceId));
             toast({ title: 'Servicio eliminado' });
         } catch (error) {
             console.error('Error al eliminar servicio:', error);
@@ -285,35 +298,38 @@ export default function ServicesPage() {
         setIsEditDialogOpen(true);
     }
     
-    const handleServiceSelection = (providerId: string, serviceId: string, isChecked: boolean) => {
+    const handleServiceSelection = (ownerId: string, serviceId: string, isChecked: boolean) => {
         setSelectedServices(prev => {
-            const currentSelection = prev[providerId] || [];
+            const currentSelection = prev[ownerId] || [];
             if (isChecked) {
-                return { ...prev, [providerId]: [...currentSelection, serviceId] };
+                return { ...prev, [ownerId]: [...currentSelection, serviceId] };
             } else {
-                return { ...prev, [providerId]: currentSelection.filter(id => id !== serviceId) };
+                return { ...prev, [ownerId]: currentSelection.filter(id => id !== serviceId) };
             }
         });
     };
 
-    const handleCreateCase = async (provider: Provider) => {
-        if (!user || !userData) return;
-        const servicesToRequest = selectedServices[provider.providerId] || [];
-        if (servicesToRequest.length === 0) return;
+    const handleCreateCase = async (partyId: string, partyName: string, isProviderInitiated: boolean) => {
+        if (!user || !userData?.name) return;
+        
+        const servicesToRequestIds = selectedServices[partyId] || [];
+        if (servicesToRequestIds.length === 0) return;
 
         setCreatingCase(true);
         try {
-            const selectedServiceDetails = provider.services?.filter(s => servicesToRequest.includes(s.id));
-            const total = selectedServiceDetails?.reduce((acc, service) => {
+            const serviceSource = isProviderInitiated ? myServices : providersWithServices.find(p => p.providerId === partyId)?.services || [];
+            const selectedServiceDetails = serviceSource.filter(s => servicesToRequestIds.includes(s.id));
+            
+            const total = selectedServiceDetails.reduce((acc, service) => {
                 const price = parseFloat(service.price.replace(/[^0-9.-]+/g,""));
                 return isNaN(price) ? acc : acc + price;
             }, 0) || 0;
-            
-            const newCaseRef = await addDoc(collection(db, 'cases'), {
-                clientId: user.uid,
-                clientName: userData.name || 'Cliente sin nombre',
-                providerId: provider.providerId,
-                providerName: provider.name || 'Proveedor sin nombre',
+
+            const newCaseData = {
+                clientId: isProviderInitiated ? partyId : user.uid,
+                clientName: isProviderInitiated ? partyName : userData.name,
+                providerId: isProviderInitiated ? user.uid : partyId,
+                providerName: isProviderInitiated ? userData.name : partyName,
                 services: selectedServiceDetails,
                 status: 'Pendiente',
                 createdAt: Timestamp.now(),
@@ -323,18 +339,20 @@ export default function ServicesPage() {
                     paid: '$0.00',
                     due: `$${total.toFixed(2)}`
                 }
-            });
+            };
+            
+            const newCaseRef = await addDoc(collection(db, 'cases'), newCaseData);
 
             toast({
                 title: 'Solicitud enviada',
-                description: `Se ha creado un nuevo caso con ${provider.name}.`,
+                description: `Se ha creado un nuevo caso con ${partyName}.`,
             });
-            setSelectedServices(prev => ({ ...prev, [provider.providerId]: [] }));
+            setSelectedServices(prev => ({ ...prev, [partyId]: [] }));
             router.push(`/dashboard/cases/${newCaseRef.id}`);
 
         } catch (error) {
             console.error('Error creating case: ', error);
-            toast({ variant: 'destructive', title: 'Error al crear el caso', description: 'Por favor, revisa las reglas de seguridad de Firestore y los datos del caso.' });
+            toast({ variant: 'destructive', title: 'Error al crear el caso', description: 'Por favor, revisa las reglas de seguridad y los datos del caso.' });
         } finally {
             setCreatingCase(false);
         }
@@ -351,33 +369,76 @@ export default function ServicesPage() {
          )
     }
 
-    // PROVIDER VIEW
     const renderProviderView = () => (
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-            <div className="lg:col-span-1">
+            <div className="lg:col-span-1 space-y-8">
+                 <Card>
+                    <CardHeader>
+                        <CardTitle>Crear Nuevo Caso</CardTitle>
+                        <CardDescription>Selecciona un cliente y los servicios para iniciar un nuevo caso.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div>
+                            <Label htmlFor="client-select">Cliente</Label>
+                            <Select onValueChange={setSelectedClient} disabled={myClients.length === 0}>
+                                <SelectTrigger id="client-select">
+                                    <SelectValue placeholder={myClients.length > 0 ? "Elige un cliente" : "No tienes clientes"} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {myClients.map(client => (
+                                        <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        {selectedClient && (
+                            <div className="space-y-2 max-h-60 overflow-y-auto">
+                                <Label>Servicios a Incluir</Label>
+                                {myServices.length > 0 ? myServices.map(service => (
+                                    <div key={service.id} className="flex items-center space-x-2">
+                                        <Checkbox 
+                                            id={`service-provider-${service.id}`}
+                                            onCheckedChange={(checked) => handleServiceSelection(selectedClient, service.id, !!checked)}
+                                            checked={(selectedServices[selectedClient] || []).includes(service.id)}
+                                        />
+                                        <label htmlFor={`service-provider-${service.id}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                            {service.name} ({service.price})
+                                        </label>
+                                    </div>
+                                )) : (
+                                    <p className="text-sm text-muted-foreground">No tienes servicios para añadir.</p>
+                                )}
+                            </div>
+                        )}
+                    </CardContent>
+                    <CardFooter>
+                        <Button 
+                            onClick={() => handleCreateCase(selectedClient!, myClients.find(c => c.id === selectedClient)?.name || '', true)}
+                            disabled={!selectedClient || creatingCase || !(selectedServices[selectedClient!] && selectedServices[selectedClient!].length > 0)}
+                        >
+                            {creatingCase && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Crear Caso
+                        </Button>
+                    </CardFooter>
+                </Card>
+                
                 <Card>
                     <CardHeader>
-                        <div className="flex items-center gap-3">
-                            <PlusCircle className="h-6 w-6 text-primary"/>
-                            <CardTitle>Añadir Nuevo Servicio</CardTitle>
-                        </div>
-                        <CardDescription>
-                            Define un nuevo servicio para tu catálogo.
-                        </CardDescription>
+                        <CardTitle>Añadir Servicio al Catálogo</CardTitle>
                     </CardHeader>
                     <form onSubmit={handleAddService}>
                         <CardContent className="space-y-4">
                             <div className="space-y-2">
                                 <Label htmlFor="name">Nombre del Servicio</Label>
-                                <Input id="name" name="name" placeholder="Ej: Consultoría SEO" value={newService.name} onChange={handleInputChange} required disabled={saving} />
+                                <Input id="name" name="name" value={newService.name} onChange={handleInputChange} required disabled={saving} />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="description">Descripción (Opcional)</Label>
-                                <Textarea id="description" name="description" placeholder="Describe en qué consiste el servicio." value={newService.description} onChange={handleInputChange} disabled={saving} />
+                                <Label htmlFor="description">Descripción</Label>
+                                <Textarea id="description" name="description" value={newService.description} onChange={handleInputChange} disabled={saving} />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="price">Precio / Tarifa</Label>
-                                <Input id="price" name="price" placeholder="Ej: $50/hora o $500 (fijo)" value={newService.price} onChange={handleInputChange} required disabled={saving} />
+                                <Label htmlFor="price">Precio</Label>
+                                <Input id="price" name="price" value={newService.price} onChange={handleInputChange} required disabled={saving} />
                             </div>
                         </CardContent>
                         <CardFooter>
@@ -392,13 +453,8 @@ export default function ServicesPage() {
             <div className='lg:col-span-2'>
                 <Card>
                     <CardHeader>
-                        <div className="flex items-center gap-3">
-                            <ListTodo className="h-6 w-6 text-primary"/>
-                            <CardTitle>Mis Servicios</CardTitle>
-                        </div>
-                        <CardDescription>
-                            Listado de todos tus servicios registrados.
-                        </CardDescription>
+                        <CardTitle>Mi Catálogo de Servicios</CardTitle>
+                        <CardDescription>Todos los servicios que ofreces.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <Table>
@@ -411,7 +467,7 @@ export default function ServicesPage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {services.length > 0 ? services.map((service) => (
+                                {myServices.length > 0 ? myServices.map((service) => (
                                     <TableRow key={service.id}>
                                         <TableCell className="font-medium">{service.name}</TableCell>
                                         <TableCell className="hidden md:table-cell text-muted-foreground">{service.description}</TableCell>
@@ -426,29 +482,25 @@ export default function ServicesPage() {
                                                     </DropdownMenuTrigger>
                                                     <DropdownMenuContent align="end">
                                                         <DropdownMenuItem onClick={() => openEditDialog(service)}>
-                                                            <Edit className="mr-2 h-4 w-4" />
-                                                            Editar
+                                                            <Edit className="mr-2 h-4 w-4" /> Editar
                                                         </DropdownMenuItem>
                                                         <DropdownMenuSeparator />
                                                         <AlertDialogTrigger asChild>
                                                             <DropdownMenuItem className="text-destructive focus:text-destructive">
-                                                                <Trash2 className="mr-2 h-4 w-4" />
-                                                                Eliminar
+                                                                <Trash2 className="mr-2 h-4 w-4" /> Eliminar
                                                             </DropdownMenuItem>
                                                         </AlertDialogTrigger>
                                                     </DropdownMenuContent>
                                                 </DropdownMenu>
-                                                    <AlertDialogContent>
+                                                <AlertDialogContent>
                                                     <AlertDialogHeader>
                                                         <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-                                                        <AlertDialogDescription>
-                                                        Esta acción no se puede deshacer. Esto eliminará permanentemente el servicio.
-                                                        </AlertDialogDescription>
+                                                        <AlertDialogDescription>Esta acción no se puede deshacer.</AlertDialogDescription>
                                                     </AlertDialogHeader>
                                                     <AlertDialogFooter>
                                                         <AlertDialogCancel>Cancelar</AlertDialogCancel>
                                                         <AlertDialogAction onClick={() => handleDeleteService(service.id)} className="bg-destructive hover:bg-destructive/90">
-                                                        Sí, eliminar
+                                                            Sí, eliminar
                                                         </AlertDialogAction>
                                                     </AlertDialogFooter>
                                                 </AlertDialogContent>
@@ -456,11 +508,7 @@ export default function ServicesPage() {
                                         </TableCell>
                                     </TableRow>
                                 )) : (
-                                    <TableRow>
-                                        <TableCell colSpan={4} className="h-24 text-center">
-                                            No hay servicios para mostrar.
-                                        </TableCell>
-                                    </TableRow>
+                                    <TableRow><TableCell colSpan={4} className="h-24 text-center">No hay servicios para mostrar.</TableCell></TableRow>
                                 )}
                             </TableBody>
                         </Table>
@@ -470,7 +518,6 @@ export default function ServicesPage() {
         </div>
     );
     
-    // CLIENT VIEW
     const renderClientView = () => (
          <Card>
             <CardHeader>
@@ -479,7 +526,7 @@ export default function ServicesPage() {
                     <CardTitle>Catálogo de Servicios de tu Red</CardTitle>
                 </div>
                 <CardDescription>
-                    Explora y selecciona los servicios que necesitas de tus proveedores.
+                    Explora y selecciona los servicios que necesitas de tus proveedores para crear un caso.
                 </CardDescription>
             </CardHeader>
             <CardContent>
@@ -498,14 +545,12 @@ export default function ServicesPage() {
                                 </AccordionTrigger>
                                 <AccordionContent>
                                     <Table>
-                                        <TableHeader>
-                                            <TableRow>
-                                                <TableHead className="w-[50px]"></TableHead>
-                                                <TableHead>Servicio</TableHead>
-                                                <TableHead>Descripción</TableHead>
-                                                <TableHead className="text-right">Precio</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
+                                        <TableHeader><TableRow>
+                                            <TableHead className="w-[50px]"></TableHead>
+                                            <TableHead>Servicio</TableHead>
+                                            <TableHead>Descripción</TableHead>
+                                            <TableHead className="text-right">Precio</TableHead>
+                                        </TableRow></TableHeader>
                                         <TableBody>
                                             {provider.services?.map(service => (
                                                 <TableRow key={service.id}>
@@ -525,7 +570,7 @@ export default function ServicesPage() {
                                     </Table>
                                     <div className="flex justify-end pt-4">
                                         <Button 
-                                            onClick={() => handleCreateCase(provider)}
+                                            onClick={() => handleCreateCase(provider.providerId, provider.name || 'Proveedor', false)}
                                             disabled={creatingCase || !(selectedServices[provider.providerId] && selectedServices[provider.providerId].length > 0)}
                                         >
                                             {creatingCase && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -553,12 +598,12 @@ export default function ServicesPage() {
             <div className="flex items-center justify-between">
                 <div>
                     <h2 className="text-3xl font-bold tracking-tight">
-                        {isProvider ? 'Gestión de Servicios' : 'Explorar Servicios'}
+                        {isProvider ? 'Servicios y Casos' : 'Explorar Servicios'}
                     </h2>
                     <p className="text-muted-foreground">
                         {isProvider 
-                            ? 'Añade y administra los servicios que ofreces a tus clientes.'
-                            : 'Explora los servicios ofrecidos por los proveedores en tu red.'
+                            ? 'Gestiona tus servicios y crea nuevos casos para tus clientes.'
+                            : 'Explora y solicita servicios de los proveedores en tu red.'
                         }
                     </p>
                 </div>
@@ -571,9 +616,7 @@ export default function ServicesPage() {
                     <DialogContent>
                         <DialogHeader>
                             <DialogTitle>Editar Servicio</DialogTitle>
-                            <DialogDescription>
-                                Realiza los cambios necesarios y guarda para actualizar el servicio.
-                            </DialogDescription>
+                            <DialogDescription>Realiza los cambios necesarios para actualizar.</DialogDescription>
                         </DialogHeader>
                         <form onSubmit={handleUpdateService}>
                              <div className="space-y-4 py-4">
@@ -582,7 +625,7 @@ export default function ServicesPage() {
                                     <Input id="edit-name" name="name" value={editingService.name} onChange={handleEditInputChange} required disabled={saving} />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="edit-description">Descripción (Opcional)</Label>
+                                    <Label htmlFor="edit-description">Descripción</Label>
                                     <Textarea id="edit-description" name="description" value={editingService.description} onChange={handleEditInputChange} disabled={saving} />
                                 </div>
                                 <div className="space-y-2">
@@ -591,9 +634,7 @@ export default function ServicesPage() {
                                 </div>
                             </div>
                             <DialogFooter>
-                                <DialogClose asChild>
-                                    <Button type="button" variant="outline">Cancelar</Button>
-                                </DialogClose>
+                                <DialogClose asChild><Button type="button" variant="outline">Cancelar</Button></DialogClose>
                                 <Button type="submit" disabled={saving}>
                                     {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                     Guardar Cambios
@@ -606,3 +647,5 @@ export default function ServicesPage() {
         </main>
     );
 }
+
+    
