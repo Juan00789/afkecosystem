@@ -100,7 +100,7 @@ export default function HomePage() {
             &copy; {new Date().getFullYear()} AFKEcosystem. Todos los derechos reservados.
           </p>
           <div className="flex gap-4">
-            <Link href="#" className="text-sm text-primary hover:underline">
+            <Link href="https://studio--afkdpu-8wn45.us-central1.hosted.app" className="text-sm text-primary hover:underline">
               Contacto
             </Link>
             <Link href="#" className="text-sm text-primary hover:underline">
