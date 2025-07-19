@@ -1,55 +1,50 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Users:
-    // - Allow users to read and update their own profile.
-    // - Allow authenticated users to look up other users by phone number (for adding to network).
+    // Users: Public profiles can be read, but only owners can write.
     match /users/{userId} {
-      allow read, update: if request.auth.uid == userId;
-      allow list: if request.auth.uid != null; // Allows querying users
-      
-      // Providers subcollection (for clients)
-      match /providers/{providerId} {
-        allow read, write, delete: if request.auth.uid == userId;
+      allow get, list: if true;
+      allow create: if request.auth.uid != null;
+      allow update, delete: if request.auth.uid == userId;
+
+      // Providers subcollection for clients
+      match /providers/{providerDocId} {
+        allow read, write: if request.auth.uid == userId;
       }
     }
-    
-    // Clients (for providers)
-    // - Providers can manage their own list of clients.
-    match /clients/{clientId} {
-      allow read, write, delete: if request.auth.uid == request.resource.data.providerId;
-    }
 
-    // Services:
-    // - Providers can manage their own services.
-    // - Authenticated users can read/list services (needed for clients to browse).
+    // Services: Publicly readable catalog, but only owners can write.
     match /services/{serviceId} {
+      allow get, list: if true;
       allow create: if request.auth.uid == request.resource.data.userId;
-      allow read, list, update, delete: if request.auth.uid != null;
+      allow update, delete: if request.auth.uid == resource.data.userId;
     }
 
-    // Cases:
-    // - A case can be created by either the client or the provider.
-    // - Once created, only the client or provider involved can read or update it.
+    // Clients: Only the linked provider can manage their client list.
+    match /clients/{clientId} {
+      allow read, create, update, delete: if request.auth.uid == request.resource.data.providerId;
+      allow list: if request.auth.uid != null;
+    }
+    
+    // Cases: Only participants of the case can read or write.
     match /cases/{caseId} {
+      allow read: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
       allow create: if request.auth.uid == request.resource.data.clientId || request.auth.uid == request.resource.data.providerId;
-      allow read, update, list: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
-      allow delete: if request.auth.uid == resource.data.providerId;
-      
+      allow update: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
+      allow delete: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
+      allow list: if request.auth.uid != null;
+
       // Comments within a case
       match /comments/{commentId} {
-        allow read, create: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId || request.auth.uid == request.resource.data.userId;
+         allow read, create: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
       }
     }
     
-    // Invoices:
-    // - Only client or provider involved can read them.
-    // - Only provider can create/update/delete.
-    match /invoices/{invoiceId} {
-       allow read, list: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
-       allow create, update, delete: if request.auth.uid == resource.data.providerId;
+    // Invoices: Only participants of the invoice can read or write.
+     match /invoices/{invoiceId} {
+      allow read, list: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
+      allow create, update, delete: if request.auth.uid == request.resource.data.providerId;
     }
   }
 }
