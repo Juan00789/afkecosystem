@@ -32,7 +32,7 @@ interface Provider {
 }
 
 function CreateCaseFormComponent() {
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
@@ -56,7 +56,15 @@ function CreateCaseFormComponent() {
 
   useEffect(() => {
     const fetchProviders = async () => {
-      if (!user) return;
+      if (!user || !userProfile) return;
+      
+      // Start with the user themselves as a provider option
+      const selfProvider: Provider = {
+        id: user.uid,
+        displayName: `${userProfile.displayName || user.email} (Yo mismo)`,
+      };
+      let providersList: Provider[] = [selfProvider];
+
       const userDocRef = doc(db, 'users', user.uid);
       const userDocSnap = await getDoc(userDocRef);
 
@@ -67,16 +75,17 @@ function CreateCaseFormComponent() {
         if (providerIds.length > 0) {
             const providersQuery = query(collection(db, 'users'), where(documentId(), 'in', providerIds));
             const providersSnapshot = await getDocs(providersQuery);
-            const providersList = providersSnapshot.docs.map(doc => ({
+            const networkProviders = providersSnapshot.docs.map(doc => ({
                 id: doc.id,
                 displayName: doc.data().displayName || doc.data().email || 'Unnamed Provider',
             }));
-            setProviders(providersList);
+            providersList = [...providersList, ...networkProviders];
         }
       }
+      setProviders(providersList);
     };
     fetchProviders();
-  }, [user]);
+  }, [user, userProfile]);
   
   useEffect(() => {
     if (preselectedProviderId) {
@@ -162,7 +171,7 @@ function CreateCaseFormComponent() {
                         </SelectItem>
                       ))
                     ) : (
-                      <div className="p-4 text-sm text-muted-foreground">No providers in your network. Please add one in the 'Network' tab.</div>
+                      <div className="p-4 text-sm text-muted-foreground">Loading providers...</div>
                     )}
                   </SelectContent>
                 </Select>
