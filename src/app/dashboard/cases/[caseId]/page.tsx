@@ -71,7 +71,7 @@ interface CaseData {
     id: string;
     clientName: string;
     providerName: string;
-    services: { name: string, price: string }[];
+    services: { name: string, price: string, currency: string }[];
     status: string;
     clientId: string;
     providerId: string;
@@ -324,6 +324,12 @@ export default function CaseDetailsPage() {
         }
     };
 
+    const renderServiceList = () => {
+        if (!caseData?.services || caseData.services.length === 0) {
+            return 'N/A';
+        }
+        return caseData.services.map(s => `${s.name} (${s.price} ${s.currency || 'DOP'})`).join(', ');
+    };
 
     if (loading || !caseData) {
         return (
@@ -496,7 +502,7 @@ export default function CaseDetailsPage() {
                         <div>
                             <CardTitle>{userData.activeRole === 'provider' ? caseData.clientName : caseData.providerName}</CardTitle>
                             <CardDescription>
-                                {caseData.services.map(s => s.name).join(', ')}
+                                {renderServiceList()}
                             </CardDescription>
                         </div>
                     </div>

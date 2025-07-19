@@ -64,9 +64,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { MoreHorizontal, PlusCircle, ListTodo, Loader2, Search, Edit, Trash2 } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, ListTodo, Loader2, Search, Edit, Trash2, DollarSign } from 'lucide-react';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, onSnapshot, query, where, doc, getDoc, updateDoc, deleteDoc, getDocs, collectionGroup, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, onSnapshot, query, where, doc, getDoc, updateDoc, deleteDoc, getDocs, collectionGroup, Timestamp, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged, type User } from 'firebase/auth';
@@ -78,6 +78,7 @@ interface Service {
     name: string;
     description: string;
     price: string;
+    currency: 'DOP' | 'USD';
     userId: string;
 }
 
@@ -117,7 +118,7 @@ export default function ServicesPage() {
     // Shared state
     const [selectedServices, setSelectedServices] = useState<Record<string, string[]>>({});
     const [creatingCase, setCreatingCase] = useState(false);
-    const [newService, setNewService] = useState({ name: '', description: '', price: '' });
+    const [newService, setNewService] = useState({ name: '', description: '', price: '', currency: 'DOP' as 'DOP' | 'USD' });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [editingService, setEditingService] = useState<Service | null>(null);
@@ -149,25 +150,20 @@ export default function ServicesPage() {
         setLoading(true);
 
         if (userData.activeRole === 'provider') {
-            // Use onSnapshot for real-time updates for services
             const servicesQuery = query(collection(db, 'services'), where('userId', '==', user.uid));
             const unsubscribeServices = onSnapshot(servicesQuery, (snapshot) => {
                 setMyServices(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Service)));
-                setLoading(false); // Set loading to false once services are loaded
+                setLoading(false);
             }, (error) => {
                 console.error("Error fetching services:", error);
                 toast({ variant: 'destructive', title: 'Error al cargar servicios' });
                 setLoading(false);
             });
 
-            // Fetch clients once
             const fetchProviderClients = async () => {
                  try {
                     const clientsQuery = query(collection(db, 'clients'), where('providerId', '==', user.uid));
                     const clientsSnapshot = await getDocs(clientsQuery);
-                    // This was a bug: `userId` is not correct, `clients` collection doesn't have `userId`
-                    // Instead, we need to link clients via a proper field, but for now, we'll assume `clients` collection has the client data.
-                    // The previous logic was also flawed. Let's simplify and assume the `clients` collection has a `name` field.
                     const clientsData = clientsSnapshot.docs.map(doc => ({ id: doc.id, name: doc.data().name || 'Cliente sin nombre' }));
                     setMyClients(clientsData);
                 } catch(error) {
@@ -233,13 +229,22 @@ export default function ServicesPage() {
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         setNewService(prev => ({...prev, [name]: value}));
-    }
+    };
+    
+    const handleCurrencyChange = (value: 'DOP' | 'USD') => {
+        setNewService(prev => ({ ...prev, currency: value }));
+    };
     
     const handleEditInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         if (!editingService) return;
         const { name, value } = e.target;
         setEditingService(prev => ({...prev!, [name]: value}));
-    }
+    };
+    
+    const handleEditCurrencyChange = (value: 'DOP' | 'USD') => {
+        if (!editingService) return;
+        setEditingService(prev => ({ ...prev!, currency: value }));
+    };
 
     const handleAddService = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -249,11 +254,10 @@ export default function ServicesPage() {
             await addDoc(collection(db, 'services'), {
                 ...newService,
                 userId: user.uid, 
-                createdAt: Timestamp.now(),
+                createdAt: serverTimestamp(),
             });
-            // No need to manually update state, onSnapshot will do it.
             toast({ title: 'Servicio guardado' });
-            setNewService({ name: '', description: '', price: '' }); 
+            setNewService({ name: '', description: '', price: '', currency: 'DOP' }); 
         } catch (error) {
             console.error('Error al añadir servicio:', error);
             toast({ variant: 'destructive', title: 'Error al guardar', description: 'Revisa las reglas de seguridad de Firestore.' });
@@ -272,8 +276,8 @@ export default function ServicesPage() {
                 name: editingService.name,
                 description: editingService.description,
                 price: editingService.price,
+                currency: editingService.currency,
             });
-            // No need to manually update state, onSnapshot will do it.
             toast({ title: 'Servicio actualizado' });
             setIsEditDialogOpen(false);
             setEditingService(null);
@@ -288,7 +292,6 @@ export default function ServicesPage() {
     const handleDeleteService = async (serviceId: string) => {
          try {
             await deleteDoc(doc(db, 'services', serviceId));
-            // No need to manually update state, onSnapshot will do it.
             toast({ title: 'Servicio eliminado' });
         } catch (error) {
             console.error('Error al eliminar servicio:', error);
@@ -322,20 +325,29 @@ export default function ServicesPage() {
         try {
             const serviceSource = isProviderInitiated ? myServices : providersWithServices.find(p => p.providerId === partyId)?.services || [];
             const selectedServiceDetails = serviceSource.filter(s => servicesToRequestIds.includes(s.id));
-            
-            const total = selectedServiceDetails.reduce((acc, service) => {
+
+            // Helper to format currency
+            const formatCurrency = (value: number, currency: string) => {
+                return new Intl.NumberFormat('en-US', {
+                    style: 'currency',
+                    currency: currency,
+                }).format(value);
+            };
+
+            const totalsByCurrency: { [key: string]: number } = selectedServiceDetails.reduce((acc, service) => {
                 const price = parseFloat(service.price.replace(/[^0-9.-]+/g,""));
-                return isNaN(price) ? acc : acc + price;
-            }, 0) || 0;
+                if (!isNaN(price)) {
+                    acc[service.currency] = (acc[service.currency] || 0) + price;
+                }
+                return acc;
+            }, {} as { [key: string]: number });
             
+            const totalString = Object.entries(totalsByCurrency)
+                .map(([currency, total]) => formatCurrency(total, currency))
+                .join(' + ');
+
             let clientDocId;
             if(isProviderInitiated) {
-                const clientRecord = myClients.find(c => c.id === partyId);
-                // This is tricky. The `partyId` from the select is the client document ID from the `clients` collection.
-                // We need the actual UID of the client. Let's assume the `clients` collection doc ID is the user's UID.
-                // This is a common pattern but might be fragile.
-                // A better data model would store the client's UID in the client document.
-                // For now, let's assume the `myClients` list provides the user ID as `id`.
                 const clientsQuery = query(collection(db, 'clients'), where('__name__', '==', partyId), limit(1));
                 const clientSnap = await getDocs(clientsQuery);
                 if(clientSnap.empty || !clientSnap.docs[0].data().userId) {
@@ -352,14 +364,14 @@ export default function ServicesPage() {
                 clientName: isProviderInitiated ? partyName : userData.name,
                 providerId: isProviderInitiated ? user.uid : partyId,
                 providerName: isProviderInitiated ? userData.name : partyName,
-                services: selectedServiceDetails.map(({ id, name, price }) => ({ id, name, price })),
+                services: selectedServiceDetails.map(({ id, name, price, currency }) => ({ id, name, price, currency })),
                 status: 'Pendiente',
                 createdAt: Timestamp.now(),
                 lastUpdate: Timestamp.now(),
                 financials: {
-                    total: `$${total.toFixed(2)}`,
-                    paid: '$0.00',
-                    due: `$${total.toFixed(2)}`
+                    total: totalString || 'N/A',
+                    paid: Object.keys(totalsByCurrency).length > 0 ? formatCurrency(0, Object.keys(totalsByCurrency)[0]) : 'N/A',
+                    due: totalString || 'N/A'
                 }
             };
             
@@ -424,7 +436,7 @@ export default function ServicesPage() {
                                             checked={(selectedServices[selectedClient] || []).includes(service.id)}
                                         />
                                         <label htmlFor={`service-provider-${service.id}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                            {service.name} ({service.price})
+                                            {service.name} ({service.price} {service.currency})
                                         </label>
                                     </div>
                                 )) : (
@@ -458,9 +470,26 @@ export default function ServicesPage() {
                                 <Label htmlFor="description">Descripción</Label>
                                 <Textarea id="description" name="description" value={newService.description} onChange={handleInputChange} disabled={saving} />
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="price">Precio</Label>
-                                <Input id="price" name="price" value={newService.price} onChange={handleInputChange} required disabled={saving} />
+                            <div className="grid grid-cols-3 gap-2">
+                                <div className="space-y-2 col-span-2">
+                                    <Label htmlFor="price">Precio</Label>
+                                    <div className="relative">
+                                        <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                        <Input id="price" name="price" type="number" value={newService.price} onChange={handleInputChange} required disabled={saving} className="pl-8"/>
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="currency">Moneda</Label>
+                                    <Select name="currency" value={newService.currency} onValueChange={handleCurrencyChange} required disabled={saving}>
+                                        <SelectTrigger>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="DOP">DOP</SelectItem>
+                                            <SelectItem value="USD">USD</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
                         </CardContent>
                         <CardFooter>
@@ -493,7 +522,7 @@ export default function ServicesPage() {
                                     <TableRow key={service.id}>
                                         <TableCell className="font-medium">{service.name}</TableCell>
                                         <TableCell className="hidden md:table-cell text-muted-foreground">{service.description}</TableCell>
-                                        <TableCell className="text-right">{service.price}</TableCell>
+                                        <TableCell className="text-right">{service.price} {service.currency}</TableCell>
                                         <TableCell className="text-right">
                                             <AlertDialog>
                                                 <DropdownMenu>
@@ -585,7 +614,7 @@ export default function ServicesPage() {
                                                     </TableCell>
                                                     <TableCell className="font-medium">{service.name}</TableCell>
                                                     <TableCell className="text-muted-foreground">{service.description}</TableCell>
-                                                    <TableCell className="text-right">{service.price}</TableCell>
+                                                    <TableCell className="text-right">{service.price} {service.currency}</TableCell>
                                                 </TableRow>
                                             ))}
                                         </TableBody>
@@ -650,9 +679,26 @@ export default function ServicesPage() {
                                     <Label htmlFor="edit-description">Descripción</Label>
                                     <Textarea id="edit-description" name="description" value={editingService.description} onChange={handleEditInputChange} disabled={saving} />
                                 </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="edit-price">Precio / Tarifa</Label>
-                                    <Input id="edit-price" name="price" value={editingService.price} onChange={handleEditInputChange} required disabled={saving} />
+                                <div className="grid grid-cols-3 gap-2">
+                                    <div className="space-y-2 col-span-2">
+                                        <Label htmlFor="edit-price">Precio</Label>
+                                        <div className="relative">
+                                            <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                            <Input id="edit-price" name="price" type="number" value={editingService.price} onChange={handleEditInputChange} required disabled={saving} className="pl-8"/>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="edit-currency">Moneda</Label>
+                                        <Select name="currency" value={editingService.currency} onValueChange={handleEditCurrencyChange} required disabled={saving}>
+                                            <SelectTrigger>
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="DOP">DOP</SelectItem>
+                                                <SelectItem value="USD">USD</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
                                 </div>
                             </div>
                             <DialogFooter>
