@@ -19,6 +19,23 @@ import {
   TableBody,
   TableCell,
 } from '@/components/ui/table';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { MoreHorizontal, PlusCircle, UserPlus, Users, Loader2, Star, Trash2 } from 'lucide-react';
@@ -114,6 +131,23 @@ const ClientsTab = ({ user }: { user: User | null }) => {
             setSaving(false);
         }
     }
+    
+    const handleDeleteClient = async (clientId: string) => {
+        try {
+            await deleteDoc(doc(db, 'clients', clientId));
+            toast({
+                title: 'Cliente Eliminado',
+                description: 'El cliente ha sido eliminado de tus registros.',
+            });
+        } catch (error) {
+            console.error('Error al eliminar cliente:', error);
+            toast({
+                variant: 'destructive',
+                title: 'Error al eliminar',
+                description: 'No se pudo eliminar el cliente. Revisa los permisos de Firestore.'
+            });
+        }
+    };
 
     return (
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
@@ -125,7 +159,7 @@ const ClientsTab = ({ user }: { user: User | null }) => {
                             <CardTitle>Añadir Nuevo Cliente</CardTitle>
                         </div>
                         <CardDescription>
-                            Registra un cliente. Si luego se registra con el mismo teléfono, se vincularán.
+                            Registra a un cliente. Si luego se registra con el mismo teléfono, se vincularán.
                         </CardDescription>
                     </CardHeader>
                     <form onSubmit={handleAddClient}>
@@ -208,10 +242,39 @@ const ClientsTab = ({ user }: { user: User | null }) => {
                                                 <span className="text-sm text-muted-foreground">Invitado</span>
                                             }
                                         </TableCell>
-                                        <TableCell>
-                                            <Button variant="ghost" size="icon">
-                                                <MoreHorizontal className="h-4 w-4" />
-                                            </Button>
+                                        <TableCell className="text-right">
+                                           <AlertDialog>
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="icon">
+                                                            <MoreHorizontal className="h-4 w-4" />
+                                                            <span className="sr-only">Abrir menú</span>
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        <AlertDialogTrigger asChild>
+                                                            <DropdownMenuItem className="text-destructive focus:text-destructive">
+                                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                                Eliminar
+                                                            </DropdownMenuItem>
+                                                        </AlertDialogTrigger>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                                <AlertDialogContent>
+                                                    <AlertDialogHeader>
+                                                        <AlertDialogTitle>¿Confirmas la eliminación?</AlertDialogTitle>
+                                                        <AlertDialogDescription>
+                                                            Esta acción es permanente y no se puede deshacer. Se eliminará el registro del cliente.
+                                                        </AlertDialogDescription>
+                                                    </AlertDialogHeader>
+                                                    <AlertDialogFooter>
+                                                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                                        <AlertDialogAction onClick={() => handleDeleteClient(client.id)} className="bg-destructive hover:bg-destructive/90">
+                                                            Sí, eliminar
+                                                        </AlertDialogAction>
+                                                    </AlertDialogFooter>
+                                                </AlertDialogContent>
+                                            </AlertDialog>
                                         </TableCell>
                                     </TableRow>
                                 )) : (
