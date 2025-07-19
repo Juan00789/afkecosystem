@@ -1,7 +1,8 @@
+
 // Import the functions you need from the SDKs you need
 import { initializeApp, getApps, getApp, type FirebaseOptions } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
-import { initializeAuth, getAuth, browserLocalPersistence, type Auth } from "firebase/auth";
+import { initializeAuth, type Auth, getAuth } from "firebase/auth";
 import { getStorage } from "firebase/storage";
 import { firebaseConfig as importedConfig } from './firebase-config';
 
@@ -14,16 +15,23 @@ if (!firebaseConfig || !firebaseConfig.apiKey || firebaseConfig.apiKey.includes(
 
 // Initialize Firebase safely
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+const db = getFirestore(app);
+const storage = getStorage(app);
 
-// Initialize Auth and export it for use in other parts of the app
-// This singleton instance will be used across the app
-const auth = getAuth(app);
-
-// This function can be used to get the auth instance, ensuring it's initialized.
+// This function can be used to get the auth instance, ensuring it's initialized correctly for the client.
+let auth: Auth;
 export const getFirebaseAuth = () => {
+    if (typeof window === 'undefined') {
+        return getAuth(app); 
+    }
+    
+    if (!auth) {
+        const { browserLocalPersistence } = require("firebase/auth");
+        auth = initializeAuth(app, {
+          persistence: browserLocalPersistence,
+        });
+    }
     return auth;
 };
 
-
-export const db = getFirestore(app);
-export const storage = getStorage(app);
+export { db, storage };
