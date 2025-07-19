@@ -42,7 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const newProfile: UserProfile = {
         uid: firebaseUser.uid,
         email: firebaseUser.email || '',
-        displayName: firebaseUser.displayName || '',
+        displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'New User',
         photoURL: firebaseUser.photoURL || '',
         phoneNumber: firebaseUser.phoneNumber || '',
       };
