@@ -1,3 +1,4 @@
+
 'use client';
 import { useEffect, useState, useMemo } from 'react';
 import {
@@ -89,27 +90,13 @@ export default function DashboardLayout({
         setActiveRole(newRole);
         const userRef = doc(db, 'users', user.uid);
         await setDoc(userRef, { activeRole: newRole }, { merge: true });
-        router.push('/dashboard');
-        router.refresh();
+        // Instead of router.push, we refresh the page to ensure all data reloads with the new role.
+        window.location.href = '/dashboard';
     }
   };
 
   const navLinks = useMemo(() => {
-      if (activeRole === 'provider') {
-        // Find the index of the clients link
-        const clientsIndex = providerLinks.findIndex(link => link.href === "/dashboard/clients");
-        // If it exists, replace it with the network link
-        if (clientsIndex !== -1) {
-            providerLinks.splice(clientsIndex, 1, { href: "/dashboard/network", icon: <Network />, label: "Red", tooltip: "Red" });
-        } else {
-             // If it doesn't exist (e.g., after first run), ensure network link is there
-            if (!providerLinks.some(link => link.href === "/dashboard/network")) {
-                 providerLinks.splice(1, 0, { href: "/dashboard/network", icon: <Network />, label: "Red", tooltip: "Red" });
-            }
-        }
-        return providerLinks;
-      }
-      return clientLinks;
+      return activeRole === 'provider' ? providerLinks : clientLinks;
   }, [activeRole]);
 
 
