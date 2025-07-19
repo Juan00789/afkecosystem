@@ -100,7 +100,7 @@ export default function PublicProfilePage({ params }: ProfilePageParams) {
                 )}
                  <div className="mt-2 flex justify-center sm:justify-start space-x-4">
                     <Button asChild>
-                        <Link href="/dashboard/cases/create">Create a Case</Link>
+                        <Link href={`/dashboard/cases/create?providerId=${id}`}>Create a Case</Link>
                     </Button>
                      <Button asChild variant="outline">
                         <Link href="/">Back to Home</Link>

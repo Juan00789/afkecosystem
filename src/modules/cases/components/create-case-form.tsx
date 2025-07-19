@@ -7,7 +7,7 @@ import * as z from 'zod';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
 import { collection, query, where, getDocs, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { Suspense } from 'react';
 
 const caseSchema = z.object({
   title: z.string().min(5, 'Title must be at least 5 characters'),
@@ -30,17 +31,32 @@ interface Provider {
   displayName: string;
 }
 
-export function CreateCaseForm() {
+function CreateCaseFormComponent() {
   const { user } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const [providers, setProviders] = useState<Provider[]>([]);
   const [loading, setLoading] = useState(false);
+  const preselectedProviderId = searchParams.get('providerId');
+
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+    setValue,
+  } = useForm<CaseFormData>({
+    resolver: zodResolver(caseSchema),
+    defaultValues: {
+      title: '',
+      description: '',
+      providerId: preselectedProviderId || '',
+    },
+  });
 
   useEffect(() => {
     const fetchProviders = async () => {
       if (!user) return;
-      // Fetch the current user's network (providers they have added)
       const userDocRef = doc(db, 'users', user.uid);
       const userDocSnap = await getDoc(userDocRef);
 
@@ -61,19 +77,12 @@ export function CreateCaseForm() {
     };
     fetchProviders();
   }, [user]);
-
-  const {
-    control,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<CaseFormData>({
-    resolver: zodResolver(caseSchema),
-    defaultValues: {
-      title: '',
-      description: '',
-      providerId: '',
-    },
-  });
+  
+  useEffect(() => {
+    if (preselectedProviderId) {
+      setValue('providerId', preselectedProviderId);
+    }
+  }, [preselectedProviderId, setValue]);
 
   const onSubmit = async (data: CaseFormData) => {
     if (!user) {
@@ -141,7 +150,7 @@ export function CreateCaseForm() {
               name="providerId"
               control={control}
               render={({ field }) => (
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={field.onChange} value={field.value} defaultValue={preselectedProviderId || ""}>
                   <SelectTrigger id="providerId">
                     <SelectValue placeholder="Select a provider..." />
                   </SelectTrigger>
@@ -169,4 +178,13 @@ export function CreateCaseForm() {
       </CardContent>
     </Card>
   );
+}
+
+// Wrap the component in Suspense to use useSearchParams
+export function CreateCaseForm() {
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <CreateCaseFormComponent />
+        </Suspense>
+    );
 }
