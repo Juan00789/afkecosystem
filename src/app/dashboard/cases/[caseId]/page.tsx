@@ -14,10 +14,10 @@ import { Textarea } from "@/components/ui/textarea"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
-import { FileUp, MessageSquare, Paperclip, Loader2, Send, Receipt, Trash2 } from "lucide-react"
+import { FileUp, MessageSquare, Paperclip, Loader2, Send, Receipt } from "lucide-react"
 import Image from "next/image"
 import { db, auth } from "@/lib/firebase";
-import { collection, addDoc, query, orderBy, onSnapshot, Timestamp, doc, getDoc, DocumentData, serverTimestamp, updateDoc, deleteDoc, writeBatch, getDocs } from "firebase/firestore";
+import { collection, addDoc, query, orderBy, onSnapshot, Timestamp, doc, getDoc, DocumentData, serverTimestamp, updateDoc } from "firebase/firestore";
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from 'date-fns';
@@ -33,17 +33,6 @@ import {
   DialogTrigger,
   DialogClose
 } from "@/components/ui/dialog"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
 import Link from "next/link";
 
 const WhatsAppIcon = () => (
@@ -256,41 +245,6 @@ export default function CaseDetailsPage() {
         }
     };
 
-    const handleDeleteCase = async () => {
-        if (!user || !caseData || userData.activeRole !== 'provider') return;
-
-        setSaving(true);
-        try {
-            const caseRef = doc(db, 'cases', caseId);
-            const commentsRef = collection(db, 'cases', caseId, 'comments');
-            
-            const commentsSnapshot = await getDocs(commentsRef);
-            const batch = writeBatch(db);
-            commentsSnapshot.forEach((doc) => {
-                batch.delete(doc.ref);
-            });
-            await batch.commit();
-
-            await deleteDoc(caseRef);
-
-            toast({
-                title: "Caso eliminado",
-                description: "El caso y todos sus comentarios han sido eliminados.",
-            });
-
-            router.push('/dashboard/cases');
-
-        } catch (error) {
-             console.error('Error al eliminar el caso:', error);
-            toast({
-                variant: 'destructive',
-                title: 'Error al eliminar',
-                description: 'No se pudo eliminar el caso. Inténtalo de nuevo.',
-            });
-        } finally {
-            setSaving(false);
-        }
-    };
 
     if (loading || !caseData) {
         return (
@@ -310,31 +264,6 @@ export default function CaseDetailsPage() {
                         <CardTitle>Línea de Tiempo del Caso</CardTitle>
                         <CardDescription>Historial de actividad y comunicaciones.</CardDescription>
                     </div>
-                     {userData.activeRole === 'provider' && (
-                        <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <Button variant="destructive" size="sm" disabled={saving}>
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    Cancelar Caso
-                                </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle>¿Estás absolutamente seguro?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        Esta acción no se puede deshacer. Se eliminará permanentemente este caso y todos sus mensajes.
-                                    </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel disabled={saving}>No, mantener</AlertDialogCancel>
-                                    <AlertDialogAction onClick={handleDeleteCase} disabled={saving}>
-                                        {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                        Sí, eliminar caso
-                                    </AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
-                    )}
                 </CardHeader>
                 <CardContent className="space-y-6">
                     {!comments.length && (
