@@ -12,11 +12,10 @@ import {
   PlusCircle,
   Users,
   Briefcase,
-  Handshake,
   BookOpen,
   FileText,
-  CandlestickChart,
-  Heart,
+  ShoppingBag,
+  HandCoins,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -26,46 +25,40 @@ interface DashboardOverviewProps {
 
 const modules = [
   {
-    icon: <Handshake className="h-8 w-8 text-primary" />,
-    title: 'Broki',
-    description: 'Conecta con talentos y colabora.',
-    href: '/dashboard/broki',
-  },
-  {
-    icon: <Heart className="h-8 w-8 text-primary" />,
-    title: 'Moneda',
-    description: 'Mide tu reputación y confianza.',
-    href: '/dashboard/moneda',
+    icon: <ShoppingBag className="h-8 w-8 text-primary" />,
+    title: 'Marketplace',
+    description: 'Encuentra y ofrece servicios locales.',
+    href: '/dashboard/marketplace',
   },
   {
     icon: <BookOpen className="h-8 w-8 text-primary" />,
-    title: 'Contenido',
-    description: 'Explora la memoria del ecosistema.',
-    href: '/dashboard/contenido',
+    title: 'Cursos Exprés',
+    description: 'Aprende habilidades esenciales.',
+    href: '/dashboard/cursos',
+  },
+  {
+    icon: <HandCoins className="h-8 w-8 text-primary" />,
+    title: 'Microcréditos',
+    description: 'Financia tu próximo proyecto.',
+    href: '/dashboard/creditos',
   },
   {
     icon: <Users className="h-8 w-8 text-primary" />,
-    title: 'Network',
-    description: 'Gestiona tus clientes y proveedores.',
-    href: '/dashboard/network',
+    title: 'Mentorías',
+    description: 'Conecta con expertos y comparte.',
+    href: '/dashboard/mentorias',
   },
   {
     icon: <Briefcase className="h-8 w-8 text-primary" />,
-    title: 'Services',
-    description: 'Define los servicios que ofreces.',
-    href: '/dashboard/services',
+    title: 'Network',
+    description: 'Gestiona tus clientes y proveedores.',
+    href: '/dashboard/network',
   },
   {
     icon: <FileText className="h-8 w-8 text-primary" />,
     title: 'Quotes',
     description: 'Genera cotizaciones con IA.',
     href: '/dashboard/quotes',
-  },
-  {
-    icon: <CandlestickChart className="h-8 w-8 text-primary" />,
-    title: 'Binance',
-    description: 'Integra pagos con cripto.',
-    href: '/dashboard/binance',
   },
 ];
 
@@ -147,8 +140,8 @@ export function DashboardOverview({ userId }: DashboardOverviewProps) {
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-            <h1 className="text-3xl font-bold">Super Panel</h1>
-            <p className="text-muted-foreground">Tu centro de control en AFKEcosystem.</p>
+            <h1 className="text-3xl font-bold">Panel Personal</h1>
+            <p className="text-muted-foreground">Sigue tu progreso y oportunidades en tiempo real.</p>
         </div>
         <Button asChild>
           <Link href="/dashboard/cases/create">
@@ -157,15 +150,15 @@ export function DashboardOverview({ userId }: DashboardOverviewProps) {
         </Button>
       </div>
 
-       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
           {modules.map((module) => (
               <Link href={module.href} key={module.title}>
-                <Card className="h-full transition-transform duration-300 hover:-translate-y-1 hover:shadow-xl">
-                  <CardHeader>
-                        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 mb-3">
+                <Card className="h-full transition-transform duration-300 hover:-translate-y-1 hover:shadow-xl bg-card hover:bg-card/80">
+                  <CardHeader className="items-center text-center">
+                        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 mb-3">
                             {module.icon}
                         </div>
-                        <CardTitle className="text-center text-primary">{module.title}</CardTitle>
+                        <CardTitle className="text-primary">{module.title}</CardTitle>
                   </CardHeader>
                   <CardContent>
                         <p className="text-sm text-center text-muted-foreground">{module.description}</p>

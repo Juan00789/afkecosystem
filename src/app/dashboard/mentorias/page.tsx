@@ -1,12 +1,12 @@
-// src/app/dashboard/moneda/page.tsx
+// src/app/dashboard/mentorias/page.tsx
 'use client';
 
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Users } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-export default function MonedaPage() {
+export default function MentoriasPage() {
   return (
     <div className="container mx-auto max-w-4xl p-4">
       <div className="mb-6">
@@ -20,17 +20,22 @@ export default function MonedaPage() {
 
       <Card className="text-center">
         <CardHeader>
+           <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 mb-4">
+            <Users className="h-10 w-10 text-primary" />
+          </div>
           <CardTitle className="text-4xl font-extrabold tracking-tight text-primary">
-            Moneda
+            Mentorías y Foros
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="mx-auto max-w-2xl text-lg leading-relaxed text-muted-foreground">
-            La reputación aquí es valor.<br />
-            Cada acción positiva, cada ayuda, cada conexión genuina, fortalece tu presencia.<br /><br />
-            Este módulo medirá el impacto emocional y colaborativo.<br />
-            No se trata de acumular, sino de construir confianza.<br /><br />
-            Tu Moneda es el reflejo de tu contribución al ecosistema.
+            Nadie emprende en solitario. La experiencia compartida es el atajo hacia el éxito.
+            <br /><br />
+            Conecta con mentores que ya han recorrido el camino y participa en foros de discusión para resolver dudas, encontrar socios y validar tus ideas.
+            <br /><br />
+            <span className="font-semibold text-foreground">
+              Próximamente: Agenda una mentoría y únete a la conversación.
+            </span>
           </p>
         </CardContent>
       </Card>

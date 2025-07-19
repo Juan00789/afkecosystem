@@ -7,10 +7,10 @@ import {
   Briefcase,
   FileText,
   Settings,
-  CandlestickChart,
-  Handshake,
+  ShoppingBag,
   BookOpen,
-  Heart,
+  HandCoins,
+  Rocket
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -23,13 +23,12 @@ import {
 
 const navLinks = [
   { href: '/dashboard', label: 'Dashboard', icon: Home },
-  { href: '/dashboard/broki', label: 'Broki', icon: Handshake },
-  { href: '/dashboard/moneda', label: 'Moneda', icon: Heart },
-  { href: '/dashboard/contenido', label: 'Contenido', icon: BookOpen },
-  { href: '/dashboard/network', label: 'Network', icon: Users },
-  { href: '/dashboard/services', label: 'Services', icon: Briefcase },
+  { href: '/dashboard/marketplace', label: 'Marketplace', icon: ShoppingBag },
+  { href: '/dashboard/cursos', label: 'Cursos', icon: BookOpen },
+  { href: '/dashboard/creditos', label: 'Créditos', icon: HandCoins },
+  { href: '/dashboard/mentorias', label: 'Mentorías', icon: Users },
+  { href: '/dashboard/network', label: 'Network', icon: Briefcase },
   { href: '/dashboard/quotes', label: 'Quotes', icon: FileText },
-  { href: '/dashboard/binance', label: 'Binance', icon: CandlestickChart },
 ];
 
 const bottomLinks = [
@@ -73,7 +72,7 @@ export function Sidebar() {
             href="/dashboard"
             className="group flex h-9 w-9 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:h-8 md:w-8 md:text-base"
           >
-            <Briefcase className="h-4 w-4 transition-all group-hover:scale-110" />
+            <Rocket className="h-4 w-4 transition-all group-hover:scale-110" />
             <span className="sr-only">AFKEcosystem</span>
           </Link>
           {navLinks.map(renderLink)}

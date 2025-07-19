@@ -4,25 +4,25 @@
 
 @layer base {
   :root {
-    --background: 222.2 84% 4.9%;
+    --background: 215 41% 15%; /* Azul profundo */
     --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
+    --card: 215 41% 20%;
     --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
+    --popover: 215 41% 15%;
     --popover-foreground: 210 40% 98%;
-    --primary: 0 100% 38%; /* #C10000 */
-    --primary-foreground: 210 40% 98%;
-    --secondary: 217.2 32.6% 17.5%;
+    --primary: 45 85% 55%; /* Dorado cálido */
+    --primary-foreground: 215 41% 15%;
+    --secondary: 145 50% 45%; /* Verde esperanza */
     --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
+    --muted: 215 41% 25%;
     --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
+    --accent: 145 50% 35%;
     --accent-foreground: 210 40% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 0 100% 38%;
+    --border: 215 41% 25%;
+    --input: 215 41% 25%;
+    --ring: 45 85% 55%;
     --radius: 0.5rem;
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
@@ -30,45 +30,45 @@
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
 
-    --sidebar-background: 222.2 84% 4.9%;
+    --sidebar-background: 215 41% 15%;
     --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 0 100% 38%;
-    --sidebar-primary-foreground: 210 40% 98%;
-    --sidebar-accent: 217.2 32.6% 17.5%;
+    --sidebar-primary: 45 85% 55%;
+    --sidebar-primary-foreground: 215 41% 15%;
+    --sidebar-accent: 145 50% 35%;
     --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 217.2 32.6% 17.5%;
-    --sidebar-ring: 0 100% 38%;
+    --sidebar-border: 215 41% 25%;
+    --sidebar-ring: 45 85% 55%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
+    --background: 215 41% 15%; /* Azul profundo */
     --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
+    --card: 215 41% 20%;
     --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
+    --popover: 215 41% 15%;
     --popover-foreground: 210 40% 98%;
-    --primary: 0 100% 38%; /* #C10000 */
-    --primary-foreground: 210 40% 98%;
-    --secondary: 217.2 32.6% 17.5%;
+    --primary: 45 85% 55%; /* Dorado cálido */
+    --primary-foreground: 215 41% 15%;
+    --secondary: 145 50% 45%; /* Verde esperanza */
     --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
+    --muted: 215 41% 25%;
     --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
+    --accent: 145 50% 35%;
     --accent-foreground: 210 40% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 0 100% 38%;
+    --border: 215 41% 25%;
+    --input: 215 41% 25%;
+    --ring: 45 85% 55%;
 
-    --sidebar-background: 222.2 84% 4.9%;
+    --sidebar-background: 215 41% 15%;
     --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 0 100% 38%;
-    --sidebar-primary-foreground: 210 40% 98%;
-    --sidebar-accent: 217.2 32.6% 17.5%;
+    --sidebar-primary: 45 85% 55%;
+    --sidebar-primary-foreground: 215 41% 15%;
+    --sidebar-accent: 145 50% 35%;
     --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 217.2 32.6% 17.5%;
-    --sidebar-ring: 0 100% 38%;
+    --sidebar-border: 215 41% 25%;
+    --sidebar-ring: 45 85% 55%;
   }
 }
 

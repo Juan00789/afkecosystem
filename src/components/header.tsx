@@ -11,10 +11,10 @@ import {
   Settings,
   LogOut,
   Menu,
-  CandlestickChart,
-  Handshake,
+  ShoppingBag,
   BookOpen,
-  Heart,
+  HandCoins,
+  Rocket
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -42,13 +42,12 @@ export function Header({}: HeaderProps) {
 
   const navLinks = [
     { href: '/dashboard', label: 'Dashboard', icon: Home },
-    { href: '/dashboard/broki', label: 'Broki', icon: Handshake },
-    { href: '/dashboard/moneda', label: 'Moneda', icon: Heart },
-    { href: '/dashboard/contenido', label: 'Contenido', icon: BookOpen },
-    { href: '/dashboard/network', label: 'Network', icon: Users },
-    { href: '/dashboard/services', label: 'Services', icon: Briefcase },
+    { href: '/dashboard/marketplace', label: 'Marketplace', icon: ShoppingBag },
+    { href: '/dashboard/cursos', label: 'Cursos', icon: BookOpen },
+    { href: '/dashboard/creditos', label: 'Créditos', icon: HandCoins },
+    { href: '/dashboard/mentorias', label: 'Mentorías', icon: Users },
+    { href: '/dashboard/network', label: 'Network', icon: Briefcase },
     { href: '/dashboard/quotes', label: 'Quotes', icon: FileText },
-    { href: '/dashboard/binance', label: 'Binance', icon: CandlestickChart },
     { href: '/dashboard/profile', label: 'Settings', icon: Settings },
   ];
 
@@ -67,7 +66,7 @@ export function Header({}: HeaderProps) {
               href="#"
               className="group flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:text-base"
             >
-              <Briefcase className="h-5 w-5 transition-all group-hover:scale-110" />
+              <Rocket className="h-5 w-5 transition-all group-hover:scale-110" />
               <span className="sr-only">AFKEcosystem</span>
             </Link>
             {navLinks.map(({ href, label, icon: Icon }) => (

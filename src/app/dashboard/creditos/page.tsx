@@ -1,12 +1,12 @@
-// src/app/dashboard/contenido/page.tsx
+// src/app/dashboard/creditos/page.tsx
 'use client';
 
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, HandCoins } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-export default function ContenidoPage() {
+export default function CreditosPage() {
   return (
     <div className="container mx-auto max-w-4xl p-4">
       <div className="mb-6">
@@ -20,20 +20,22 @@ export default function ContenidoPage() {
 
       <Card className="text-center">
         <CardHeader>
+          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 mb-4">
+            <HandCoins className="h-10 w-10 text-primary" />
+          </div>
           <CardTitle className="text-4xl font-extrabold tracking-tight text-primary">
-            Contenido
+            Microcréditos
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="mx-auto max-w-2xl text-lg leading-relaxed text-muted-foreground">
-            Cada imagen aquí tiene historia.<br />
-            Cada texto guarda propósito.<br />
-            Cada archivo representa lo que somos.<br /><br />
-
-            Este módulo será la memoria visual y narrativa del sistema.<br />
-            No es decoración —es testimonio.<br /><br />
-
-            Bienvenido al archivo emocional de AFKEcosystem.
+            El acceso a financiamiento no debería ser una barrera. Aquí, la comunidad invierte en la comunidad.
+            <br /><br />
+            Este módulo permitirá la creación de fondos colaborativos para apoyar proyectos emergentes, validando ideas y fortaleciendo la confianza.
+            <br /><br />
+            <span className="font-semibold text-foreground">
+              Próximamente: Solicita y contribuye a microcréditos para hacer realidad nuevas ideas.
+            </span>
           </p>
         </CardContent>
       </Card>
