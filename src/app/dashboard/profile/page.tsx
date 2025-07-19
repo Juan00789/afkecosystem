@@ -19,7 +19,7 @@ import { onAuthStateChanged, type User, updateProfile } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Camera, Copy, Globe } from 'lucide-react';
+import { Loader2, Camera, Copy, Globe, Key } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -37,6 +37,7 @@ export default function ProfilePage() {
     phoneNumber: '',
     photoURL: '',
     website: '',
+    uid: ''
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -55,6 +56,7 @@ export default function ProfilePage() {
             phoneNumber: userData.phoneNumber || '',
             photoURL: userData.photoURL || currentUser.photoURL || '',
             website: userData.website || '',
+            uid: currentUser.uid,
           });
 
         } catch (error) {
@@ -159,16 +161,13 @@ export default function ProfilePage() {
   };
 
   const handleCopyId = () => {
-    if (!form.phoneNumber) {
-        toast({ variant: 'destructive', title: 'Falta el número de teléfono', description: 'Por favor, guarda un número de teléfono para poder copiarlo.' });
-        return;
-    };
-    navigator.clipboard.writeText(form.phoneNumber);
+    if (!form.uid) return;
+    navigator.clipboard.writeText(form.uid);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
     toast({
-        title: 'Número de Teléfono Copiado',
-        description: 'Tu número de teléfono ha sido copiado al portapapeles.',
+        title: 'ID de Proveedor Copiado',
+        description: 'Tu ID ha sido copiado al portapapeles.',
     });
   }
 
@@ -218,23 +217,21 @@ export default function ProfilePage() {
             </div>
             
             <div className="space-y-2">
-                <Label htmlFor="phoneNumber">Tu ID Conectable (Número de Teléfono)</Label>
+                <Label htmlFor="uid">Tu ID de Proveedor (UID)</Label>
                 <div className="flex gap-2">
                     <Input 
-                        id="phoneNumber"
-                        name="phoneNumber"
-                        type="tel"
-                        value={form.phoneNumber}
-                        onChange={handleInputChange}
-                        placeholder="Ej: 829-123-4567"
-                        disabled={saving || uploading}
-                        required
+                        id="uid"
+                        name="uid"
+                        type="text"
+                        value={form.uid}
+                        disabled
+                        readOnly
                     />
-                    <Button type="button" variant="outline" size="icon" onClick={handleCopyId} disabled={copied || !form.phoneNumber}>
+                    <Button type="button" variant="outline" size="icon" onClick={handleCopyId} disabled={copied || !form.uid}>
                         <Copy className="h-4 w-4" />
                     </Button>
                 </div>
-                <p className="text-xs text-muted-foreground">Este número es tu identificador público. Compártelo con otros para que puedan conectarse contigo.</p>
+                <p className="text-xs text-muted-foreground">Este es tu identificador público. Compártelo con clientes para que puedan conectarse contigo.</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -256,6 +253,19 @@ export default function ProfilePage() {
                         type="email"
                         value={form.email}
                         disabled
+                    />
+                </div>
+                 <div className="space-y-2">
+                    <Label htmlFor="phoneNumber">Número de Teléfono</Label>
+                    <Input 
+                        id="phoneNumber"
+                        name="phoneNumber"
+                        type="tel"
+                        value={form.phoneNumber}
+                        onChange={handleInputChange}
+                        placeholder="Ej: 829-123-4567"
+                        disabled={saving || uploading}
+                        required
                     />
                 </div>
                 <div className="space-y-2">

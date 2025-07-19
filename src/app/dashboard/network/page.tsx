@@ -227,7 +227,7 @@ interface Provider {
 const ProvidersTab = ({ user }: { user: User | null }) => {
     const { toast } = useToast();
     const [providers, setProviders] = useState<Provider[]>([]);
-    const [newProviderPhone, setNewProviderPhone] = useState('');
+    const [newProviderId, setNewProviderId] = useState('');
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
@@ -275,50 +275,44 @@ const ProvidersTab = ({ user }: { user: User | null }) => {
 
     const handleAddProvider = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!user || !newProviderPhone.trim()) return;
+        if (!user || !newProviderId.trim()) return;
 
         setSaving(true);
+        const providerIdToAdd = newProviderId.trim();
+
         try {
-            // 1. Find the provider by phone number
-            const userQuery = query(
-                collection(db, "users"),
-                where("phoneNumber", "==", newProviderPhone.trim()),
-                limit(1)
-            );
-            const userSnapshot = await getDocs(userQuery);
-
-            if (userSnapshot.empty) {
-                toast({ variant: 'destructive', title: 'Proveedor no encontrado', description: 'El número de teléfono no corresponde a ningún usuario.' });
+             // 1. Prevent adding self
+            if (providerIdToAdd === user.uid) {
+                toast({ variant: 'destructive', title: 'Acción no permitida', description: 'No puedes añadirte a ti mismo como proveedor.' });
                 setSaving(false);
                 return;
             }
 
-            const providerData = userSnapshot.docs[0];
-            const providerId = providerData.id;
-
-            // 2. Prevent adding self
-            if (providerId === user.uid) {
-                toast({ variant: 'destructive', title: 'No puedes añadirte a ti mismo' });
+            // 2. Prevent adding duplicates
+            if (providers.some(p => p.providerId === providerIdToAdd)) {
+                toast({ variant: 'destructive', title: 'Proveedor duplicado', description: 'Este proveedor ya está en tu red.' });
                 setSaving(false);
                 return;
             }
 
-            // 3. Prevent adding duplicates
-            if (providers.some(p => p.providerId === providerId)) {
-                toast({ variant: 'destructive', title: 'Este proveedor ya está en tu red' });
+            // 3. Check if the provider exists
+            const providerDoc = await getDoc(doc(db, "users", providerIdToAdd));
+            if (!providerDoc.exists()) {
+                toast({ variant: 'destructive', title: 'Proveedor no encontrado', description: 'El ID proporcionado no corresponde a ningún usuario.' });
                 setSaving(false);
                 return;
             }
+
 
             // 4. Add the provider to the client's subcollection
             await addDoc(collection(db, 'users', user.uid, 'providers'), {
-                providerId: providerId,
+                providerId: providerIdToAdd,
                 status: 'potential',
                 createdAt: serverTimestamp(),
             });
 
             toast({ title: 'Proveedor añadido a tu red' });
-            setNewProviderPhone('');
+            setNewProviderId('');
         } catch (error) {
             console.error('Error al añadir proveedor:', error);
             toast({ variant: 'destructive', title: 'Error al añadir proveedor' });
@@ -377,23 +371,22 @@ const ProvidersTab = ({ user }: { user: User | null }) => {
                             <CardTitle>Añadir Proveedor a tu Red</CardTitle>
                         </div>
                         <CardDescription>
-                            Ingresa el número de teléfono de un proveedor para añadirlo a tus contactos.
+                            Ingresa el ID único de un proveedor para añadirlo a tus contactos.
                         </CardDescription>
                     </CardHeader>
                     <form onSubmit={handleAddProvider}>
                         <CardContent className="space-y-2">
-                            <Label htmlFor="providerPhone">Teléfono del Proveedor</Label>
+                            <Label htmlFor="providerId">ID del Proveedor</Label>
                             <Input 
-                                id="providerPhone" 
-                                placeholder="Ej: 829-123-4567" 
-                                value={newProviderPhone} 
-                                onChange={(e) => setNewProviderPhone(e.target.value)} 
+                                id="providerId" 
+                                placeholder="Pega el ID del proveedor aquí" 
+                                value={newProviderId} 
+                                onChange={(e) => setNewProviderId(e.target.value)} 
                                 disabled={saving}
-                                type="tel"
                             />
                         </CardContent>
                         <CardFooter>
-                            <Button type="submit" disabled={saving || !newProviderPhone.trim()}>
+                            <Button type="submit" disabled={saving || !newProviderId.trim()}>
                                 {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Añadir a la Red
                             </Button>
