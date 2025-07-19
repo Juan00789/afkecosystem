@@ -21,7 +21,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowUpRight, PlusCircle, Briefcase, Users, UserCheck, Activity, Loader2, MessageSquare, ExternalLink, ListTodo } from "lucide-react";
+import { ArrowUpRight, PlusCircle, Briefcase, Users, UserCheck, Activity, Loader2, MessageSquare, ExternalLink, ListTodo, UserCog } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from 'next/navigation';
 import { db, getFirebaseAuth } from '@/lib/firebase';
@@ -90,13 +90,13 @@ export default function DashboardPage() {
           setUserData(userDoc.data());
         }
       }
-      setLoading(false); 
+      // setLoading(false); // Loading will be set to false inside the main data fetch useEffect
     });
     return () => unsubscribeAuth();
   }, []);
   
    useEffect(() => {
-    if (!user || !userData.activeRole) {
+    if (!user) {
         setCases([]);
         setActivities([]);
         setClientCount(0);
@@ -108,102 +108,104 @@ export default function DashboardPage() {
 
     setLoading(true);
 
-    // Fetch cases as a client
-    const casesAsClientQuery = query(
-      collection(db, 'cases'),
-      where('clientId', '==', user.uid)
-    );
-    const unsubscribeCasesAsClient = onSnapshot(casesAsClientQuery, async (clientSnapshot) => {
-        const clientCases = clientSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Case));
+    const casesAsClientQuery = query(collection(db, 'cases'), where('clientId', '==', user.uid));
+    const casesAsProviderQuery = query(collection(db, 'cases'), where('providerId', '==', user.uid));
+    
+    const fetchAndCombineCases = async () => {
+        try {
+            const [clientSnapshot, providerSnapshot] = await Promise.all([
+                getDocs(casesAsClientQuery),
+                getDocs(casesAsProviderQuery)
+            ]);
 
-        // Fetch cases as a provider
-        const casesAsProviderQuery = query(
-            collection(db, 'cases'),
-            where('providerId', '==', user.uid)
-        );
-        const providerSnapshot = await getDocs(casesAsProviderQuery);
-        const providerCases = providerSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Case));
+            const clientCases = clientSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Case));
+            const providerCases = providerSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Case));
 
-        // Combine, deduplicate, and sort
-        const allCasesMap = new Map<string, Case>();
-        [...clientCases, ...providerCases].forEach(c => allCasesMap.set(c.id, c));
-        const combinedCases = Array.from(allCasesMap.values()).sort((a, b) => b.lastUpdate.toMillis() - a.lastUpdate.toMillis());
+            const allCasesMap = new Map<string, Case>();
+            [...clientCases, ...providerCases].forEach(c => allCasesMap.set(c.id, c));
+            const combinedCases = Array.from(allCasesMap.values()).sort((a, b) => b.lastUpdate.toMillis() - a.lastUpdate.toMillis());
 
-        // Fetch last comments for combined cases
-        const casesWithComments = await Promise.all(combinedCases.map(async (caseItem) => {
-             const commentsQuery = query(
-                collection(db, 'cases', caseItem.id, 'comments'),
-                orderBy('createdAt', 'desc'),
-                limit(1)
-            );
-            const commentsSnapshot = await getDocs(commentsQuery);
-            if (!commentsSnapshot.empty) {
-                const lastCommentDoc = commentsSnapshot.docs[0];
-                caseItem.lastComment = {
-                    text: lastCommentDoc.data().text,
-                    userName: lastCommentDoc.data().userName,
-                    createdAt: lastCommentDoc.data().createdAt,
-                };
-            }
-            return caseItem;
-        }));
+            const casesWithComments = await Promise.all(combinedCases.map(async (caseItem) => {
+                const commentsQuery = query(
+                    collection(db, 'cases', caseItem.id, 'comments'),
+                    orderBy('createdAt', 'desc'),
+                    limit(1)
+                );
+                const commentsSnapshot = await getDocs(commentsQuery);
+                if (!commentsSnapshot.empty) {
+                    const lastCommentDoc = commentsSnapshot.docs[0];
+                    caseItem.lastComment = {
+                        text: lastCommentDoc.data().text,
+                        userName: lastCommentDoc.data().userName,
+                        createdAt: lastCommentDoc.data().createdAt,
+                    };
+                }
+                return caseItem;
+            }));
+            
+            setCases(casesWithComments);
 
-        setCases(casesWithComments);
+            // Derive activities
+            const activityData = casesWithComments
+                .filter(c => c.lastComment)
+                .map(c => ({
+                    id: c.id + c.lastComment!.createdAt.seconds,
+                    caseId: c.id,
+                    text: c.lastComment!.text,
+                    userName: c.lastComment!.userName,
+                    createdAt: c.lastComment!.createdAt,
+                }))
+                .sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis())
+                .slice(0, 5);
+            setActivities(activityData);
 
-        // Derive activities
-        const activityData = casesWithComments
-            .filter(c => c.lastComment)
-            .map(c => ({
-                id: c.id + c.lastComment!.createdAt.seconds,
-                caseId: c.id,
-                text: c.lastComment!.text,
-                userName: c.lastComment!.userName,
-                createdAt: c.lastComment!.createdAt,
-            }))
-            .sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis())
-            .slice(0, 5);
-        setActivities(activityData);
+        } catch (error) {
+            console.error("Error fetching dashboard cases: ", error);
+            toast({ variant: 'destructive', title: 'Error al cargar casos', description: 'Por favor, intenta recargar la página.' });
+        } finally {
+            setLoading(false);
+        }
+    };
 
-        // Set provider count from unique providers in cases
-        setProviderCount(new Set(combinedCases.map(c => c.providerId)).size);
+    fetchAndCombineCases();
 
-        setLoading(false);
-    }, (error) => {
-        console.error("Error fetching dashboard cases: ", error);
-        toast({ variant: 'destructive', title: 'Error al cargar casos', description: 'Por favor, intenta recargar la página.' });
-        setLoading(false);
+    // Fetch clients
+    const clientsQuery = query(collection(db, 'clients'), where('providerId', '==', user.uid));
+    const unsubscribeClients = onSnapshot(clientsQuery, (snapshot) => {
+        setClientCount(snapshot.size);
     });
 
-    // Fetch clients (for providers)
-    let unsubscribeClients = () => {};
-    if (userData.activeRole === 'provider') {
-        const clientsQuery = query(collection(db, 'clients'), where('providerId', '==', user.uid));
-        unsubscribeClients = onSnapshot(clientsQuery, (snapshot) => {
-            setClientCount(snapshot.size);
-        });
-    }
+    // Fetch providers
+     const providersQuery = query(collection(db, 'users', user.uid, 'providers'));
+     const unsubscribeProviders = onSnapshot(providersQuery, (snapshot) => {
+        setProviderCount(snapshot.size);
+     });
 
-    // Fetch services (for providers)
-    let unsubscribeServices = () => {};
-     if (userData.activeRole === 'provider') {
-        const servicesQuery = query(collection(db, 'services'), where('userId', '==', user.uid));
-        unsubscribeServices = onSnapshot(servicesQuery, (snapshot) => {
-            setServices(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Service)));
-        });
-    }
+    // Fetch services
+    const servicesQuery = query(collection(db, 'services'), where('userId', '==', user.uid));
+    const unsubscribeServices = onSnapshot(servicesQuery, (snapshot) => {
+        setServices(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Service)));
+    });
+
+
+    // Real-time updates for cases
+    const unsubscribeCasesClient = onSnapshot(casesAsClientQuery, () => fetchAndCombineCases());
+    const unsubscribeCasesProvider = onSnapshot(casesAsProviderQuery, () => fetchAndCombineCases());
+
 
     return () => {
-      unsubscribeCasesAsClient();
       unsubscribeClients();
+      unsubscribeProviders();
       unsubscribeServices();
+      unsubscribeCasesClient();
+      unsubscribeCasesProvider();
     };
-  }, [user, userData.activeRole, toast]);
+  }, [user, toast]);
 
 
   const activeCases = cases.filter(c => c.status === 'En Progreso');
   const activeCasesCount = activeCases.length;
   const nextTaskCase = activeCases.length > 0 ? activeCases[0] : null;
-  const isProvider = userData.activeRole === 'provider';
 
   const getStatusVariant = (status: string) => {
     switch (status) {
@@ -230,9 +232,9 @@ export default function DashboardPage() {
                 <p className="text-muted-foreground">Bienvenido de nuevo a tu centro de mando.</p>
             </div>
             <Button asChild>
-                <Link href={isProvider ? "/dashboard/services" : "/dashboard/explore"}>
+                <Link href="/dashboard/network">
                     <PlusCircle className="mr-2 h-4 w-4" />
-                    {isProvider ? "Crear/Ver Servicios" : "Explorar Servicios"}
+                    Añadir a tu Red
                 </Link>
             </Button>
         </div>
@@ -249,40 +251,22 @@ export default function DashboardPage() {
             </Card>
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">{isProvider ? 'Tus Clientes' : 'Tus Proveedores'}</CardTitle>
+                    <CardTitle className="text-sm font-medium">Tus Clientes</CardTitle>
                     <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">{isProvider ? clientCount : providerCount}</div>
-                    <p className="text-xs text-muted-foreground">{isProvider ? 'Clientes registrados en tu red.' : 'Proveedores con casos activos.'}</p>
+                    <div className="text-2xl font-bold">{clientCount}</div>
+                    <p className="text-xs text-muted-foreground">Clientes registrados en tu red.</p>
                 </CardContent>
             </Card>
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Tu Próxima Tarea</CardTitle>
-                    <UserCheck className="h-4 w-4 text-muted-foreground" />
+                    <CardTitle className="text-sm font-medium">Tus Proveedores</CardTitle>
+                    <UserCog className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    {nextTaskCase ? (
-                        <>
-                            <div className="text-xl font-bold truncate">
-                               {isProvider ? nextTaskCase.clientName : nextTaskCase.providerName}
-                            </div>
-                            <div className="text-xs text-muted-foreground flex items-center">
-                                <p className="truncate flex-1">Revisar caso: {nextTaskCase.services.map(s => s.name).join(', ')}</p>
-                                <Button variant="ghost" size="icon" className="h-6 w-6 ml-1" asChild>
-                                    <Link href={`/dashboard/cases/${nextTaskCase.id}`}>
-                                        <ExternalLink className="h-4 w-4"/>
-                                    </Link>
-                                </Button>
-                            </div>
-                        </>
-                    ) : (
-                        <>
-                            <div className="text-xl font-bold">¡Todo en orden!</div>
-                            <p className="text-xs text-muted-foreground">No hay acciones urgentes por ahora.</p>
-                        </>
-                    )}
+                    <div className="text-2xl font-bold">{providerCount}</div>
+                    <p className="text-xs text-muted-foreground">Proveedores conectados en tu red.</p>
                 </CardContent>
             </Card>
             <Card>
@@ -308,7 +292,7 @@ export default function DashboardPage() {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>{isProvider ? 'Cliente' : 'Proveedor'}</TableHead>
+                                <TableHead>Contraparte</TableHead>
                                 <TableHead>Servicio(s)</TableHead>
                                 <TableHead>Estado</TableHead>
                                 <TableHead>Última Actualización</TableHead>
@@ -317,14 +301,18 @@ export default function DashboardPage() {
                         </TableHeader>
                         <TableBody>
                             {cases.length > 0 ? (
-                              cases.slice(0, 5).map((c) => (
+                              cases.slice(0, 5).map((c) => {
+                                const isProviderInCase = c.providerId === user?.uid;
+                                const otherPartyName = isProviderInCase ? c.clientName : c.providerName;
+
+                                return (
                                 <TableRow key={c.id}>
                                     <TableCell>
                                         <div className="flex items-center gap-3">
                                             <Avatar className="h-9 w-9">
-                                                <AvatarFallback>{isProvider ? c.clientName.charAt(0) : c.providerName.charAt(0)}</AvatarFallback>
+                                                <AvatarFallback>{otherPartyName.charAt(0)}</AvatarFallback>
                                             </Avatar>
-                                            <div className="font-medium">{isProvider ? c.clientName : c.providerName}</div>
+                                            <div className="font-medium">{otherPartyName}</div>
                                         </div>
                                     </TableCell>
                                     <TableCell>{c.services?.map(s => s.name).join(', ') || 'N/A'}</TableCell>
@@ -340,7 +328,8 @@ export default function DashboardPage() {
                                       </Button>
                                     </TableCell>
                                 </TableRow>
-                              ))
+                                )
+                              })
                             ) : (
                                 <TableRow>
                                     <TableCell colSpan={5} className="h-24 text-center">
@@ -392,45 +381,43 @@ export default function DashboardPage() {
                 </CardFooter>
             </Card>
         </div>
-         {isProvider && (
-            <div className="grid grid-cols-1 pt-4">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Tus Servicios Ofrecidos</CardTitle>
-                        <CardDescription>
-                            Un vistazo rápido a tu catálogo de servicios actual.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        {services.length > 0 ? (
-                             <ul className="space-y-2">
-                                {services.slice(0, 5).map(service => (
-                                    <li key={service.id} className="flex justify-between items-center p-2 rounded-md bg-secondary">
-                                        <span className="font-medium">{service.name}</span>
-                                        <span className="text-muted-foreground">{service.price} {service.currency}</span>
-                                    </li>
-                                ))}
-                            </ul>
-                        ) : (
-                             <div className="flex flex-col items-center justify-center h-40 border-2 border-dashed rounded-md text-center">
-                                <ListTodo className="h-8 w-8 text-muted-foreground mb-2" />
-                                <p className="text-muted-foreground">Aún no has añadido ningún servicio.</p>
-                                <Button variant="link" asChild className="mt-1">
-                                    <Link href="/dashboard/services">Crea tu primer servicio</Link>
-                                </Button>
-                            </div>
-                        )}
-                    </CardContent>
-                    <CardFooter className="justify-end">
-                         <Button variant="link" asChild>
-                            <Link href="/dashboard/services">
-                                Gestionar todos los servicios <ArrowUpRight className="ml-2 h-4 w-4" />
-                            </Link>
-                        </Button>
-                    </CardFooter>
-                </Card>
-            </div>
-        )}
+        <div className="grid grid-cols-1 pt-4">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Tus Servicios Ofrecidos</CardTitle>
+                    <CardDescription>
+                        Un vistazo rápido a tu catálogo de servicios actual.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {services.length > 0 ? (
+                         <ul className="space-y-2">
+                            {services.slice(0, 5).map(service => (
+                                <li key={service.id} className="flex justify-between items-center p-2 rounded-md bg-secondary">
+                                    <span className="font-medium">{service.name}</span>
+                                    <span className="text-muted-foreground">{service.price} {service.currency}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                         <div className="flex flex-col items-center justify-center h-40 border-2 border-dashed rounded-md text-center">
+                            <ListTodo className="h-8 w-8 text-muted-foreground mb-2" />
+                            <p className="text-muted-foreground">Aún no has añadido ningún servicio.</p>
+                            <Button variant="link" asChild className="mt-1">
+                                <Link href="/dashboard/services">Crea tu primer servicio</Link>
+                            </Button>
+                        </div>
+                    )}
+                </CardContent>
+                <CardFooter className="justify-end">
+                     <Button variant="link" asChild>
+                        <Link href="/dashboard/services">
+                            Gestionar todos los servicios <ArrowUpRight className="ml-2 h-4 w-4" />
+                        </Link>
+                    </Button>
+                </CardFooter>
+            </Card>
+        </div>
     </div>
   );
 }

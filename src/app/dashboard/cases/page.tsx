@@ -58,21 +58,12 @@ const getStatusVariant = (status: string) => {
 export default function CasesPage() {
   const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
-  const [userData, setUserData] = useState<{ activeRole?: string }>({});
   const [cases, setCases] = useState<Case[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const auth = getFirebaseAuth();
-    const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
-      setUser(currentUser);
-      if (currentUser) {
-        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
-        if (userDoc.exists()) {
-          setUserData(userDoc.data());
-        }
-      }
-    });
+    const unsubscribeAuth = onAuthStateChanged(auth, setUser);
     return () => unsubscribeAuth();
   }, []);
 
@@ -105,7 +96,6 @@ export default function CasesPage() {
     return () => unsubscribe();
   }, [user, toast]);
   
-  const isProvider = userData.activeRole === 'provider';
 
   return (
     <main className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -115,7 +105,7 @@ export default function CasesPage() {
             <p className="text-muted-foreground">Administra los casos y solicitudes de tus clientes.</p>
         </div>
         <Button asChild>
-          <Link href="/dashboard/services">
+          <Link href="/dashboard/explore">
             <PlusCircle className="mr-2 h-4 w-4" />
             Crear Nuevo Caso
           </Link>
@@ -138,7 +128,7 @@ export default function CasesPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>{isProvider ? 'Cliente' : 'Proveedor'}</TableHead>
+                  <TableHead>Contraparte</TableHead>
                   <TableHead>Servicio(s)</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead className="hidden md:table-cell">Última Actualización</TableHead>
@@ -147,15 +137,18 @@ export default function CasesPage() {
               </TableHeader>
               <TableBody>
                 {cases.length > 0 ? (
-                  cases.map((c) => (
+                  cases.map((c) => {
+                    const isProviderInCase = c.providerId === user?.uid;
+                    const otherPartyName = isProviderInCase ? c.clientName : c.providerName;
+                    
+                    return (
                     <TableRow key={c.id}>
                        <TableCell>
                           <div className="flex items-center gap-3">
                               <Avatar className="h-9 w-9">
-                                  {/* Future: fetch avatar from user profile */}
-                                  <AvatarFallback>{isProvider ? c.clientName.charAt(0) : c.providerName.charAt(0)}</AvatarFallback>
+                                  <AvatarFallback>{otherPartyName.charAt(0)}</AvatarFallback>
                               </Avatar>
-                              <span className="font-medium">{isProvider ? c.clientName : c.providerName}</span>
+                              <span className="font-medium">{otherPartyName}</span>
                           </div>
                       </TableCell>
                       <TableCell>{c.services?.map(s => s.name).join(', ') || 'N/A'}</TableCell>
@@ -173,7 +166,7 @@ export default function CasesPage() {
                         </Button>
                       </TableCell>
                     </TableRow>
-                  ))
+                  )})
                 ) : (
                   <TableRow>
                     <TableCell colSpan={5} className="h-24 text-center">

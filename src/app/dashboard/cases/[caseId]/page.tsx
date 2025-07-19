@@ -91,7 +91,7 @@ export default function CaseDetailsPage() {
     const caseId = params.caseId as string;
     const { toast } = useToast();
     const [user, setUser] = useState<User | null>(null);
-    const [userData, setUserData] = useState({ name: 'Tú', fallback: 'T', activeRole: 'provider' });
+    const [userData, setUserData] = useState({ name: 'Tú', fallback: 'T' });
     const [caseData, setCaseData] = useState<CaseData | null>(null);
     const [comments, setComments] = useState<Comment[]>([]);
     const [newComment, setNewComment] = useState("");
@@ -114,7 +114,6 @@ export default function CaseDetailsPage() {
                     setUserData({
                         name: data.name || 'Usuario',
                         fallback: (data.name || 'U').charAt(0).toUpperCase(),
-                        activeRole: data.activeRole || 'provider'
                     });
                 }
             }
@@ -123,7 +122,7 @@ export default function CaseDetailsPage() {
     }, []);
 
     useEffect(() => {
-        if (!caseId || !userData.activeRole) return;
+        if (!caseId || !user) return;
 
         setLoading(true);
         const caseDocRef = doc(db, 'cases', caseId);
@@ -132,7 +131,9 @@ export default function CaseDetailsPage() {
             if (docSnap.exists()) {
                 const data = { id: docSnap.id, ...docSnap.data() } as CaseData;
                 
-                const otherPartyId = userData.activeRole === 'client' ? data.providerId : data.clientId;
+                const isProvider = data.providerId === user.uid;
+                const otherPartyId = isProvider ? data.clientId : data.providerId;
+
                 const otherPartyDoc = await getDoc(doc(db, 'users', otherPartyId));
                 if (otherPartyDoc.exists()) {
                     data.otherPartyPhoneNumber = otherPartyDoc.data().phoneNumber;
@@ -164,7 +165,7 @@ export default function CaseDetailsPage() {
             unsubscribeCase();
             unsubscribeComments();
         };
-    }, [caseId, toast, router, userData.activeRole]);
+    }, [caseId, toast, router, user]);
 
     const handleCommentSubmit = async (e: FormEvent) => {
         e.preventDefault();
@@ -300,9 +301,6 @@ export default function CaseDetailsPage() {
             const commentsRef = collection(db, 'cases', caseId, 'comments');
             const commentsSnap = await getDoc(doc(commentsRef));
             
-            // This is incorrect, should query the collection
-            // but for now, we will just delete the case doc
-            
             const caseDocRef = doc(db, 'cases', caseId);
             batch.delete(caseDocRef);
             
@@ -332,7 +330,7 @@ export default function CaseDetailsPage() {
         return caseData.services.map(s => `${s.name} (${s.price} ${s.currency || 'DOP'})`).join(', ');
     };
 
-    if (loading || !caseData) {
+    if (loading || !caseData || !user) {
         return (
             <main className="flex-1 flex items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -340,6 +338,10 @@ export default function CaseDetailsPage() {
         )
     }
 
+    const isUserProviderInCase = user.uid === caseData.providerId;
+    const otherPartyName = isUserProviderInCase ? caseData.clientName : caseData.providerName;
+    const isClientSimulated = !isUserProviderInCase;
+    
   return (
     <main className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="grid gap-4 md:grid-cols-3">
@@ -415,7 +417,7 @@ export default function CaseDetailsPage() {
                         <div className="w-full space-y-2">
                              <Textarea 
                                 placeholder={
-                                    userData.activeRole === 'client' 
+                                    isClientSimulated
                                     ? "Enviar mensaje como desde WhatsApp..." 
                                     : "Escribe un nuevo comentario o actualización..."
                                 }
@@ -424,7 +426,7 @@ export default function CaseDetailsPage() {
                                 disabled={saving}
                             />
                             <div className="flex justify-between items-center">
-                               {userData.activeRole === 'provider' ? (
+                               {isUserProviderInCase ? (
                                     <div className="flex gap-2">
                                         <Button variant="outline" size="sm" type="button" disabled={saving}>
                                             <Paperclip className="mr-2 h-4 w-4" /> Adjuntar
@@ -455,9 +457,9 @@ export default function CaseDetailsPage() {
                                         </Dialog>
                                     </div>
                                ) : ( <div/> ) }
-                                <Button type="submit" disabled={saving || !newComment.trim()} className={userData.activeRole === 'client' ? 'bg-[#25D366] hover:bg-[#1DAE5A] text-white' : ''}>
+                                <Button type="submit" disabled={saving || !newComment.trim()} className={isClientSimulated ? 'bg-[#25D366] hover:bg-[#1DAE5A] text-white' : ''}>
                                     {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    {userData.activeRole === 'client' ? (
+                                    {isClientSimulated ? (
                                        <> <WhatsAppIcon /> <span className="ml-2">Enviar</span></>
                                     ) : (
                                        <> <MessageSquare className="mr-2 h-4 w-4" /> Comentar </>
@@ -498,10 +500,10 @@ export default function CaseDetailsPage() {
                 <CardHeader>
                     <div className="flex items-center gap-4">
                         <Avatar className="h-12 w-12">
-                            <AvatarFallback>{(userData.activeRole === 'provider' ? caseData.clientName : caseData.providerName).charAt(0)}</AvatarFallback>
+                            <AvatarFallback>{otherPartyName.charAt(0)}</AvatarFallback>
                         </Avatar>
                         <div>
-                            <CardTitle>{userData.activeRole === 'provider' ? caseData.clientName : caseData.providerName}</CardTitle>
+                            <CardTitle>{otherPartyName}</CardTitle>
                             <CardDescription>
                                 {renderServiceList()}
                             </CardDescription>

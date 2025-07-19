@@ -21,7 +21,6 @@ import { onAuthStateChanged, type User } from 'firebase/auth';
 import { doc, getDoc, setDoc, collection, query, where, getDocs, writeBatch, serverTimestamp, updateDoc } from "firebase/firestore";
 import { getFirebaseAuth, db } from "@/lib/firebase";
 import { useRouter, usePathname } from 'next/navigation';
-import { RoleSwitcher } from '@/components/role-switcher';
 import Link from 'next/link';
 
 const navLinks = [
@@ -46,7 +45,6 @@ export default function DashboardLayout({
   const [user, setUser] = useState<User | null>(null);
   const [userName, setUserName] = useState('¡Hola!');
   const [loading, setLoading] = useState(true);
-  const [activeRole, setActiveRole] = useState('provider');
 
   useEffect(() => {
     const auth = getFirebaseAuth();
@@ -60,7 +58,6 @@ export default function DashboardLayout({
         if (docSnap.exists()) {
           userData = docSnap.data();
         } else {
-           // This case is for social auth users who might not have a doc yet.
            const name = currentUser.displayName;
            userData = { 
              name: name, 
@@ -73,9 +70,7 @@ export default function DashboardLayout({
         
         const name = userData.name || currentUser.displayName;
         setUserName(name ? `¡Hola, ${name.split(' ')[0]}!` : '¡Hola!');
-        setActiveRole(userData.activeRole || 'provider');
 
-        // Magic Link logic moved here
         if (userData.phoneNumber) {
             await linkPreRegisteredClient(currentUser, userData.phoneNumber);
         }
@@ -89,7 +84,6 @@ export default function DashboardLayout({
   }, [router]);
   
   const linkPreRegisteredClient = async (user: User, phoneNumber: string) => {
-      // Find a client pre-registered with this phone number that hasn't been linked yet
       const clientsQuery = query(
           collection(db, 'clients'), 
           where('phone', '==', phoneNumber),
@@ -99,39 +93,25 @@ export default function DashboardLayout({
 
       if (!querySnapshot.empty) {
           const batch = writeBatch(db);
-          const clientDoc = querySnapshot.docs[0]; // Link the first one found
+          const clientDoc = querySnapshot.docs[0]; 
           const clientData = clientDoc.data();
           const userRef = doc(db, 'users', user.uid);
 
-          // 1. Update the client doc with the new user's UID
           batch.update(clientDoc.ref, { userId: user.uid });
 
-          // 2. Add the provider to the new user's network
           if (clientData.providerId) {
               const providerSubCollectionRef = doc(collection(db, 'users', user.uid, 'providers'));
               batch.set(providerSubCollectionRef, {
                   providerId: clientData.providerId,
-                  status: 'main', // Make them the main provider automatically
+                  status: 'main', 
                   createdAt: serverTimestamp()
               });
-              // 3. Update the user's role to client, since they were invited
               batch.update(userRef, { activeRole: 'client' });
           }
           
           await batch.commit();
-          // Force a reload to reflect the new role and data
           window.location.reload(); 
       }
-  };
-
-
-  const handleRoleChange = async (newRole: string) => {
-    if (user) {
-        setActiveRole(newRole);
-        const userRef = doc(db, 'users', user.uid);
-        await setDoc(userRef, { activeRole: newRole }, { merge: true });
-        window.location.href = '/dashboard';
-    }
   };
 
   if (loading) {
@@ -194,10 +174,6 @@ export default function DashboardLayout({
             <h1 className="text-lg font-semibold md:text-xl">{userName}</h1>
           </div>
           <div className="flex items-center gap-4">
-            <RoleSwitcher 
-                currentRole={activeRole} 
-                onRoleChange={handleRoleChange} 
-             />
             <Button variant="ghost" size="icon" className="rounded-full">
                 <Bell className="h-5 w-5" />
                 <span className="sr-only">Toggle notifications</span>

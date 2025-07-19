@@ -36,6 +36,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import {
+    Tabs,
+    TabsContent,
+    TabsList,
+    TabsTrigger,
+} from "@/components/ui/tabs"
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { MoreHorizontal, PlusCircle, UserPlus, Users, Loader2, Star, Trash2 } from 'lucide-react';
@@ -550,15 +556,9 @@ const ProvidersTab = ({ user }: { user: User | null }) => {
 
 
 // MAIN PAGE COMPONENT
-interface UserData {
-    name?: string;
-    activeRole?: 'provider' | 'client';
-}
-
 export default function NetworkPage() {
     const router = useRouter();
     const [user, setUser] = useState<User | null>(null);
-    const [userData, setUserData] = useState<UserData | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -566,12 +566,6 @@ export default function NetworkPage() {
       const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
         if (currentUser) {
           setUser(currentUser);
-          const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
-          if (userDoc.exists()) {
-              setUserData(userDoc.data() as UserData);
-          } else {
-             router.push('/login');
-          }
         } else {
           router.push('/login');
         }
@@ -580,15 +574,13 @@ export default function NetworkPage() {
       return () => unsubscribeAuth();
     }, [router]);
 
-    if (loading || !user || !userData) {
+    if (loading || !user) {
          return (
              <main className="flex-1 space-y-4 p-4 md:p-8 pt-6 flex items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
              </main>
          )
     }
-    
-    const isProvider = userData.activeRole === 'provider';
 
   return (
     <main className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -599,13 +591,18 @@ export default function NetworkPage() {
             </div>
         </div>
 
-        {isProvider ? (
-            <ClientsTab user={user} />
-        ) : (
-            <ProvidersTab user={user} />
-        )}
+        <Tabs defaultValue="clients" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="clients">Mis Clientes</TabsTrigger>
+                <TabsTrigger value="providers">Mis Proveedores</TabsTrigger>
+            </TabsList>
+            <TabsContent value="clients">
+                <ClientsTab user={user} />
+            </TabsContent>
+            <TabsContent value="providers">
+                 <ProvidersTab user={user} />
+            </TabsContent>
+        </Tabs>
     </main>
   );
 }
-
-    
