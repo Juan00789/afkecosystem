@@ -14,7 +14,8 @@ import {
   ShoppingBag,
   BookOpen,
   HandCoins,
-  Rocket
+  Rocket,
+  MessageSquareText,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -45,7 +46,7 @@ export function Header({}: HeaderProps) {
     { href: '/dashboard/marketplace', label: 'Marketplace', icon: ShoppingBag },
     { href: '/dashboard/cursos', label: 'Cursos', icon: BookOpen },
     { href: '/dashboard/creditos', label: 'Créditos', icon: HandCoins },
-    { href: '/dashboard/mentorias', label: 'Mentorías', icon: Users },
+    { href: '/dashboard/consultorias', label: 'Consultorías', icon: MessageSquareText },
     { href: '/dashboard/network', label: 'Network', icon: Briefcase },
     { href: '/dashboard/quotes', label: 'Quotes', icon: FileText },
     { href: '/dashboard/profile', label: 'Settings', icon: Settings },

@@ -10,7 +10,8 @@ import {
   ShoppingBag,
   BookOpen,
   HandCoins,
-  Rocket
+  Rocket,
+  MessageSquareText,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -26,7 +27,7 @@ const navLinks = [
   { href: '/dashboard/marketplace', label: 'Marketplace', icon: ShoppingBag },
   { href: '/dashboard/cursos', label: 'Cursos', icon: BookOpen },
   { href: '/dashboard/creditos', label: 'Créditos', icon: HandCoins },
-  { href: '/dashboard/mentorias', label: 'Mentorías', icon: Users },
+  { href: '/dashboard/consultorias', label: 'Consultorías', icon: MessageSquareText },
   { href: '/dashboard/network', label: 'Network', icon: Briefcase },
   { href: '/dashboard/quotes', label: 'Quotes', icon: FileText },
 ];

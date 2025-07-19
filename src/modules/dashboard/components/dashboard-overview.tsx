@@ -16,6 +16,7 @@ import {
   FileText,
   ShoppingBag,
   HandCoins,
+  MessageSquareText,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -43,10 +44,10 @@ const modules = [
     href: '/dashboard/creditos',
   },
   {
-    icon: <Users className="h-8 w-8 text-primary" />,
-    title: 'Mentorías',
+    icon: <MessageSquareText className="h-8 w-8 text-primary" />,
+    title: 'Consultorías',
     description: 'Conecta con expertos y comparte.',
-    href: '/dashboard/mentorias',
+    href: '/dashboard/consultorias',
   },
   {
     icon: <Briefcase className="h-8 w-8 text-primary" />,

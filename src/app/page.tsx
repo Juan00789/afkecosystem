@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ShoppingBag, BookOpen, HandCoins, Users, Rocket } from 'lucide-react';
+import { ShoppingBag, BookOpen, HandCoins, MessageSquareText, Rocket } from 'lucide-react';
 
 const modules = [
   {
@@ -25,10 +25,10 @@ const modules = [
     href: '/dashboard/creditos',
   },
   {
-    icon: <Users className="h-8 w-8 text-primary" />,
-    title: 'Mentorías y Foros',
+    icon: <MessageSquareText className="h-8 w-8 text-primary" />,
+    title: 'Consultorías',
     description: 'Conecta con expertos y otros emprendedores para recibir consejos y compartir ideas.',
-    href: '/dashboard/mentorias',
+    href: '/dashboard/consultorias',
   },
 ];
 
