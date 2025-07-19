@@ -2973,3 +2973,245 @@ io.netty.handler.codec.http2.Http2Exception: HTTP/2 client preface string missin
 [debug] [2025-07-19T22:55:28.783Z] Jul 19, 2025 10:55:28 PM com.google.cloud.datastore.emulator.firestore.websocket.WebSocketChannelHandler initChannel
 INFO: Connected to new websocket client
  {"metadata":{"emulator":{"name":"firestore"},"message":"Jul 19, 2025 10:55:28 PM com.google.cloud.datastore.emulator.firestore.websocket.WebSocketChannelHandler initChannel\nINFO: Connected to new websocket client\n"}}
+[debug] [2025-07-19T23:00:06.201Z] Jul 19, 2025 11:00:06 PM io.gapi.emulators.netty.HttpVersionRoutingHandler channelRead
+INFO: Detected non-HTTP/2 connection.
+ {"metadata":{"emulator":{"name":"firestore"},"message":"Jul 19, 2025 11:00:06 PM io.gapi.emulators.netty.HttpVersionRoutingHandler channelRead\nINFO: Detected non-HTTP/2 connection.\n"}}
+[debug] [2025-07-19T23:00:06.520Z] Jul 19, 2025 11:00:06 PM io.grpc.netty.NettyServerTransport notifyTerminated
+INFO: Transport failed
+io.netty.handler.codec.http2.Http2Exception: Unexpected HTTP/1.x request: GET / 
+	at io.netty.handler.codec.http2.Http2Exception.connectionError(Http2Exception.java:107)
+	at io.netty.handler.codec.http2.Http2ConnectionHandler$PrefaceDecoder.readClientPrefaceString(Http2ConnectionHandler.java:315)
+	at io.netty.handler.codec.http2.Http2ConnectionHandler$PrefaceDecoder.decode(Http2ConnectionHandler.java:245)
+	at io.netty.handler.codec.http2.Http2ConnectionHandler.decode(Http2ConnectionHandler.java:451)
+	at io.netty.handler.codec.ByteToMessageDecoder.decodeRemovalReentryProtection(ByteToMessageDecoder.java:530)
+	at io.netty.handler.codec.ByteToMessageDecoder.callDecode(ByteToMessageDecoder.java:469)
+	at io.netty.handler.codec.ByteToMessageDecoder.channelRead(ByteToMessageDecoder.java:290)
+	at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:444)
+	at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:420)
+	at io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java:412)
+	at io.netty.channel.DefaultChannelPipeline$HeadContext.channelRead(DefaultChannelPipeline.java:1407)
+	at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:440)
+	at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:420)
+	at io.netty.channel.DefaultChannelPipeline.fireChannelRead(DefaultChannelPipeline.java:918)
+	at io.netty.channel.nio.AbstractNioByteChannel$NioByteUnsafe.read(AbstractNioByteChannel.java:166)
+	at io.netty.channel.nio.NioEventLoop.processSelectedKey(NioEventLoop.java:788)
+	at io.netty.channel.nio.NioEventLoop.processSelectedKeysOptimized(NioEventLoop.java:724)
+	at io.netty.channel.nio.NioEventLoop.processSelectedKeys(NioEventLoop.java:650)
+	at io.netty.channel.nio.NioEventLoop.run(NioEventLoop.java:562)
+	at io.netty.util.concurrent.SingleThreadEventExecutor$4.run(SingleThreadEventExecutor.java:994)
+	at io.netty.util.internal.ThreadExecutorMap$2.run(ThreadExecutorMap.java:74)
+	at io.netty.util.concurrent.FastThreadLocalRunnable.run(FastThreadLocalRunnable.java:30)
+	at java.base/java.lang.Thread.run(Thread.java:1583)
+
+ {"metadata":{"emulator":{"name":"firestore"},"message":"Jul 19, 2025 11:00:06 PM io.grpc.netty.NettyServerTransport notifyTerminated\nINFO: Transport failed\nio.netty.handler.codec.http2.Http2Exception: Unexpected HTTP/1.x request: GET / \n\tat io.netty.handler.codec.http2.Http2Exception.connectionError(Http2Exception.java:107)\n\tat io.netty.handler.codec.http2.Http2ConnectionHandler$PrefaceDecoder.readClientPrefaceString(Http2ConnectionHandler.java:315)\n\tat io.netty.handler.codec.http2.Http2ConnectionHandler$PrefaceDecoder.decode(Http2ConnectionHandler.java:245)\n\tat io.netty.handler.codec.http2.Http2ConnectionHandler.decode(Http2ConnectionHandler.java:451)\n\tat io.netty.handler.codec.ByteToMessageDecoder.decodeRemovalReentryProtection(ByteToMessageDecoder.java:530)\n\tat io.netty.handler.codec.ByteToMessageDecoder.callDecode(ByteToMessageDecoder.java:469)\n\tat io.netty.handler.codec.ByteToMessageDecoder.channelRead(ByteToMessageDecoder.java:290)\n\tat io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:444)\n\tat io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:420)\n\tat io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java:412)\n\tat io.netty.channel.DefaultChannelPipeline$HeadContext.channelRead(DefaultChannelPipeline.java:1407)\n\tat io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:440)\n\tat io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:420)\n\tat io.netty.channel.DefaultChannelPipeline.fireChannelRead(DefaultChannelPipeline.java:918)\n\tat io.netty.channel.nio.AbstractNioByteChannel$NioByteUnsafe.read(AbstractNioByteChannel.java:166)\n\tat io.netty.channel.nio.NioEventLoop.processSelectedKey(NioEventLoop.java:788)\n\tat io.netty.channel.nio.NioEventLoop.processSelectedKeysOptimized(NioEventLoop.java:724)\n\tat io.netty.channel.nio.NioEventLoop.processSelectedKeys(NioEventLoop.java:650)\n\tat io.netty.channel.nio.NioEventLoop.run(NioEventLoop.java:562)\n\tat io.netty.util.concurrent.SingleThreadEventExecutor$4.run(SingleThreadEventExecutor.java:994)\n\tat io.netty.util.internal.ThreadExecutorMap$2.run(ThreadExecutorMap.java:74)\n\tat io.netty.util.concurrent.FastThreadLocalRunnable.run(FastThreadLocalRunnable.java:30)\n\tat java.base/java.lang.Thread.run(Thread.java:1583)\n\n"}}
+[debug] [2025-07-19T23:00:06.555Z] Jul 19, 2025 11:00:06 PM io.grpc.netty.NettyServerTransport notifyTerminated
+INFO: Transport failed
+io.netty.handler.codec.http2.Http2Exception: HTTP/2 client preface string missing or corrupt. Hex dump for received bytes: 16030105a8010005a40303d5deef07c5e4bf54d1183962b2
+	at io.netty.handler.codec.http2.Http2Exception.connectionError(Http2Exception.java:107)
+	at io.netty.handler.codec.http2.Http2ConnectionHandler$PrefaceDecoder.readClientPrefaceString(Http2ConnectionHandler.java:319)
+	at io.netty.handler.codec.http2.Http2ConnectionHandler$PrefaceDecoder.decode(Http2ConnectionHandler.java:245)
+	at io.netty.handler.codec.http2.Http2ConnectionHandler.decode(Http2ConnectionHandler.java:451)
+	at io.netty.handler.codec.ByteToMessageDecoder.decodeRemovalReentryProtection(ByteToMessageDecoder.java:530)
+	at io.netty.handler.codec.ByteToMessageDecoder.callDecode(ByteToMessageDecoder.java:469)
+	at io.netty.handler.codec.ByteToMessageDecoder.channelRead(ByteToMessageDecoder.java:290)
+	at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:444)
+	at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:420)
+	at io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java:412)
+	at io.netty.channel.DefaultChannelPipeline$HeadContext.channelRead(DefaultChannelPipeline.java:1407)
+	at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:440)
+	at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:420)
+	at io.netty.channel.DefaultChannelPipeline.fireChannelRead(DefaultChannelPipeline.java:918)
+	at io.netty.channel.nio.AbstractNioByteChannel$NioByteUnsafe.read(AbstractNioByteChannel.java:166)
+	at io.netty.channel.nio.NioEventLoop.processSelectedKey(NioEventLoop.java:788)
+	at io.netty.channel.nio.NioEventLoop.processSelectedKeysOptimized(NioEventLoop.java:724)
+	at io.netty.channel.nio.NioEventLoop.processSelectedKeys(NioEventLoop.java:650)
+	at io.netty.channel.nio.NioEventLoop.run(NioEventLoop.java:562)
+	at io.netty.util.concurrent.SingleThreadEventExecutor$4.run(SingleThreadEventExecutor.java:994)
+	at io.netty.util.internal.ThreadExecutorMap$2.run(ThreadExecutorMap.java:74)
+	at io.netty.util.concurrent.FastThreadLocalRunnable.run(FastThreadLocalRunnable.java:30)
+	at java.base/java.lang.Thread.run(Thread.java:1583)
+
+ {"metadata":{"emulator":{"name":"firestore"},"message":"Jul 19, 2025 11:00:06 PM io.grpc.netty.NettyServerTransport notifyTerminated\nINFO: Transport failed\nio.netty.handler.codec.http2.Http2Exception: HTTP/2 client preface string missing or corrupt. Hex dump for received bytes: 16030105a8010005a40303d5deef07c5e4bf54d1183962b2\n\tat io.netty.handler.codec.http2.Http2Exception.connectionError(Http2Exception.java:107)\n\tat io.netty.handler.codec.http2.Http2ConnectionHandler$PrefaceDecoder.readClientPrefaceString(Http2ConnectionHandler.java:319)\n\tat io.netty.handler.codec.http2.Http2ConnectionHandler$PrefaceDecoder.decode(Http2ConnectionHandler.java:245)\n\tat io.netty.handler.codec.http2.Http2ConnectionHandler.decode(Http2ConnectionHandler.java:451)\n\tat io.netty.handler.codec.ByteToMessageDecoder.decodeRemovalReentryProtection(ByteToMessageDecoder.java:530)\n\tat io.netty.handler.codec.ByteToMessageDecoder.callDecode(ByteToMessageDecoder.java:469)\n\tat io.netty.handler.codec.ByteToMessageDecoder.channelRead(ByteToMessageDecoder.java:290)\n\tat io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:444)\n\tat io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:420)\n\tat io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java:412)\n\tat io.netty.channel.DefaultChannelPipeline$HeadContext.channelRead(DefaultChannelPipeline.java:1407)\n\tat io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:440)\n\tat io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:420)\n\tat io.netty.channel.DefaultChannelPipeline.fireChannelRead(DefaultChannelPipeline.java:918)\n\tat io.netty.channel.nio.AbstractNioByteChannel$NioByteUnsafe.read(AbstractNioByteChannel.java:166)\n\tat io.netty.channel.nio.NioEventLoop.processSelectedKey(NioEventLoop.java:788)\n\tat io.netty.channel.nio.NioEventLoop.processSelectedKeysOptimized(NioEventLoop.java:724)\n\tat io.netty.channel.nio.NioEventLoop.processSelectedKeys(NioEventLoop.java:650)\n\tat io.netty.channel.nio.NioEventLoop.run(NioEventLoop.java:562)\n\tat io.netty.util.concurrent.SingleThreadEventExecutor$4.run(SingleThreadEventExecutor.java:994)\n\tat io.netty.util.internal.ThreadExecutorMap$2.run(ThreadExecutorMap.java:74)\n\tat io.netty.util.concurrent.FastThreadLocalRunnable.run(FastThreadLocalRunnable.java:30)\n\tat java.base/java.lang.Thread.run(Thread.java:1583)\n\n"}}
+[debug] [2025-07-19T23:00:06.941Z] Jul 19, 2025 11:00:06 PM com.google.cloud.datastore.emulator.firestore.websocket.WebSocketChannelHandler initChannel
+INFO: Connected to new websocket client
+ {"metadata":{"emulator":{"name":"firestore"},"message":"Jul 19, 2025 11:00:06 PM com.google.cloud.datastore.emulator.firestore.websocket.WebSocketChannelHandler initChannel\nINFO: Connected to new websocket client\n"}}
+[debug] [2025-07-19T23:00:26.086Z] Jul 19, 2025 11:00:26 PM com.google.cloud.datastore.emulator.firestore.websocket.WebSocketChannelHandler initChannel
+INFO: Connected to new websocket client
+ {"metadata":{"emulator":{"name":"firestore"},"message":"Jul 19, 2025 11:00:26 PM com.google.cloud.datastore.emulator.firestore.websocket.WebSocketChannelHandler initChannel\nINFO: Connected to new websocket client\n"}}
+[debug] [2025-07-19T23:04:09.792Z] ----------------------------------------------------------------------
+[debug] [2025-07-19T23:04:09.796Z] Command:       /nix/store/ws50yvm6vzlzf7jzz6n7xh4szddrack1-nodejs-20.19.1/bin/node /nix/store/gv0i9ndcpzjpfi2yr06402kzy90q51ki-firebase-tools-14.10.1/lib/node_modules/firebase-tools/lib/bin/firebase.js init
+[debug] [2025-07-19T23:04:09.797Z] CLI Version:   14.10.1
+[debug] [2025-07-19T23:04:09.797Z] Platform:      linux
+[debug] [2025-07-19T23:04:09.797Z] Node Version:  v20.19.1
+[debug] [2025-07-19T23:04:09.798Z] Time:          Sat Jul 19 2025 23:04:09 GMT+0000 (Coordinated Universal Time)
+[debug] [2025-07-19T23:04:09.798Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2025-07-19T23:04:10.666Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-07-19T23:04:38.769Z] Running auto auth
+[info] 
+     ######## #### ########  ######## ########     ###     ######  ########
+     ##        ##  ##     ## ##       ##     ##  ##   ##  ##       ##
+     ######    ##  ########  ######   ########  #########  ######  ######
+     ##        ##  ##    ##  ##       ##     ## ##     ##       ## ##
+     ##       #### ##     ## ######## ########  ##     ##  ######  ########
+
+You're about to initialize a Firebase project in this directory:
+
+  /home/user/studio
+
+Before we get started, keep in mind:
+
+  * You are initializing within an existing Firebase project directory
+
+[info] 
+=== Project Setup
+[info] 
+[info] First, let's associate this project directory with a Firebase project.
+[info] You can create multiple project aliases by running firebase use --add, 
+[info] but for now we'll just set up a default project.
+[info] 
+[debug] [2025-07-19T23:06:14.217Z] No OAuth tokens found
+[debug] [2025-07-19T23:06:14.245Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects pageSize=100
+[debug] [2025-07-19T23:06:14.687Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects 200
+[debug] [2025-07-19T23:06:14.688Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects [omitted]
+[info] i  Using project afkecosystem (AFKEcosystem) 
+[info] 
+=== Firestore Setup
+[info] i  firestore: ensuring required API firestore.googleapis.com is enabled... 
+[debug] [2025-07-19T23:06:18.760Z] No OAuth tokens found
+[debug] [2025-07-19T23:06:18.761Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/afkecosystem/services/firestore.googleapis.com [none]
+[debug] [2025-07-19T23:06:18.763Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/afkecosystem/services/firestore.googleapis.com x-goog-quota-user=projects/afkecosystem
+[debug] [2025-07-19T23:06:19.150Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/afkecosystem/services/firestore.googleapis.com 200
+[debug] [2025-07-19T23:06:19.150Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/afkecosystem/services/firestore.googleapis.com [omitted]
+[info] ✔  firestore: required API firestore.googleapis.com is enabled 
+[debug] [2025-07-19T23:06:19.167Z] No OAuth tokens found
+[debug] [2025-07-19T23:06:19.168Z] >>> [apiv2][query] GET https://firestore.googleapis.com/v1/projects/afkecosystem/databases [none]
+[debug] [2025-07-19T23:06:19.708Z] <<< [apiv2][status] GET https://firestore.googleapis.com/v1/projects/afkecosystem/databases 200
+[debug] [2025-07-19T23:06:19.710Z] <<< [apiv2][body] GET https://firestore.googleapis.com/v1/projects/afkecosystem/databases {"databases":[{"name":"projects/afkecosystem/databases/(default)","uid":"3f251162-4ad4-4de8-8acb-6789e342cb64","createTime":"2025-07-17T20:57:35.997346Z","updateTime":"2025-07-17T20:57:35.997346Z","locationId":"nam5","type":"FIRESTORE_NATIVE","concurrencyMode":"PESSIMISTIC","versionRetentionPeriod":"3600s","earliestVersionTime":"2025-07-19T22:06:19.697618Z","appEngineIntegrationMode":"DISABLED","keyPrefix":"s","pointInTimeRecoveryEnablement":"POINT_IN_TIME_RECOVERY_DISABLED","deleteProtectionState":"DELETE_PROTECTION_DISABLED","databaseEdition":"STANDARD","freeTier":true,"etag":"IJai59KEyo4DMPDGzdv3xI4D"}]}
+[info] 
+[info] Firestore Security Rules allow you to define how and when to allow
+[info] requests. You can keep these rules in your project directory
+[info] and publish them with firebase deploy.
+[info] 
+[debug] [2025-07-19T23:06:19.715Z] No OAuth tokens found
+[debug] [2025-07-19T23:06:19.719Z] >>> [apiv2][query] GET https://firebaserules.googleapis.com/v1/projects/afkecosystem/releases pageSize=10&pageToken=
+[debug] [2025-07-19T23:06:19.843Z] <<< [apiv2][status] GET https://firebaserules.googleapis.com/v1/projects/afkecosystem/releases 200
+[debug] [2025-07-19T23:06:19.844Z] <<< [apiv2][body] GET https://firebaserules.googleapis.com/v1/projects/afkecosystem/releases {"releases":[{"name":"projects/afkecosystem/releases/cloud.firestore","rulesetName":"projects/afkecosystem/rulesets/91da4ee9-9601-4b2d-9862-b1abc13fcf9f","createTime":"2025-07-17T20:57:43.375497Z","updateTime":"2025-07-19T21:57:29.564007Z"},{"name":"projects/afkecosystem/releases/firebase.storage/afkecosystem.firebasestorage.app","rulesetName":"projects/afkecosystem/rulesets/dbd506a1-0d16-4fde-8977-b9b6c0e93273","createTime":"2025-07-17T20:58:36.870987Z","updateTime":"2025-07-19T21:41:47.389872Z"}]}
+[debug] [2025-07-19T23:06:19.845Z] No OAuth tokens found
+[debug] [2025-07-19T23:06:19.850Z] >>> [apiv2][query] GET https://firebaserules.googleapis.com/v1/projects/afkecosystem/rulesets/91da4ee9-9601-4b2d-9862-b1abc13fcf9f [none]
+[debug] [2025-07-19T23:06:20.003Z] <<< [apiv2][status] GET https://firebaserules.googleapis.com/v1/projects/afkecosystem/rulesets/91da4ee9-9601-4b2d-9862-b1abc13fcf9f 200
+[debug] [2025-07-19T23:06:20.005Z] <<< [apiv2][body] GET https://firebaserules.googleapis.com/v1/projects/afkecosystem/rulesets/91da4ee9-9601-4b2d-9862-b1abc13fcf9f [omitted]
+[info] i  Downloaded the existing Firestore Security Rules from the Firebase console 
+[info] i  Skipping write of firestore.rules 
+[info] 
+[info] Firestore indexes allow you to perform complex queries while
+[info] maintaining performance that scales with the size of the result
+[info] set. You can keep index definitions in your project directory
+[info] and publish them with firebase deploy.
+[info] 
+[debug] [2025-07-19T23:06:23.410Z] No OAuth tokens found
+[debug] [2025-07-19T23:06:23.410Z] No OAuth tokens found
+[debug] [2025-07-19T23:06:23.412Z] >>> [apiv2][query] GET https://firestore.googleapis.com/v1/projects/afkecosystem/databases/(default)/collectionGroups/-/indexes [none]
+[debug] [2025-07-19T23:06:23.417Z] >>> [apiv2][query] GET https://firestore.googleapis.com/v1/projects/afkecosystem/databases/(default)/collectionGroups/-/fields?filter=indexConfig.usesAncestorConfig=false OR ttlConfig:* [none]
+[debug] [2025-07-19T23:06:23.692Z] <<< [apiv2][status] GET https://firestore.googleapis.com/v1/projects/afkecosystem/databases/(default)/collectionGroups/-/indexes 200
+[debug] [2025-07-19T23:06:23.694Z] <<< [apiv2][body] GET https://firestore.googleapis.com/v1/projects/afkecosystem/databases/(default)/collectionGroups/-/indexes {}
+[debug] [2025-07-19T23:06:23.706Z] <<< [apiv2][status] GET https://firestore.googleapis.com/v1/projects/afkecosystem/databases/(default)/collectionGroups/-/fields?filter=indexConfig.usesAncestorConfig=false OR ttlConfig:* 200
+[debug] [2025-07-19T23:06:23.707Z] <<< [apiv2][body] GET https://firestore.googleapis.com/v1/projects/afkecosystem/databases/(default)/collectionGroups/-/fields?filter=indexConfig.usesAncestorConfig=false OR ttlConfig:* {"fields":[{"name":"projects/afkecosystem/databases/(default)/collectionGroups/__default__/fields/*","indexConfig":{"indexes":[{"queryScope":"COLLECTION","fields":[{"fieldPath":"*","order":"ASCENDING"}],"state":"READY"},{"queryScope":"COLLECTION","fields":[{"fieldPath":"*","order":"DESCENDING"}],"state":"READY"},{"queryScope":"COLLECTION","fields":[{"fieldPath":"*","arrayConfig":"CONTAINS"}],"state":"READY"}]}}]}
+[info] i  Downloaded the existing Firestore indexes from the Firebase console 
+[info] i  Skipping write of firestore.indexes.json 
+[info] ✔  Wrote firestore.indexes.json 
+[info] 
+=== Genkit Setup
+[debug] [2025-07-19T23:06:38.280Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-07-19T23:06:38.290Z] > authorizing via signed-in user (afkmulticervices@gmail.com)
+[debug] [2025-07-19T23:06:38.291Z] [iam] checking project afkecosystem for permissions ["firebase.projects.get"]
+[debug] [2025-07-19T23:06:38.302Z] No OAuth tokens found
+[debug] [2025-07-19T23:06:38.303Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/afkecosystem:testIamPermissions [none]
+[debug] [2025-07-19T23:06:38.303Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/afkecosystem:testIamPermissions x-goog-quota-user=projects/afkecosystem
+[debug] [2025-07-19T23:06:38.303Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/afkecosystem:testIamPermissions {"permissions":["firebase.projects.get"]}
+[debug] [2025-07-19T23:06:38.473Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/afkecosystem:testIamPermissions 200
+[debug] [2025-07-19T23:06:38.476Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/afkecosystem:testIamPermissions {"permissions":["firebase.projects.get"]}
+[debug] [2025-07-19T23:06:38.480Z] No OAuth tokens found
+[debug] [2025-07-19T23:06:38.480Z] No OAuth tokens found
+[debug] [2025-07-19T23:06:38.490Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/afkecosystem/services/cloudfunctions.googleapis.com [none]
+[debug] [2025-07-19T23:06:38.490Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/afkecosystem/services/cloudfunctions.googleapis.com x-goog-quota-user=projects/afkecosystem
+[debug] [2025-07-19T23:06:38.501Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/afkecosystem/services/runtimeconfig.googleapis.com [none]
+[debug] [2025-07-19T23:06:38.502Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/afkecosystem/services/runtimeconfig.googleapis.com x-goog-quota-user=projects/afkecosystem
+[debug] [2025-07-19T23:06:38.879Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/afkecosystem/services/runtimeconfig.googleapis.com 200
+[debug] [2025-07-19T23:06:38.882Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/afkecosystem/services/runtimeconfig.googleapis.com [omitted]
+[debug] [2025-07-19T23:06:38.901Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/afkecosystem/services/cloudfunctions.googleapis.com 200
+[debug] [2025-07-19T23:06:38.902Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/afkecosystem/services/cloudfunctions.googleapis.com [omitted]
+[debug] [2025-07-19T23:06:38.903Z] No OAuth tokens found
+[debug] [2025-07-19T23:06:38.907Z] >>> [apiv2][query] POST https://serviceusage.googleapis.com/v1/projects/afkecosystem/services/cloudfunctions.googleapis.com:enable [none]
+[debug] [2025-07-19T23:06:38.907Z] >>> [apiv2][(partial)header] POST https://serviceusage.googleapis.com/v1/projects/afkecosystem/services/cloudfunctions.googleapis.com:enable x-goog-quota-user=projects/afkecosystem
+[debug] [2025-07-19T23:06:39.695Z] <<< [apiv2][status] POST https://serviceusage.googleapis.com/v1/projects/afkecosystem/services/cloudfunctions.googleapis.com:enable 200
+[debug] [2025-07-19T23:06:39.695Z] <<< [apiv2][body] POST https://serviceusage.googleapis.com/v1/projects/afkecosystem/services/cloudfunctions.googleapis.com:enable [omitted]
+[info] Let's create a new codebase for your functions.
+[info] A directory corresponding to the codebase will be created in your project
+[info] with sample code pre-configured.
+
+[info] See https://firebase.google.com/docs/functions/organize-functions for
+[info] more information on organizing your functions using codebases.
+
+[info] Functions can be deployed with firebase deploy.
+
+[info] ✔  Wrote functions/package.json 
+[info] ✔  Wrote functions/.eslintrc.js 
+[info] ✔  Wrote functions/tsconfig.dev.json 
+[info] ✔  Wrote functions/tsconfig.json 
+[info] ✔  Wrote functions/src/index.ts 
+[info] ✔  Wrote functions/.gitignore 
+[info] 
+[info] i  genkit: Installing Genkit CLI version 1.15.1
+ 
+[info] i  aiplatform: ensuring required API aiplatform.googleapis.com is enabled... 
+[debug] [2025-07-19T23:10:52.008Z] No OAuth tokens found
+[debug] [2025-07-19T23:10:52.009Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/afkecosystem/services/aiplatform.googleapis.com [none]
+[debug] [2025-07-19T23:10:52.017Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/afkecosystem/services/aiplatform.googleapis.com x-goog-quota-user=projects/afkecosystem
+[debug] [2025-07-19T23:10:52.766Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/afkecosystem/services/aiplatform.googleapis.com 200
+[debug] [2025-07-19T23:10:52.766Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/afkecosystem/services/aiplatform.googleapis.com [omitted]
+[warn] ⚠  aiplatform: missing required API aiplatform.googleapis.com. Enabling now... 
+[debug] [2025-07-19T23:10:52.767Z] No OAuth tokens found
+[debug] [2025-07-19T23:10:52.774Z] >>> [apiv2][query] POST https://serviceusage.googleapis.com/v1/projects/afkecosystem/services/aiplatform.googleapis.com:enable [none]
+[debug] [2025-07-19T23:10:52.774Z] >>> [apiv2][(partial)header] POST https://serviceusage.googleapis.com/v1/projects/afkecosystem/services/aiplatform.googleapis.com:enable x-goog-quota-user=projects/afkecosystem
+[debug] [2025-07-19T23:10:53.620Z] <<< [apiv2][status] POST https://serviceusage.googleapis.com/v1/projects/afkecosystem/services/aiplatform.googleapis.com:enable 200
+[debug] [2025-07-19T23:10:53.620Z] <<< [apiv2][body] POST https://serviceusage.googleapis.com/v1/projects/afkecosystem/services/aiplatform.googleapis.com:enable [omitted]
+[info] i  genkit: Installing NPM packages for genkit 
+[info] ✔  genkit: Successfully installed NPM packages 
+[info] i  genkit: Updating tsconfig.json 
+[info] ✔  genkit: Successfully updated tsconfig.json 
+[info] i  genkit: Updating package.json 
+[info] ✔  genkit: Successfully updated package.json 
+[info] Telemetry data can be used to monitor and gain insights into your AI features. There may be a cost associated with using this feature. See https://firebase.google.com/docs/genkit/observability/telemetry-collection.
+[info] i  genkit: Generating sample file 
+[info] ✔  genkit: Successfully generated sample file (src/genkit-sample.ts) 
+[info] 
+[info] 
+Login to Google Cloud using:
+[info]     gcloud auth application-default login --project afkecosystem
+
+[info] Then start the Genkit developer experience by running:
+[info]     cd functions && npm run genkit:start
+[info] 
+=== Functions Setup
+[debug] [2025-07-19T23:15:03.558Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-07-19T23:15:03.558Z] > authorizing via signed-in user (afkmulticervices@gmail.com)
+[debug] [2025-07-19T23:15:03.559Z] [iam] checking project afkecosystem for permissions ["firebase.projects.get"]
+[debug] [2025-07-19T23:15:03.559Z] No OAuth tokens found
+[debug] [2025-07-19T23:15:03.559Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/afkecosystem:testIamPermissions [none]
+[debug] [2025-07-19T23:15:03.559Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/afkecosystem:testIamPermissions x-goog-quota-user=projects/afkecosystem
+[debug] [2025-07-19T23:15:03.559Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/afkecosystem:testIamPermissions {"permissions":["firebase.projects.get"]}
+[debug] [2025-07-19T23:15:03.737Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/afkecosystem:testIamPermissions 200
+[debug] [2025-07-19T23:15:03.737Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/afkecosystem:testIamPermissions {"permissions":["firebase.projects.get"]}
+[info] 
+Detected existing codebase(s): default
+
+[info] Let's create a new codebase for your functions.
+[info] A directory corresponding to the codebase will be created in your project
+[info] with sample code pre-configured.
+
+[info] See https://firebase.google.com/docs/functions/organize-functions for
+[info] more information on organizing your functions using codebases.
+
+[info] Functions can be deployed with firebase deploy.
+
