@@ -17,8 +17,11 @@ import {
   ShoppingBag,
   HandCoins,
   MessageSquareText,
+  Rocket,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useAuth } from '@/modules/auth/hooks/use-auth';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 interface DashboardOverviewProps {
   userId: string;
@@ -64,9 +67,14 @@ const modules = [
 ];
 
 export function DashboardOverview({ userId }: DashboardOverviewProps) {
+  const { userProfile } = useAuth();
   const [clientCases, setClientCases] = useState<Case[]>([]);
   const [providerCases, setProviderCases] = useState<Case[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const isProfileIncomplete = useMemo(() => {
+    return !userProfile?.companyName;
+  }, [userProfile]);
 
   useEffect(() => {
     if (!userId) return;
@@ -150,6 +158,22 @@ export function DashboardOverview({ userId }: DashboardOverviewProps) {
           </Link>
         </Button>
       </div>
+      
+      {isProfileIncomplete && (
+        <Alert>
+          <Rocket className="h-4 w-4" />
+          <AlertTitle>¡Bienvenido a AFKEcosystem!</AlertTitle>
+          <AlertDescription>
+            <div className="flex justify-between items-center">
+                <p>Completa tu perfil para que otros puedan encontrarte y empezar a colaborar.</p>
+                <Button asChild>
+                    <Link href="/dashboard/profile">Completar Perfil</Link>
+                </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
 
        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
           {modules.map((module) => (
