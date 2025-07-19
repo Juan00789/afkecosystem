@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Briefcase, Heart, BookOpen, Layers, Sparkles } from 'lucide-react';
-import Image from 'next/image';
 
 const modules = [
   {
@@ -52,21 +51,10 @@ export default function HomePage() {
 
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="relative h-[80vh] min-h-[500px] w-full">
-            <div className="absolute inset-0 z-0">
-                 <Image
-                    src="https://placehold.co/1920x1080.png"
-                    alt="Fondo colaborativo"
-                    layout="fill"
-                    objectFit="cover"
-                    className="opacity-50"
-                    data-ai-hint="collaboration community work"
-                 />
-                 <div className="absolute inset-0 bg-black/50"></div>
-            </div>
-            <div className="relative z-10 flex h-full flex-col items-center justify-center text-center text-white p-4">
-                <h1 className="text-5xl md:text-7xl font-extrabold tracking-tighter">AFKEcosystem</h1>
-                <p className="mt-4 max-w-2xl text-lg md:text-xl text-neutral-200">
+        <section className="bg-secondary/20 py-20 md:py-32">
+            <div className="container mx-auto text-center">
+                <h1 className="text-5xl md:text-7xl font-extrabold tracking-tighter text-primary">AFKEcosystem</h1>
+                <p className="mt-4 max-w-2xl mx-auto text-lg md:text-xl text-muted-foreground">
                     Empoderando a microemprendedores y fortaleciendo comunidades locales.
                 </p>
                 <Button size="lg" className="mt-8" asChild>
@@ -76,7 +64,7 @@ export default function HomePage() {
         </section>
 
         {/* Modules Section */}
-        <section className="py-16 md:py-24 bg-muted/20">
+        <section className="py-16 md:py-24 bg-background">
             <div className="container mx-auto max-w-5xl px-4 md:px-6">
                  <h2 className="text-center text-3xl md:text-4xl font-bold text-primary mb-12">
                     Módulos con propósito
