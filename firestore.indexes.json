@@ -54,11 +54,11 @@
       ]
     },
     {
-      "collectionGroup": "users",
+      "collectionGroup": "services",
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "phoneNumber",
+          "fieldPath": "userId",
           "order": "ASCENDING"
         }
       ]
