@@ -8,6 +8,7 @@ import {
   doc,
   getDoc,
   DocumentData,
+  where,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import Link from 'next/link';
@@ -49,20 +50,24 @@ const fetchProvidersAndServices = async (): Promise<Provider[]> => {
     servicesByProvider[service.providerId].push(service);
     providerIds.add(service.providerId);
   });
+  
+  if (providerIds.size === 0) {
+    return [];
+  }
 
   const providerProfiles: Record<string, ProviderProfile> = {};
-  for (const id of providerIds) {
-    const userDocRef = doc(db, 'users', id);
-    const userDocSnap = await getDoc(userDocRef);
-    if (userDocSnap.exists()) {
-      const userData = userDocSnap.data() as DocumentData;
-      providerProfiles[id] = {
-        fullName: userData.fullName,
-        companyName: userData.companyName,
-        website: userData.website,
-      };
-    }
-  }
+  const usersQuery = query(collection(db, 'users'), where('uid', 'in', Array.from(providerIds)));
+  const usersSnapshot = await getDocs(usersQuery);
+
+  usersSnapshot.forEach((userDoc) => {
+    const userData = userDoc.data() as DocumentData;
+    providerProfiles[userDoc.id] = {
+      fullName: userData.displayName,
+      companyName: userData.companyName,
+      website: userData.website,
+    };
+  });
+
 
   return Array.from(providerIds).map((id) => ({
     id,
@@ -134,6 +139,8 @@ export default function HomePage() {
             </h3>
             {loading ? (
               <p className="text-center">Loading professionals...</p>
+            ) : providers.length === 0 ? (
+                <p className="text-center text-muted-foreground">No professionals have listed services yet.</p>
             ) : (
               <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
                 {providers.map((provider) => (
@@ -171,7 +178,7 @@ export default function HomePage() {
                     </CardContent>
                      <CardFooter>
                       <Button asChild variant="outline" className="w-full">
-                        <Link href={`/dashboard`}>View Profile & Contact</Link>
+                        <Link href={`/profile/${provider.id}`}>View Profile & Contact</Link>
                       </Button>
                     </CardFooter>
                   </Card>
