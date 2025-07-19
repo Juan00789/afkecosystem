@@ -19,7 +19,7 @@ import { onAuthStateChanged, type User, updateProfile } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Camera, Copy, Globe, Key, Building } from 'lucide-react';
+import { Loader2, Camera, Copy, Globe, Key, Building, Landmark } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -38,7 +38,8 @@ export default function ProfilePage() {
     phoneNumber: '',
     photoURL: '',
     website: '',
-    uid: ''
+    uid: '',
+    bankAccount: '',
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -60,6 +61,7 @@ export default function ProfilePage() {
             photoURL: userData.photoURL || currentUser.photoURL || '',
             website: userData.website || '',
             uid: currentUser.uid,
+            bankAccount: userData.bankAccount || '',
           });
 
         } catch (error) {
@@ -143,6 +145,7 @@ export default function ProfilePage() {
         company: form.company,
         phoneNumber: form.phoneNumber,
         website: form.website,
+        bankAccount: form.bankAccount,
       }, { merge: true });
 
       const auth = getFirebaseAuth();
@@ -288,6 +291,21 @@ export default function ProfilePage() {
                         required
                     />
                 </div>
+                 <div className="space-y-2">
+                    <Label htmlFor="bankAccount">Cuenta Bancaria (Opcional)</Label>
+                     <div className="flex items-center gap-2">
+                        <Landmark className="h-5 w-5 text-muted-foreground" />
+                        <Input
+                            id="bankAccount"
+                            name="bankAccount"
+                            type="text"
+                            value={form.bankAccount}
+                            onChange={handleInputChange}
+                            placeholder="Ej: 123-456789-0"
+                            disabled={saving || uploading}
+                        />
+                    </div>
+                </div>
                 <div className="space-y-2">
                     <Label htmlFor="website">Sitio Web / Dominio (Opcional)</Label>
                      <div className="flex items-center gap-2">
@@ -325,5 +343,3 @@ export default function ProfilePage() {
     </main>
   );
 }
-
-    
