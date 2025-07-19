@@ -68,7 +68,7 @@ export function QuotesPage() {
     }
 
     setLoadingClients(true);
-    const clientsQuery = query(collection(db, 'clients'), where('userId', '==', user.uid));
+    const clientsQuery = query(collection(db, 'clients'), where('providerId', '==', user.uid));
     
     const unsubscribe = onSnapshot(clientsQuery, (snapshot) => {
         const clientsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client));
@@ -97,7 +97,7 @@ export function QuotesPage() {
     setForm(prev => ({ ...prev, model: model }));
   };
 
-  const handleClientChange = (clientId: string) => {
+  const handleClientAutocomplete = (clientId: string) => {
     const client = clients.find(c => c.id === clientId);
     if (client) {
       setForm(prev => ({ ...prev, clientName: client.name }));
@@ -106,11 +106,11 @@ export function QuotesPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.clientName) {
+    if (!form.clientName.trim()) {
         toast({
             variant: 'destructive',
-            title: 'Cliente no seleccionado',
-            description: 'Por favor, selecciona un cliente para la cotización.',
+            title: 'Nombre del cliente requerido',
+            description: 'Por favor, introduce el nombre de un cliente.',
         });
         return;
     }
@@ -164,26 +164,36 @@ export function QuotesPage() {
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="clientName">Selecciona un Cliente</Label>
-                   <Select onValueChange={handleClientChange} disabled={loadingClients || clients.length === 0}>
-                      <SelectTrigger>
-                          <SelectValue placeholder={loadingClients ? "Cargando clientes..." : "Elige un cliente"} />
-                      </SelectTrigger>
-                      <SelectContent>
-                          {clients.length > 0 ? (
-                              clients.map((client) => (
-                                  <SelectItem key={client.id} value={client.id}>
-                                      {client.name}
-                                  </SelectItem>
-                              ))
-                          ) : (
-                             <SelectItem value="no-clients" disabled>No hay clientes registrados</SelectItem>
-                          )}
-                      </SelectContent>
-                  </Select>
+                <div className="space-y-2 col-span-2">
+                  <Label htmlFor="clientName">Nombre del Cliente</Label>
+                  <div className="flex gap-2">
+                    <Input 
+                      id="clientName"
+                      name="clientName"
+                      placeholder="Escribe el nombre del cliente"
+                      value={form.clientName}
+                      onChange={handleInputChange}
+                      required
+                    />
+                     <Select onValueChange={handleClientAutocomplete} disabled={loadingClients || clients.length === 0}>
+                        <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder={loadingClients ? "Cargando..." : "Autocompletar"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {clients.length > 0 ? (
+                                clients.map((client) => (
+                                    <SelectItem key={client.id} value={client.id}>
+                                        {client.name}
+                                    </SelectItem>
+                                ))
+                            ) : (
+                               <SelectItem value="no-clients" disabled>No hay clientes</SelectItem>
+                            )}
+                        </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2 col-span-2">
                     <Label htmlFor="model">Modelo de IA</Label>
                     <Select onValueChange={handleModelChange} defaultValue={form.model}>
                         <SelectTrigger>
