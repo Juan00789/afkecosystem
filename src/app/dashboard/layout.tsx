@@ -24,25 +24,17 @@ import { useRouter, usePathname } from 'next/navigation';
 import { RoleSwitcher } from '@/components/role-switcher';
 import Link from 'next/link';
 
-const providerLinks = [
+const navLinks = [
     { href: "/dashboard", icon: <Home />, label: "Dashboard", tooltip: "Dashboard" },
     { href: "/dashboard/network", icon: <Network />, label: "Red", tooltip: "Red" },
     { href: "/dashboard/cases", icon: <Briefcase />, label: "Casos", tooltip: "Casos" },
     { href: "/dashboard/quotes", icon: <FileText />, label: "Cotizaciones", tooltip: "Cotizaciones" },
-    { href: "/dashboard/services", icon: <ListTodo />, label: "Servicios", tooltip: "Servicios" },
+    { href: "/dashboard/services", icon: <ListTodo />, label: "Mis Servicios", tooltip: "Mis Servicios" },
+    { href: "/dashboard/explore", icon: <Search />, label: "Explorar", tooltip: "Explorar" },
     { href: "/dashboard/invoices", icon: <Receipt />, label: "Facturas", tooltip: "Facturas" },
     { href: "/dashboard/billing", icon: <CreditCard />, label: "Contabilidad", tooltip: "Contabilidad" },
     { href: "/dashboard/hidden-game", icon: <BrainCircuit />, label: "Juego Oculto", tooltip: "Juego Oculto" },
 ];
-
-const clientLinks = [
-    { href: "/dashboard", icon: <Home />, label: "Inicio", tooltip: "Inicio" },
-    { href: "/dashboard/services", icon: <Search />, label: "Explorar Servicios", tooltip: "Explorar Servicios" },
-    { href: "/dashboard/network", icon: <Network />, label: "Red", tooltip: "Red" },
-    { href: "/dashboard/cases", icon: <Briefcase />, label: "Mis Casos", tooltip: "Mis Casos" },
-    { href: "/dashboard/invoices", icon: <Receipt />, label: "Mis Facturas", tooltip: "Mis Facturas" },
-];
-
 
 export default function DashboardLayout({
   children,
@@ -94,11 +86,6 @@ export default function DashboardLayout({
         window.location.href = '/dashboard';
     }
   };
-
-  const navLinks = useMemo(() => {
-      return activeRole === 'provider' ? providerLinks : clientLinks;
-  }, [activeRole]);
-
 
   if (loading) {
     return <div className="flex h-screen w-full items-center justify-center">Cargando...</div>;
