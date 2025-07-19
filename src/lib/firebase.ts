@@ -1,7 +1,7 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp, getApps, getApp, type FirebaseOptions } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
-import { initializeAuth, getAuth, browserPopupRedirectResolver, type Auth } from "firebase/auth";
+import { initializeAuth, getAuth, browserLocalPersistence, type Auth } from "firebase/auth";
 import { getStorage } from "firebase/storage";
 import { firebaseConfig as importedConfig } from './firebase-config';
 
@@ -20,8 +20,9 @@ let auth: Auth;
 // This function ensures that Auth is only initialized on the client side.
 export const getFirebaseAuth = () => {
     if (!auth) {
+        // Use browserLocalPersistence which is SSR-friendly
         auth = initializeAuth(app, {
-            persistence: browserPopupRedirectResolver,
+            persistence: browserLocalPersistence,
         });
     }
     return auth;
