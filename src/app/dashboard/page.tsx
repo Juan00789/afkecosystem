@@ -21,7 +21,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowUpRight, PlusCircle, Briefcase, Users, UserCheck, Activity, Loader2, MessageSquare, ExternalLink } from "lucide-react";
+import { ArrowUpRight, PlusCircle, Briefcase, Users, UserCheck, Activity, Loader2, MessageSquare, ExternalLink, ListTodo } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from 'next/navigation';
 import { db, auth } from '@/lib/firebase';
@@ -51,6 +51,13 @@ interface Client {
     id: string;
 }
 
+interface Service {
+    id: string;
+    name: string;
+    price: string;
+    currency: string;
+}
+
 interface ActivityItem {
     id: string;
     caseId: string;
@@ -68,6 +75,7 @@ export default function DashboardPage() {
 
   const [cases, setCases] = useState<Case[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   
   useEffect(() => {
@@ -80,8 +88,6 @@ export default function DashboardPage() {
           setUserData(userDoc.data());
         }
       }
-      // This was the issue: loading state was not being updated correctly.
-      // Now, we ensure loading is set to false after the auth check is complete.
       setLoading(false); 
     });
     return () => unsubscribeAuth();
@@ -89,12 +95,10 @@ export default function DashboardPage() {
   
    useEffect(() => {
     if (!user || !userData.activeRole) {
-        // Don't set loading to true here, let the initial state handle it.
-        // If we set it to true, we need a guaranteed path to set it to false.
-        // The auth hook already handles the initial loading.
         setCases([]);
         setActivities([]);
         setClients([]);
+        setServices([]);
         return;
     }
 
@@ -146,15 +150,19 @@ export default function DashboardPage() {
         
         setActivities(activityData);
 
-        // Fetch clients if the user is a provider
+        // Fetch related data based on role
         if (userData.activeRole === 'provider') {
             const clientsQuery = query(collection(db, 'clients'), where('providerId', '==', user.uid));
+            const servicesQuery = query(collection(db, 'services'), where('userId', '==', user.uid));
             try {
-                const clientsSnapshot = await getDocs(clientsQuery);
+                const [clientsSnapshot, servicesSnapshot] = await Promise.all([
+                    getDocs(clientsQuery),
+                    getDocs(servicesQuery)
+                ]);
                 setClients(clientsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client)));
+                setServices(servicesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Service)));
             } catch (error) {
-                console.error("Error fetching clients:", error);
-                // Optionally toast here if client list is critical
+                console.error("Error fetching provider data:", error);
             }
         }
 
@@ -365,6 +373,47 @@ export default function DashboardPage() {
                 </CardFooter>
             </Card>
         </div>
+         {isProvider && (
+            <div className="grid grid-cols-1 pt-4">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Tus Servicios Ofrecidos</CardTitle>
+                        <CardDescription>
+                            Un vistazo rápido a tu catálogo de servicios actual.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {services.length > 0 ? (
+                             <ul className="space-y-2">
+                                {services.slice(0, 5).map(service => (
+                                    <li key={service.id} className="flex justify-between items-center p-2 rounded-md bg-secondary">
+                                        <span className="font-medium">{service.name}</span>
+                                        <span className="text-muted-foreground">{service.price} {service.currency}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : (
+                             <div className="flex flex-col items-center justify-center h-40 border-2 border-dashed rounded-md text-center">
+                                <ListTodo className="h-8 w-8 text-muted-foreground mb-2" />
+                                <p className="text-muted-foreground">Aún no has añadido ningún servicio.</p>
+                                <Button variant="link" asChild className="mt-1">
+                                    <Link href="/dashboard/services">Crea tu primer servicio</Link>
+                                </Button>
+                            </div>
+                        )}
+                    </CardContent>
+                    <CardFooter className="justify-end">
+                         <Button variant="link" asChild>
+                            <Link href="/dashboard/services">
+                                Gestionar todos los servicios <ArrowUpRight className="ml-2 h-4 w-4" />
+                            </Link>
+                        </Button>
+                    </CardFooter>
+                </Card>
+            </div>
+        )}
     </div>
   );
 }
+
+    
