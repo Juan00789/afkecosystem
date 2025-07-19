@@ -3,11 +3,11 @@
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Briefcase, FileText, Users, Search, Handshake, Loader2, MessageCircle } from 'lucide-react';
+import { ArrowRight, Briefcase, FileText, Users, Search, Handshake, Loader2, MessageCircle, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, query, where, limit } from 'firebase/firestore';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 
@@ -47,7 +47,6 @@ export default function LandingPage() {
   useEffect(() => {
     const fetchProviders = async () => {
       try {
-        // 1. Get all unique provider IDs from the services collection
         const servicesSnapshot = await getDocs(collection(db, 'services'));
         const providerIds = [...new Set(servicesSnapshot.docs.map(doc => doc.data().userId))];
         const allServices = servicesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Service & { userId: string }));
@@ -57,7 +56,6 @@ export default function LandingPage() {
           return;
         }
 
-        // 2. Get user data for those provider IDs
         const usersQuery = query(collection(db, 'users'), where('__name__', 'in', providerIds));
         const usersSnapshot = await getDocs(usersQuery);
         
@@ -190,36 +188,43 @@ export default function LandingPage() {
             ) : providers.length > 0 ? (
               <div className="mt-12 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
                 {providers.map(provider => (
-                  <Card key={provider.id} className="flex flex-col">
-                    <CardHeader className="flex flex-row items-start gap-4">
-                      <Avatar className="h-16 w-16 border">
-                        <AvatarImage src={provider.photoURL} alt={provider.name} data-ai-hint="person face" />
-                        <AvatarFallback>{provider.name.charAt(0)}</AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                        <CardTitle>{provider.name}</CardTitle>
-                        {provider.website && (
-                           <a href={`https://${provider.website}`} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline">
-                            {provider.website}
-                          </a>
-                        )}
-                      </div>
+                  <Card key={provider.id} className="flex flex-col group overflow-hidden">
+                    <CardHeader>
+                        <div className="flex items-start gap-4">
+                            <Avatar className="h-16 w-16 border">
+                                <AvatarImage src={provider.photoURL} alt={provider.name} data-ai-hint="person face" />
+                                <AvatarFallback>{provider.name.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1">
+                                <CardTitle>{provider.name}</CardTitle>
+                                {provider.website && (
+                                <a href={`https://${provider.website.replace(/^https?:\/\//, '')}`} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline flex items-center gap-1">
+                                    {provider.website} <ExternalLink className="h-3 w-3" />
+                                </a>
+                                )}
+                            </div>
+                        </div>
                     </CardHeader>
-                    <CardContent className="flex-1">
-                      <h4 className="font-semibold mb-2">Servicios Ofrecidos:</h4>
+                    <CardContent className="flex-1 space-y-3">
+                      <h4 className="font-semibold text-sm">Servicios Destacados:</h4>
                       {provider.services.length > 0 ? (
-                        <ul className="space-y-1">
-                          {provider.services.slice(0, 4).map(service => (
-                            <li key={service.id} className="flex justify-between items-center text-sm">
-                              <span>{service.name}</span>
-                              <Badge variant="secondary">{service.price} {service.currency}</Badge>
+                        <ul className="space-y-2">
+                          {provider.services.slice(0, 3).map(service => (
+                            <li key={service.id} className="flex justify-between items-center text-sm p-2 bg-secondary/50 rounded-md">
+                              <span className="font-medium text-secondary-foreground">{service.name}</span>
+                              <Badge variant="outline">{service.price} {service.currency}</Badge>
                             </li>
                           ))}
                         </ul>
                       ) : (
-                        <p className="text-sm text-muted-foreground">No hay servicios listados.</p>
+                        <p className="text-sm text-muted-foreground italic">No hay servicios listados.</p>
                       )}
                     </CardContent>
+                    <CardFooter className="bg-muted/50 p-4">
+                        <Button asChild className="w-full">
+                           <Link href="/login">Ver Perfil y Contactar</Link>
+                        </Button>
+                    </CardFooter>
                   </Card>
                 ))}
               </div>
@@ -270,4 +275,5 @@ export default function LandingPage() {
       </footer>
     </div>
   );
-}
+
+    
