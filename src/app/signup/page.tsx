@@ -48,6 +48,7 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     name: '',
+    company: '',
     email: '',
     password: '',
     phoneNumber: ''
@@ -107,6 +108,7 @@ export default function SignupPage() {
 
       await setDoc(doc(db, 'users', user.uid), {
         name: form.name,
+        company: form.company,
         email: form.email,
         phoneNumber: form.phoneNumber,
         createdAt: new Date(),
@@ -153,6 +155,18 @@ export default function SignupPage() {
                   disabled={loading}
                 />
               </div>
+               <div className="space-y-2">
+                <Label htmlFor="company">Nombre de la Empresa (Opcional)</Label>
+                <Input
+                  id="company"
+                  name="company"
+                  type="text"
+                  placeholder="Ej: Innovaciones Digitales"
+                  value={form.company}
+                  onChange={handleInputChange}
+                  disabled={loading}
+                />
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Correo Electrónico</Label>
                 <Input
@@ -167,7 +181,7 @@ export default function SignupPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="phoneNumber">Número de Teléfono (Opcional)</Label>
+                <Label htmlFor="phoneNumber">Número de Teléfono</Label>
                 <Input
                   id="phoneNumber"
                   name="phoneNumber"
@@ -176,6 +190,7 @@ export default function SignupPage() {
                   value={form.phoneNumber}
                   onChange={handleInputChange}
                   disabled={loading}
+                  required
                 />
               </div>
               <div className="space-y-2">
