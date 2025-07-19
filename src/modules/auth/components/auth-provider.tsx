@@ -68,15 +68,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [fetchUserProfile]);
 
   useEffect(() => {
+    // Do not run redirection logic until initial auth check is complete
     if (loading) return;
 
     const isAuthPage = pathname.startsWith('/auth');
     const isDashboardPage = pathname.startsWith('/dashboard');
 
+    // If user is not logged in and tries to access a dashboard page, redirect to sign-in
     if (!user && isDashboardPage) {
-        router.push('/auth/sign-in');
-    } else if (user && isAuthPage) {
-        router.push('/dashboard');
+      router.push('/auth/sign-in');
+    }
+    // If user is logged in and is on an auth page, redirect to dashboard
+    else if (user && isAuthPage) {
+      router.push('/dashboard');
     }
   }, [user, pathname, loading, router]);
 

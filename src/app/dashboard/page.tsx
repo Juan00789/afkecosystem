@@ -4,19 +4,18 @@
 import { Suspense } from 'react';
 import { DashboardOverview } from '@/modules/dashboard/components/dashboard-overview';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
-import { useRouter } from 'next/navigation';
 
 export default function DashboardPage() {
   const { user, loading } = useAuth();
-  const router = useRouter();
 
   if (loading) {
     return <div>Loading...</div>;
   }
 
+  // The redirect logic is now handled by the AuthProvider.
+  // If we reach this point, we can be sure the user is authenticated.
   if (!user) {
-    router.push('/auth');
-    return null;
+    return null; // Or a loading spinner, as AuthProvider will redirect.
   }
 
   return (
