@@ -65,7 +65,7 @@ export default function LoginPage() {
         switch (error.code) {
             case 'auth/unauthorized-domain':
                 title = 'Dominio no autorizado';
-                description = "Este dominio no está autorizado. Ve a la consola de Firebase -> Authentication -> Settings -> Authorized domains y añade 'localhost'.";
+                description = "Este dominio no está autorizado. En la consola de Firebase, ve a Authentication -> Settings -> Authorized domains y añade el dominio desde el que intentas iniciar sesión.";
                 break;
             case 'auth/network-request-failed':
                 title = 'Error de Red';
@@ -75,10 +75,10 @@ export default function LoginPage() {
             case 'auth/user-not-found':
             case 'auth/invalid-credential':
                  title = 'Credenciales Incorrectas';
-                 description = 'El correo o la contraseña son incorrectos. Por favor, verifica tus datos.';
+                 description = 'El correo o la contraseña son incorrectos. Por favor, verifica tus datos e inténtalo de nuevo.';
                  break;
             default:
-                 description = `Código: ${error.code}. Por favor, inténtalo de nuevo.`;
+                 description = `Código de error: ${error.code}. Por favor, inténtalo de nuevo.`;
                  break;
         }
     }

@@ -15,8 +15,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Logo } from '@/components/logo';
 import { getFirebaseAuth, db } from '@/lib/firebase';
-import { createUserWithEmailAndPassword, signInWithRedirect, GoogleAuthProvider, GithubAuthProvider, OAuthProvider, type AuthProvider } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { createUserWithEmailAndPassword, signInWithRedirect, GoogleAuthProvider, GithubAuthProvider, OAuthProvider, type AuthProvider, updateProfile } from 'firebase/auth';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
@@ -61,7 +61,7 @@ export default function SignupPage() {
 
   const handleError = (error: any) => {
     setLoading(false);
-    console.error("Error de autenticación:", error);
+    console.error("Error de registro:", error);
     let title = 'Error de registro';
     let description = 'Ocurrió un error inesperado. Por favor, inténtalo de nuevo.';
 
@@ -69,18 +69,22 @@ export default function SignupPage() {
         switch (error.code) {
             case 'auth/unauthorized-domain':
                 title = 'Dominio no autorizado';
-                description = "Este dominio no está autorizado. Ve a la consola de Firebase -> Authentication -> Settings -> Authorized domains y añade 'localhost'.";
+                description = "Este dominio no está autorizado. En la consola de Firebase, ve a Authentication -> Settings -> Authorized domains y añade el dominio desde el que intentas registrarte.";
                 break;
             case 'auth/network-request-failed':
                 title = 'Error de Red';
-                description = 'No se pudo conectar. Revisa tu conexión a internet y asegúrate de haber creado la base de datos de Firestore en la consola de Firebase.';
+                description = 'No se pudo conectar. Revisa tu conexión a internet.';
                 break;
             case 'auth/email-already-in-use':
                 title = 'Correo ya registrado';
-                description = 'El correo electrónico que ingresaste ya está en uso. Intenta iniciar sesión.';
+                description = 'El correo electrónico que ingresaste ya está en uso. Por favor, inicia sesión o usa un correo diferente.';
+                break;
+            case 'auth/weak-password':
+                title = 'Contraseña Débil';
+                description = 'La contraseña debe tener al menos 6 caracteres.';
                 break;
             default:
-                 description = `Código: ${error.code}. Por favor, inténtalo de nuevo.`;
+                 description = `Código de error: ${error.code}. Por favor, inténtalo de nuevo.`;
                  break;
         }
     }
@@ -106,18 +110,23 @@ export default function SignupPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, form.email, form.password);
       const user = userCredential.user;
 
+      // Update Firebase Auth profile
+      await updateProfile(user, { displayName: form.name });
+
+      // Create user document in Firestore
       await setDoc(doc(db, 'users', user.uid), {
         name: form.name,
         company: form.company,
         email: form.email,
         phoneNumber: form.phoneNumber,
-        createdAt: new Date(),
+        createdAt: serverTimestamp(),
+        activeRole: 'provider',
+        roles: ['provider', 'client'],
       });
       
       router.push('/dashboard');
 
-    } catch (error: any)
-{
+    } catch (error: any) {
       handleError(error);
     }
   };
