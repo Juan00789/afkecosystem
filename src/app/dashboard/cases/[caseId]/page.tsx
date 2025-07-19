@@ -44,6 +44,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import Link from "next/link";
 
 const WhatsAppIcon = () => (
     <svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 fill-current">
@@ -79,6 +80,7 @@ interface CaseData {
         due: string;
     };
     images?: { id: number; src: string; hint: string }[];
+    otherPartyPhoneNumber?: string;
 }
 
 
@@ -117,14 +119,23 @@ export default function CaseDetailsPage() {
     }, []);
 
     useEffect(() => {
-        if (!caseId) return;
+        if (!caseId || !userData.activeRole) return;
 
         setLoading(true);
-        // Fetch case data
         const caseDocRef = doc(db, 'cases', caseId);
-        const unsubscribeCase = onSnapshot(caseDocRef, (docSnap) => {
+        
+        const unsubscribeCase = onSnapshot(caseDocRef, async (docSnap) => {
             if (docSnap.exists()) {
-                setCaseData({ id: docSnap.id, ...docSnap.data() } as CaseData);
+                const data = { id: docSnap.id, ...docSnap.data() } as CaseData;
+                
+                // Fetch the other party's phone number
+                const otherPartyId = userData.activeRole === 'client' ? data.providerId : data.clientId;
+                const otherPartyDoc = await getDoc(doc(db, 'users', otherPartyId));
+                if (otherPartyDoc.exists()) {
+                    data.otherPartyPhoneNumber = otherPartyDoc.data().phoneNumber;
+                }
+                
+                setCaseData(data);
             } else {
                 toast({ variant: 'destructive', title: 'Caso no encontrado' });
                 router.push('/dashboard/cases');
@@ -151,7 +162,7 @@ export default function CaseDetailsPage() {
             unsubscribeCase();
             unsubscribeComments();
         };
-    }, [caseId, toast, router]);
+    }, [caseId, toast, router, userData.activeRole]);
 
     const handleCommentSubmit = async (e: FormEvent) => {
         e.preventDefault();
@@ -170,7 +181,6 @@ export default function CaseDetailsPage() {
                 providerId: caseData.providerId,
             });
 
-            // Also update the lastUpdate field on the case
             const caseRef = doc(db, 'cases', caseId);
             await updateDoc(caseRef, {
                 lastUpdate: Timestamp.now(),
@@ -194,9 +204,8 @@ export default function CaseDetailsPage() {
 
         setIsGeneratingInvoice(true);
         try {
-            // 1. Create the invoice document
             const dueDate = new Date();
-            dueDate.setDate(dueDate.getDate() + 30); // Due in 30 days
+            dueDate.setDate(dueDate.getDate() + 30); 
 
             const invoiceRef = await addDoc(collection(db, 'invoices'), {
                 caseId: caseData.id,
@@ -211,7 +220,6 @@ export default function CaseDetailsPage() {
                 dueDate: Timestamp.fromDate(dueDate),
             });
             
-            // 2. Add a comment to the case timeline
             await addDoc(collection(db, 'cases', caseId, 'comments'), {
                 text: `Se ha generado la factura #${invoiceRef.id.substring(0,6).toUpperCase()}.`,
                 userId: user.uid,
@@ -223,7 +231,6 @@ export default function CaseDetailsPage() {
                 providerId: caseData.providerId,
             });
 
-             // Also update the lastUpdate field on the case
             const caseRef = doc(db, 'cases', caseId);
             await updateDoc(caseRef, {
                 lastUpdate: Timestamp.now(),
@@ -257,7 +264,6 @@ export default function CaseDetailsPage() {
             const caseRef = doc(db, 'cases', caseId);
             const commentsRef = collection(db, 'cases', caseId, 'comments');
             
-            // Delete all comments in a batch
             const commentsSnapshot = await getDocs(commentsRef);
             const batch = writeBatch(db);
             commentsSnapshot.forEach((doc) => {
@@ -265,7 +271,6 @@ export default function CaseDetailsPage() {
             });
             await batch.commit();
 
-            // Delete the case itself
             await deleteDoc(caseRef);
 
             toast({
@@ -298,9 +303,7 @@ export default function CaseDetailsPage() {
   return (
     <main className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="grid gap-4 md:grid-cols-3">
-        {/* Main Content Column */}
         <div className="md:col-span-2 space-y-4">
-            {/* Comments/Timeline Card */}
             <Card>
                 <CardHeader className="flex flex-row justify-between items-start">
                     <div>
@@ -421,7 +424,6 @@ export default function CaseDetailsPage() {
                 </CardFooter>
             </Card>
 
-             {/* Image Gallery Card */}
              <Card>
                 <CardHeader>
                     <CardTitle>Galería de Archivos</CardTitle>
@@ -446,20 +448,27 @@ export default function CaseDetailsPage() {
             </Card>
         </div>
 
-        {/* Details Column */}
         <div className="md:col-span-1 space-y-4">
             <Card>
-                <CardHeader className="flex flex-row items-center gap-4 space-y-0">
-                    <Avatar className="h-12 w-12">
-                        {/* <AvatarImage src={caseData.client.avatar} data-ai-hint="company logo" /> */}
-                        <AvatarFallback>{caseData.clientName.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                        <CardTitle>{caseData.clientName}</CardTitle>
-                        <CardDescription>
-                            {caseData.services.map(s => s.name).join(', ')}
-                        </CardDescription>
+                <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0 pb-4">
+                    <div className="flex items-center gap-4">
+                        <Avatar className="h-12 w-12">
+                            <AvatarFallback>{(userData.activeRole === 'provider' ? caseData.clientName : caseData.providerName).charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                            <CardTitle>{userData.activeRole === 'provider' ? caseData.clientName : caseData.providerName}</CardTitle>
+                            <CardDescription>
+                                {caseData.services.map(s => s.name).join(', ')}
+                            </CardDescription>
+                        </div>
                     </div>
+                    {caseData.otherPartyPhoneNumber && (
+                        <Button asChild variant="outline" size="icon" className="bg-[#25D366] hover:bg-[#1DAE5A] text-white border-0">
+                           <Link href={`https://wa.me/${caseData.otherPartyPhoneNumber.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer">
+                             <WhatsAppIcon />
+                           </Link>
+                        </Button>
+                    )}
                 </CardHeader>
                 <CardContent>
                      <Badge>{caseData.status}</Badge>
@@ -488,7 +497,3 @@ export default function CaseDetailsPage() {
     </main>
   );
 }
-
-    
-
-    
