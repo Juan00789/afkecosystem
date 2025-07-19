@@ -79,7 +79,7 @@ export default function CaseDetailsPage({ params }: { params: { caseId: string }
     const [newComment, setNewComment] = useState("");
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [isGeneratingInvoice, setIsGeneratingInvoice] = useState(isGeneratingInvoice);
+    const [isGeneratingInvoice, setIsGeneratingInvoice] = useState(false);
     const [isInvoiceDialogOpen, setIsInvoiceDialogOpen] = useState(false);
 
 
