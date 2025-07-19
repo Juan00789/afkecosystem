@@ -2,42 +2,75 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper function to check if a user is the client or provider for a given case
-    function isCaseParticipant(caseId) {
-      let caseData = get(/databases/$(database)/documents/cases/$(caseId)).data;
-      return request.auth.uid == caseData.clientId || request.auth.uid == caseData.providerId;
-    }
-
+    
+    // Reglas para la colección de usuarios
     match /users/{userId} {
-      allow read, write: if request.auth.uid == userId;
-    }
+      // Cualquiera puede crear una cuenta de usuario.
+      allow create: if true;
+      // Los usuarios solo pueden leer o actualizar su propio perfil.
+      allow read, update: if request.auth.uid == userId;
 
-    match /clients/{clientId} {
-      allow read, write: if request.auth.uid != null; 
-    }
-
-    match /services/{serviceId} {
-      allow read;
-      allow write: if request.auth.uid == request.resource.data.userId;
-    }
-
-    match /cases/{caseId} {
-      allow read, create: if request.auth.uid != null;
-      allow update: if isCaseParticipant(caseId);
-      allow delete: if isCaseParticipant(caseId);
-
-      // Rules for the 'comments' subcollection
-      match /comments/{commentId} {
-        allow read: if isCaseParticipant(caseId);
-        allow create: if isCaseParticipant(caseId) && request.auth.uid == request.resource.data.userId;
-        allow update, delete: if isCaseParticipant(caseId) && request.auth.uid == resource.data.userId;
+      // Un cliente puede gestionar su lista de proveedores
+      match /providers/{providerId} {
+        allow read, create, delete: if request.auth.uid == userId;
+        allow update: if request.auth.uid == userId && request.resource.data.status in ['main', 'potential'];
       }
     }
 
-     match /invoices/{invoiceId} {
-       allow read, create: if request.auth.uid != null;
-       allow update, delete: if request.auth.uid == resource.data.providerId;
+    // Reglas para la colección de clientes (gestionada por proveedores)
+    match /clients/{clientId} {
+      allow read, update: if request.auth.uid == resource.data.providerId;
+      allow create: if request.auth.uid == request.resource.data.providerId;
+    }
+
+    // Reglas para la colección de servicios (gestionada por proveedores)
+    match /services/{serviceId} {
+      // Un usuario autenticado puede crear/actualizar/eliminar sus propios servicios.
+      allow create, update, delete: if request.auth.uid == request.resource.data.userId;
+      // Cualquiera puede leer los servicios (para la página de exploración).
+      allow read: if true;
+    }
+
+    // Reglas para la colección de casos
+    match /cases/{caseId} {
+      // Leer: El cliente o el proveedor pueden leer el caso.
+      allow read: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
+      
+      // Crear: Un usuario autenticado puede crear un caso si es el cliente.
+      allow create: if request.auth.uid == request.resource.data.clientId;
+      
+      // Actualizar: El cliente o el proveedor pueden actualizar (ej. estado, última actualización).
+      allow update: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
+      
+      // Eliminar: El cliente o el proveedor pueden eliminar el caso.
+      allow delete: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
+
+      // Reglas para los comentarios dentro de un caso
+      match /comments/{commentId} {
+        // Cualquiera de los dos participantes puede crear un comentario.
+        // El `get` asegura que el usuario sea parte del caso principal.
+        allow create: if request.auth.uid != null 
+                      && request.auth.uid == request.resource.data.userId
+                      && (request.auth.uid == get(/databases/$(database)/documents/cases/$(caseId)).data.clientId || 
+                          request.auth.uid == get(/databases/$(database)/documents/cases/$(caseId)).data.providerId);
+                          
+        // Cualquiera de los dos participantes puede leer los comentarios.
+        allow read: if request.auth.uid != null 
+                    && (request.auth.uid == get(/databases/$(database)/documents/cases/$(caseId)).data.clientId || 
+                        request.auth.uid == get(/databases/$(database)/documents/cases/$(caseId)).data.providerId);
+      }
+    }
+
+    // Reglas para la colección de facturas
+    match /invoices/{invoiceId} {
+       // El cliente o el proveedor pueden leer la factura.
+      allow read: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
+      
+      // El proveedor puede crear una factura.
+      allow create: if request.auth.uid == request.resource.data.providerId;
+
+      // El proveedor puede actualizar el estado de la factura.
+      allow update: if request.auth.uid == resource.data.providerId;
     }
   }
 }
