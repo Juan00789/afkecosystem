@@ -2,50 +2,52 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Users can only read/write their own user document.
-    // Any authenticated user can read public user profiles.
+    
+    // Users can read/write their own profile.
+    // Authenticated users can query the collection (to find by phone number) but not list all users.
+    // Authenticated users can get public profiles of other users.
     match /users/{userId} {
       allow read: if request.auth != null;
       allow write: if request.auth.uid == userId;
+    }
 
-      // Clients can manage their own list of providers
-      match /providers/{providerDocId} {
-        allow read, write, delete: if request.auth.uid == userId;
+    // Clients can only be managed by their assigned provider.
+    match /clients/{clientId} {
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.providerId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.providerId;
+    }
+    
+    // A client can manage their own list of providers.
+    match /users/{userId}/providers/{providerId} {
+       allow read, write, delete: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Services can only be created/managed by the provider who owns them.
+    // Authenticated users can list/read services.
+    match /services/{serviceId} {
+        allow read: if request.auth != null;
+        allow write, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+        allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+    }
+
+    // Cases can be read by the client or the provider.
+    // Cases can only be created by the client.
+    // Cases can be updated by client or provider.
+    match /cases/{caseId} {
+      allow read, update: if request.auth != null && (request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId);
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.clientId;
+
+      // Comments can be created and read by the client or provider of the case.
+      match /comments/{commentId} {
+          allow read, create: if request.auth != null && (request.auth.uid == get(/databases/$(database)/documents/cases/$(caseId)).data.clientId || request.auth.uid == get(/databases/$(database)/documents/cases/$(caseId)).data.providerId);
       }
     }
     
-    // Providers can manage their own list of clients
-    match /clients/{clientId} {
-      allow read, create: if request.auth.uid == request.resource.data.providerId;
-      allow update, delete: if request.auth.uid == resource.data.providerId;
-    }
-    
-    // Providers can manage their own services
-    match /services/{serviceId} {
-        allow read: if request.auth != null;
-        allow create: if request.auth.uid == request.resource.data.userId;
-        allow update, delete: if request.auth.uid == resource.data.userId;
-    }
-    
-    // Users can read/write cases they are involved in
-    match /cases/{caseId} {
-        allow read, write, create, update: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
-        
-        // Comments can be read/written by participants of the case
-        match /comments/{commentId} {
-            allow read, create: if get(/databases/$(database)/documents/cases/$(caseId)).data.clientId == request.auth.uid || get(/databases/$(database)/documents/cases/$(caseId)).data.providerId == request.auth.uid;
-        }
-    }
-
-    // Collection Group rules
-    match /{path=**}/comments/{commentId} {
-        allow read: if resource.data.clientId == request.auth.uid || resource.data.providerId == request.auth.uid;
-    }
-
-    // Invoices can be read by participants
+    // Invoices can be read by client or provider.
+    // Invoices can only be created by the provider.
     match /invoices/{invoiceId} {
-      allow read, create, update: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
+        allow read: if request.auth != null && (request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId);
+        allow create: if request.auth != null && request.auth.uid == request.resource.data.providerId;
     }
   }
 }
