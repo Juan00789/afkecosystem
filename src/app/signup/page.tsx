@@ -16,7 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Logo } from '@/components/logo';
 import { getFirebaseAuth, db } from '@/lib/firebase';
 import { createUserWithEmailAndPassword, signInWithRedirect, GoogleAuthProvider, GithubAuthProvider, OAuthProvider, type AuthProvider, updateProfile } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
@@ -110,11 +110,13 @@ export default function SignupPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, form.email, form.password);
       const user = userCredential.user;
 
-      // Update Firebase Auth profile
       await updateProfile(user, { displayName: form.name });
 
-      // Create user document in Firestore
-      await setDoc(doc(db, 'users', user.uid), {
+      const batch = writeBatch(db);
+
+      // 1. Create the main user document
+      const userRef = doc(db, 'users', user.uid);
+      const newUserDocData = {
         name: form.name,
         company: form.company,
         email: form.email,
@@ -122,7 +124,36 @@ export default function SignupPage() {
         createdAt: serverTimestamp(),
         activeRole: 'provider',
         roles: ['provider', 'client'],
-      });
+      };
+      batch.set(userRef, newUserDocData, { merge: true });
+
+      // 2. Magic link: Check if a client was pre-registered with this phone number
+      if (form.phoneNumber) {
+        const clientsQuery = query(collection(db, 'clients'), where('phone', '==', form.phoneNumber));
+        const querySnapshot = await getDocs(clientsQuery);
+        
+        if (!querySnapshot.empty) {
+            const clientDoc = querySnapshot.docs[0]; // Assume first match is the one
+            const clientData = clientDoc.data();
+
+            // Link the client doc to this new user UID
+            batch.update(clientDoc.ref, { userId: user.uid });
+            
+            // Link this new user to the provider who created the client record
+            if (clientData.providerId) {
+                const providerSubCollectionRef = doc(collection(db, 'users', user.uid, 'providers'));
+                batch.set(providerSubCollectionRef, {
+                    providerId: clientData.providerId,
+                    status: 'main', // Make them the main provider automatically
+                    createdAt: serverTimestamp()
+                });
+                // Also update the main user doc to set the active role to client
+                batch.update(userRef, { activeRole: 'client' });
+            }
+        }
+      }
+      
+      await batch.commit();
       
       router.push('/dashboard');
 

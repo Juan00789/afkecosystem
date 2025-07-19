@@ -39,6 +39,7 @@ interface Client {
     phone: string;
     avatar: string;
     providerId: string; // The provider's UID
+    userId?: string; // The client's UID, once they register
 }
 
 const ClientsTab = ({ user }: { user: User | null }) => {
@@ -87,9 +88,19 @@ const ClientsTab = ({ user }: { user: User | null }) => {
         }
         setSaving(true);
         try {
+            // Check if client with this phone number already exists for this provider
+            const q = query(collection(db, 'clients'), where('providerId', '==', user.uid), where('phone', '==', newClient.phone));
+            const existingClient = await getDocs(q);
+            if (!existingClient.empty) {
+                toast({ variant: 'destructive', title: 'Cliente duplicado', description: 'Ya tienes un cliente con este número de teléfono.' });
+                setSaving(false);
+                return;
+            }
+
             await addDoc(collection(db, 'clients'), {
                 ...newClient,
                 providerId: user.uid, 
+                userId: null, // Explicitly set userId to null initially
                 avatar: `https://placehold.co/100x100.png`,
                 createdAt: serverTimestamp(),
             });
@@ -114,7 +125,7 @@ const ClientsTab = ({ user }: { user: User | null }) => {
                             <CardTitle>Añadir Nuevo Cliente</CardTitle>
                         </div>
                         <CardDescription>
-                            Rellena el formulario para registrar un nuevo cliente.
+                            Registra un cliente. Si luego se registra con el mismo teléfono, se vincularán.
                         </CardDescription>
                     </CardHeader>
                     <form onSubmit={handleAddClient}>
@@ -132,7 +143,7 @@ const ClientsTab = ({ user }: { user: User | null }) => {
                                 <Input id="email" name="email" type="email" placeholder="ejemplo@correo.com" value={newClient.email} onChange={handleInputChange} disabled={saving} />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="phone">Teléfono (para contacto directo por WhatsApp)</Label>
+                                <Label htmlFor="phone">Teléfono (para contacto y vínculo)</Label>
                                 <Input id="phone" name="phone" type="tel" placeholder="Ej: 829-123-4567" value={newClient.phone} onChange={handleInputChange} required disabled={saving}/>
                             </div>
                         </CardContent>
@@ -168,6 +179,7 @@ const ClientsTab = ({ user }: { user: User | null }) => {
                                     <TableHead>Cliente</TableHead>
                                     <TableHead className="hidden md:table-cell">Empresa</TableHead>
                                     <TableHead className="hidden sm:table-cell">Contacto</TableHead>
+                                    <TableHead>Estado</TableHead>
                                     <TableHead><span className="sr-only">Acciones</span></TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -186,9 +198,15 @@ const ClientsTab = ({ user }: { user: User | null }) => {
                                         <TableCell className="hidden md:table-cell">{client.company}</TableCell>
                                         <TableCell className="hidden sm:table-cell">
                                             <div className="flex flex-col">
-                                                <span>{client.email}</span>
+                                                <span>{client.email || 'N/A'}</span>
                                                 <span className="text-xs text-muted-foreground">{client.phone}</span>
                                             </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            {client.userId ? 
+                                                <span className="text-sm text-primary font-semibold">Registrado</span> : 
+                                                <span className="text-sm text-muted-foreground">Invitado</span>
+                                            }
                                         </TableCell>
                                         <TableCell>
                                             <Button variant="ghost" size="icon">
@@ -198,7 +216,7 @@ const ClientsTab = ({ user }: { user: User | null }) => {
                                     </TableRow>
                                 )) : (
                                     <TableRow>
-                                        <TableCell colSpan={4} className="h-24 text-center">
+                                        <TableCell colSpan={5} className="h-24 text-center">
                                             No tienes clientes registrados todavía.
                                         </TableCell>
                                     </TableRow>
