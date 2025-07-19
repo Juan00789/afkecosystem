@@ -15,11 +15,11 @@
  * limitations under the License.
  */
 
-import { genkit } from 'genkit';
+import { genkit, type Plugin } from 'genkit';
+import { next } from '@genkit-ai/next';
+import { googleAI } from '@genkit-ai/googleai';
+import { firebase } from '@genkit-ai/firebase';
 
-// A simple in-memory cache for 'global' objects.
-// In a real app, you would use a proper database or a more robust
-// caching solution.
 const REGISTRY = new Map<string, any>();
 
 function register<T>(key: string, value: T): T {
@@ -30,9 +30,16 @@ function register<T>(key: string, value: T): T {
   return value;
 }
 
-// In a Next.js app, you can have multiple Genkit environments running
-// in the same process, so we need to make sure we are only initializaing
-// the AI plugin once.
-//
-// We are using a simple in-memory cache to store the AI instance.
-export const ai = register('ai', genkit);
+export const ai = register('ai', genkit({
+  plugins: [
+    firebase(),
+    next({
+      devServerPort: 3400,
+    }),
+    googleAI({
+      apiKey: process.env.GEMINI_API_KEY,
+    }),
+  ],
+  logLevel: 'debug',
+  enableTracingAndMetrics: true,
+}));
