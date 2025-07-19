@@ -26,7 +26,7 @@ import { textToSpeech } from '@/ai/flows/tts-flow';
 import type { TextToSpeechOutput } from '@/ai/flows/tts-flow.schema';
 import { Loader2, Volume2, Download } from 'lucide-react';
 import { db, getFirebaseAuth } from '@/lib/firebase';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, getDoc } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
 import { jsPDF } from 'jspdf';
 
@@ -35,11 +35,20 @@ interface Client {
   name: string;
 }
 
+interface UserProfile {
+    name?: string;
+    company?: string;
+    website?: string;
+    bankName?: string;
+    accountNumber?: string;
+}
+
 export function QuotesPage() {
   const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile>({});
   const [clients, setClients] = useState<Client[]>([]);
-  const [loadingClients, setLoadingClients] = useState(true);
+  const [loadingData, setLoadingData] = useState(true);
   const [loading, setLoading] = useState(false);
   const [generatingAudio, setGeneratingAudio] = useState(false);
   const [form, setForm] = useState({
@@ -56,7 +65,7 @@ export function QuotesPage() {
     const unsubscribeAuth = auth.onAuthStateChanged((currentUser) => {
       setUser(currentUser);
       if (!currentUser) {
-        setLoadingClients(false);
+        setLoadingData(false);
       }
     });
     return () => unsubscribeAuth();
@@ -65,28 +74,47 @@ export function QuotesPage() {
   useEffect(() => {
     if (!user) {
       setClients([]);
-      setLoadingClients(false);
+      setUserProfile({});
+      setLoadingData(false);
       return;
     }
 
-    setLoadingClients(true);
-    const clientsQuery = query(collection(db, 'clients'), where('providerId', '==', user.uid));
-    
-    const unsubscribe = onSnapshot(clientsQuery, (snapshot) => {
-        const clientsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client));
-        setClients(clientsData);
-        setLoadingClients(false);
-    }, (error) => {
-        console.error("Error fetching clients: ", error);
-        toast({
-            variant: 'destructive',
-            title: 'Error al cargar clientes',
-            description: 'No se pudieron obtener los datos.'
-        });
-        setLoadingClients(false);
-    });
+    setLoadingData(true);
+    let unsubProfile: () => void;
+    let unsubClients: () => void;
 
-    return () => unsubscribe();
+    const fetchAllData = async () => {
+        // Fetch user profile
+        const profileRef = doc(db, 'users', user.uid);
+        unsubProfile = onSnapshot(profileRef, (docSnap) => {
+            if (docSnap.exists()) {
+                setUserProfile(docSnap.data() as UserProfile);
+            }
+        });
+        
+        // Fetch clients
+        const clientsQuery = query(collection(db, 'clients'), where('providerId', '==', user.uid));
+        unsubClients = onSnapshot(clientsQuery, (snapshot) => {
+            const clientsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client));
+            setClients(clientsData);
+            setLoadingData(false); // Set loading to false after clients are fetched
+        }, (error) => {
+            console.error("Error fetching clients: ", error);
+            toast({
+                variant: 'destructive',
+                title: 'Error al cargar clientes',
+                description: 'No se pudieron obtener los datos.'
+            });
+            setLoadingData(false);
+        });
+    }
+
+    fetchAllData();
+
+    return () => {
+        if (unsubProfile) unsubProfile();
+        if (unsubClients) unsubClients();
+    };
   }, [user, toast]);
 
 
@@ -120,7 +148,15 @@ export function QuotesPage() {
     setQuote(null);
     setAudio(null);
     try {
-      const result = await generateQuote(form);
+      const payload = {
+          ...form,
+          providerName: userProfile.name,
+          providerCompany: userProfile.company,
+          providerWebsite: userProfile.website,
+          providerBankName: userProfile.bankName,
+          providerAccountNumber: userProfile.accountNumber,
+      }
+      const result = await generateQuote(payload);
       setQuote(result);
     } catch (error) {
       console.error(error);
@@ -186,7 +222,7 @@ export function QuotesPage() {
           <CardHeader>
             <CardTitle>Generar Nueva Cotización</CardTitle>
             <CardDescription>
-              Completa los detalles para que la IA genere una cotización profesional.
+              Completa los detalles para que la IA genere una cotización profesional usando tus datos de perfil.
             </CardDescription>
           </CardHeader>
           <form onSubmit={handleSubmit}>
@@ -203,9 +239,9 @@ export function QuotesPage() {
                       onChange={handleInputChange}
                       required
                     />
-                     <Select onValueChange={handleClientAutocomplete} disabled={loadingClients || clients.length === 0}>
+                     <Select onValueChange={handleClientAutocomplete} disabled={loadingData || clients.length === 0}>
                         <SelectTrigger className="w-[180px]">
-                            <SelectValue placeholder={loadingClients ? "Cargando..." : "Autocompletar"} />
+                            <SelectValue placeholder={loadingData ? "Cargando..." : "Autocompletar"} />
                         </SelectTrigger>
                         <SelectContent>
                             {clients.length > 0 ? (
@@ -259,7 +295,7 @@ export function QuotesPage() {
               </div>
             </CardContent>
             <CardFooter>
-              <Button type="submit" disabled={loading || loadingClients}>
+              <Button type="submit" disabled={loading || loadingData}>
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Generar Cotización
               </Button>

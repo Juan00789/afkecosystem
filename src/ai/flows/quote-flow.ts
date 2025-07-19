@@ -15,6 +15,12 @@ const GenerateQuoteInputSchema = z.object({
   clientName: z.string().describe('El nombre del cliente o empresa.'),
   projectName: z.string().describe('El nombre del proyecto para el cual es la cotización.'),
   projectDetails: z.string().describe('Una descripción detallada del alcance y los requerimientos del proyecto.'),
+  // Provider details
+  providerName: z.string().optional().describe('El nombre del proveedor del servicio.'),
+  providerCompany: z.string().optional().describe('El nombre de la empresa del proveedor.'),
+  providerWebsite: z.string().optional().describe('El sitio web del proveedor.'),
+  providerBankName: z.string().optional().describe('El nombre del banco del proveedor para pagos.'),
+  providerAccountNumber: z.string().optional().describe('El número de cuenta del proveedor para pagos.'),
 });
 export type GenerateQuoteInput = z.infer<typeof GenerateQuoteInputSchema>;
 
@@ -36,18 +42,27 @@ const prompt = ai.definePrompt({
 
   Basado en la siguiente información, genera una cotización formal.
 
-  Cliente: {{{clientName}}}
-  Proyecto: {{{projectName}}}
-  Detalles del Proyecto: {{{projectDetails}}}
+  **Información del Cliente y Proyecto:**
+  - Cliente: {{{clientName}}}
+  - Proyecto: {{{projectName}}}
+  - Detalles del Proyecto: {{{projectDetails}}}
 
-  La cotización debe incluir:
+  **Información del Proveedor (Tú):**
+  - Nombre: {{#if providerName}}{{{providerName}}}{{else}}N/A{{/if}}
+  - Empresa: {{#if providerCompany}}{{{providerCompany}}}{{else}}N/A{{/if}}
+  - Sitio Web: {{#if providerWebsite}}{{{providerWebsite}}}{{else}}N/A{{/if}}
+  - Banco para Pagos: {{#if providerBankName}}{{{providerBankName}}}{{else}}N/A{{/if}}
+  - Número de Cuenta: {{#if providerAccountNumber}}{{{providerAccountNumber}}}{{else}}N/A{{/if}}
+
+  **Instrucciones para la Cotización:**
   1.  Un saludo cordial y profesional dirigido al cliente.
   2.  Una introducción que mencione el nombre del proyecto.
   3.  Una sección que resuma el alcance del trabajo basado en los detalles proporcionados.
-  4.  Una sección de próximos pasos.
-  5.  Una despedida profesional.
+  4.  Una sección de "Próximos Pasos".
+  5.  Si se proporcionaron datos bancarios (banco y número de cuenta), incluye una sección de "Información de Pago" con esos detalles. Si no, omite esta sección.
+  6.  Una despedida profesional. Utiliza el nombre del proveedor y de la empresa (si está disponible) en la firma.
 
-  NO inventes precios ni fechas. En lugar de eso, utiliza placeholders como "[Monto a convenir]" o "[Fecha de entrega estimada]".
+  **Importante:** NO inventes precios ni fechas. En lugar de eso, utiliza placeholders como "[Monto a convenir]" o "[Fecha de entrega estimada]".
   Genera el texto completo de la cotización en el campo 'quoteText' y un resumen corto en el campo 'summary'.`,
 });
 
