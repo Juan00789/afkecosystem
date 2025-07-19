@@ -22,6 +22,7 @@ import { onAuthStateChanged, type User } from 'firebase/auth';
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { useParams } from 'next/navigation';
 import {
   Dialog,
   DialogContent,
@@ -70,7 +71,9 @@ interface CaseData {
 }
 
 
-export default function CaseDetailsPage({ params }: { params: { caseId: string } }) {
+export default function CaseDetailsPage() {
+    const params = useParams();
+    const caseId = params.caseId as string;
     const { toast } = useToast();
     const [user, setUser] = useState<User | null>(null);
     const [userData, setUserData] = useState({ name: 'Tú', fallback: 'T', activeRole: 'provider' });
@@ -102,11 +105,11 @@ export default function CaseDetailsPage({ params }: { params: { caseId: string }
     }, []);
 
     useEffect(() => {
-        if (!params.caseId) return;
+        if (!caseId) return;
 
         setLoading(true);
         // Fetch case data
-        const caseDocRef = doc(db, 'cases', params.caseId);
+        const caseDocRef = doc(db, 'cases', caseId);
         const unsubscribeCase = onSnapshot(caseDocRef, (docSnap) => {
             if (docSnap.exists()) {
                 setCaseData({ id: docSnap.id, ...docSnap.data() } as CaseData);
@@ -116,7 +119,7 @@ export default function CaseDetailsPage({ params }: { params: { caseId: string }
         });
 
         // Fetch comments
-        const commentsQuery = query(collection(db, 'cases', params.caseId, 'comments'), orderBy('createdAt', 'asc'));
+        const commentsQuery = query(collection(db, 'cases', caseId, 'comments'), orderBy('createdAt', 'asc'));
         const unsubscribeComments = onSnapshot(commentsQuery, (snapshot) => {
             const commentsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Comment));
             setComments(commentsData);
@@ -135,7 +138,7 @@ export default function CaseDetailsPage({ params }: { params: { caseId: string }
             unsubscribeCase();
             unsubscribeComments();
         };
-    }, [params.caseId, toast]);
+    }, [caseId, toast]);
 
     const handleCommentSubmit = async (e: FormEvent) => {
         e.preventDefault();
@@ -143,19 +146,19 @@ export default function CaseDetailsPage({ params }: { params: { caseId: string }
 
         setSaving(true);
         try {
-            await addDoc(collection(db, 'cases', params.caseId, 'comments'), {
+            await addDoc(collection(db, 'cases', caseId, 'comments'), {
                 text: newComment,
                 userId: user.uid,
                 userName: userData.name,
                 userFallback: userData.fallback,
                 createdAt: Timestamp.now(),
-                caseId: params.caseId,
+                caseId: caseId,
                 clientId: caseData.clientId,
                 providerId: caseData.providerId,
             });
 
             // Also update the lastUpdate field on the case
-            const caseRef = doc(db, 'cases', params.caseId);
+            const caseRef = doc(db, 'cases', caseId);
             await updateDoc(caseRef, {
                 lastUpdate: Timestamp.now(),
             });
@@ -196,19 +199,19 @@ export default function CaseDetailsPage({ params }: { params: { caseId: string }
             });
             
             // 2. Add a comment to the case timeline
-            await addDoc(collection(db, 'cases', params.caseId, 'comments'), {
+            await addDoc(collection(db, 'cases', caseId, 'comments'), {
                 text: `Se ha generado la factura #${invoiceRef.id.substring(0,6).toUpperCase()}.`,
                 userId: user.uid,
                 userName: 'Sistema',
                 userFallback: 'S',
                 createdAt: Timestamp.now(),
-                caseId: params.caseId,
+                caseId: caseId,
                 clientId: caseData.clientId,
                 providerId: caseData.providerId,
             });
 
              // Also update the lastUpdate field on the case
-            const caseRef = doc(db, 'cases', params.caseId);
+            const caseRef = doc(db, 'cases', caseId);
             await updateDoc(caseRef, {
                 lastUpdate: Timestamp.now(),
             });
