@@ -8,9 +8,9 @@ export default function BinancePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Binance Integration Hub</h1>
+        <h1 className="text-3xl font-bold">Centro de Integración de Binance</h1>
         <p className="text-muted-foreground">
-          Connect your services with the Binance ecosystem. Manage payments, track assets, and more.
+          Conecta tus servicios con el ecosistema de Binance. Gestiona pagos, rastrea activos y más.
         </p>
       </div>
       
@@ -19,14 +19,14 @@ export default function BinancePage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <CandlestickChart className="h-6 w-6 text-primary" />
-              <span>Live Prices</span>
+              <span>Precios en Vivo</span>
             </CardTitle>
             <CardDescription>
-              View real-time cryptocurrency prices. (Coming Soon)
+              Visualiza los precios de las criptomonedas en tiempo real. (Próximamente)
             </CardDescription>
           </CardHeader>
           <CardContent>
-             <p className="text-sm text-muted-foreground">This feature is under development.</p>
+             <p className="text-sm text-muted-foreground">Esta función está en desarrollo.</p>
           </CardContent>
         </Card>
 
@@ -34,14 +34,14 @@ export default function BinancePage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Wallet className="h-6 w-6 text-primary" />
-              <span>Portfolio Tracker</span>
+              <span>Seguimiento de Portafolio</span>
             </CardTitle>
              <CardDescription>
-              Monitor your asset portfolio. (Coming Soon)
+              Supervisa tu portafolio de activos. (Próximamente)
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground">This feature is under development.</p>
+            <p className="text-sm text-muted-foreground">Esta función está en desarrollo.</p>
           </CardContent>
         </Card>
         
@@ -49,14 +49,14 @@ export default function BinancePage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <History className="h-6 w-6 text-primary" />
-              <span>Payment History</span>
+              <span>Historial de Pagos</span>
             </CardTitle>
             <CardDescription>
-              Review your transaction history. (Coming Soon)
+              Revisa tu historial de transacciones. (Próximamente)
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground">This feature is under development.</p>
+            <p className="text-sm text-muted-foreground">Esta función está en desarrollo.</p>
           </CardContent>
         </Card>
         
@@ -64,14 +64,14 @@ export default function BinancePage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Bot className="h-6 w-6 text-primary" />
-              <span>Trading Bot Services</span>
+              <span>Servicios de Bot de Trading</span>
             </CardTitle>
             <CardDescription>
-             Offer or utilize automated trading bot services. (Coming Soon)
+             Ofrece o utiliza servicios de bot de trading automatizado. (Próximamente)
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground">This feature is under development.</p>
+            <p className="text-sm text-muted-foreground">Esta función está en desarrollo.</p>
           </CardContent>
         </Card>
       </div>
