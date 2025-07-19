@@ -56,18 +56,18 @@ export default function HomePage() {
             <div className="absolute inset-0 z-0">
                  <Image
                     src="https://placehold.co/1920x1080.png"
-                    alt="Fondo de servicio de delivery"
+                    alt="Fondo colaborativo"
                     layout="fill"
                     objectFit="cover"
                     className="opacity-50"
-                    data-ai-hint="delivery service city"
+                    data-ai-hint="collaboration community work"
                  />
                  <div className="absolute inset-0 bg-black/50"></div>
             </div>
             <div className="relative z-10 flex h-full flex-col items-center justify-center text-center text-white p-4">
-                <h1 className="text-5xl md:text-7xl font-extrabold tracking-tighter">RAPIDITO</h1>
+                <h1 className="text-5xl md:text-7xl font-extrabold tracking-tighter">AFKEcosystem</h1>
                 <p className="mt-4 max-w-2xl text-lg md:text-xl text-neutral-200">
-                    Un delivery confiable a tu puerta. Un multiservicio estructurado para quienes hacen mucho con poco.
+                    Empoderando a microemprendedores y fortaleciendo comunidades locales.
                 </p>
                 <Button size="lg" className="mt-8" asChild>
                     <Link href="/auth/sign-in">Comenzar ahora</Link>
@@ -103,7 +103,7 @@ export default function HomePage() {
       <footer className="bg-neutral-800 text-neutral-300">
         <div className="container mx-auto flex flex-col items-center justify-between gap-4 px-4 py-6 text-center md:flex-row md:px-6">
           <p className="text-sm">
-            &copy; {new Date().getFullYear()} Quickie Rapidito. Todos los derechos reservados.
+            &copy; {new Date().getFullYear()} AFKEcosystem. Todos los derechos reservados.
           </p>
           <div className="flex gap-4">
             <Link href="#" className="text-sm text-primary hover:underline">
