@@ -1,47 +1,59 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    match /users/{userId} {
-      allow read: if request.auth.uid != null;
-      allow create;
-      allow update: if request.auth.uid == userId;
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
 
-      match /providers/{providerId} {
-        allow read, create, delete: if request.auth.uid == userId;
-        allow update: if request.auth.uid == userId;
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isOwner(userId);
+      
+      // Rules for the 'providers' subcollection within a user document
+      match /providers/{providerDocId} {
+        allow create: if isOwner(userId);
+        allow read, update, delete: if isOwner(userId);
       }
     }
 
     match /clients/{clientId} {
-      allow read: if request.auth.uid == resource.data.providerId;
-      allow create: if request.auth.uid == request.resource.data.providerId;
-      allow list: if request.auth.uid != null;
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.providerId;
+      allow read: if isAuthenticated() && (isOwner(resource.data.providerId) || isOwner(resource.data.userId));
+      allow update: if isAuthenticated() && isOwner(resource.data.providerId);
+      allow delete: if isAuthenticated() && isOwner(resource.data.providerId);
     }
     
     match /services/{serviceId} {
-        allow create: if request.auth.uid == request.resource.data.userId;
-        allow read: if request.auth.uid == resource.data.userId || request.auth.uid != null;
-        allow list: if request.auth.uid != null;
-        allow update, delete: if request.auth.uid == resource.data.userId;
+        allow read: if true;
+        allow create, update, delete: if isAuthenticated() && isOwner(request.resource.data.userId);
     }
 
     match /cases/{caseId} {
-      allow read: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
-      allow create: if (request.auth.uid == request.resource.data.clientId || request.auth.uid == request.resource.data.providerId) && request.resource.data.status == 'Pendiente';
-      allow update: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
-      allow delete: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
-      allow list: if request.auth.uid != null;
-
+      allow get: if isAuthenticated() && (isOwner(resource.data.clientId) || isOwner(resource.data.providerId));
+      allow list: if isAuthenticated() && (request.query.where.clientId == request.auth.uid || request.query.where.providerId == request.auth.uid);
+      allow create: if isAuthenticated() && (isOwner(request.resource.data.clientId) || isOwner(request.resource.data.providerId));
+      allow update: if isAuthenticated() && (isOwner(resource.data.clientId) || isOwner(resource.data.providerId));
+      allow delete: if isAuthenticated() && (isOwner(resource.data.clientId) || isOwner(resource.data.providerId));
+      
       match /comments/{commentId} {
-        allow read, create: if request.auth.uid == request.resource.data.clientId || request.auth.uid == request.resource.data.providerId;
+        allow read: if isAuthenticated() && (isOwner(resource.data.clientId) || isOwner(resource.data.providerId));
+        allow create: if isAuthenticated() && isOwner(request.resource.data.userId);
       }
     }
-
-    match /invoices/{invoiceId} {
-      allow read, create, update: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
-      allow list: if request.auth.uid != null;
+    
+     match /invoices/{invoiceId} {
+        allow get: if isAuthenticated() && (isOwner(resource.data.clientId) || isOwner(resource.data.providerId));
+        allow list: if isAuthenticated() && (request.query.where.clientId == request.auth.uid || request.query.where.providerId == request.auth.uid);
+        allow create: if isAuthenticated() && isOwner(request.resource.data.providerId);
+        allow update, delete: if isAuthenticated() && isOwner(resource.data.providerId);
     }
 
   }
