@@ -6,7 +6,14 @@
 **Tecnologías:** Next.js, Firebase Hosting, Firestore, LLM-integrated AI Tools
 
 ## 🌱 Descripción del Proyecto:
-AFKEcosystem es una plataforma reconstruida desde la experiencia, nacida de la pérdida, transformada en propósito. Utiliza tecnología moderna para albergar historias reales, conocimientos invisibles y herramientas reflexivas que guían al usuario en una exploración emocional y creativa. Cada línea de código honra el pasado y da voz a los vínculos que marcaron el camino.
+AFKEcosystem es una plataforma digital diseñada para empoderar a microemprendedores y fortalecer comunidades locales a través de herramientas tecnológicas, educación exprés y redes colaborativas.
+
+## 🧩 ¿Qué incluye AFKEcosystem?
+- **🛍️ Marketplace local:** Espacio para ofrecer y encontrar servicios dentro de tu comunidad.
+- **🎓 Microcursos exprés:** Capacitación rápida (5–10 minutos) en temas como validación de ideas, marketing y finanzas.
+- **💸 Microcréditos colaborativos:** Fondos rotatorios para apoyar proyectos emergentes.
+- **🧑‍🤝‍🧑 Mentorías y foros:** Conexión con expertos y otros emprendedores para compartir experiencias.
+- **📋 Panel de control personalizado:** Donde cada usuario puede gestionar su perfil, cursos y oportunidades.
 
 ## 🚀 Misión Firebase:
 Firebase es el hogar técnico donde AFKEcosystem vive y evoluciona. Aquí se implementan:
