@@ -1,24 +1,18 @@
-
+// src/modules/quotes/components/quotes-page.tsx
 'use client';
 import { useState, useEffect } from 'react';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { generateQuote, type GenerateQuoteOutput } from '@/ai/flows/quote-flow';
 import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-    TableFooter as TableFooterUI,
-} from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -29,362 +23,267 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useToast } from '@/hooks/use-toast';
-import { generateQuote, type GenerateQuoteOutput } from '@/ai/flows/quote-flow';
-import { Loader2, Download, FileSpreadsheet } from 'lucide-react';
-import { db, getFirebaseAuth } from '@/lib/firebase';
-import { collection, query, where, onSnapshot, doc } from 'firebase/firestore';
+import { useAuth } from '@/modules/auth/hooks/use-auth';
+import { db } from '@/lib/firebase';
+import { collection, query, where, onSnapshot, doc, getDoc } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
 import * as XLSX from 'xlsx';
-
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Download, Bot } from 'lucide-react';
 
 interface Client {
   id: string;
-  name: string;
+  displayName: string;
 }
 
-interface UserProfile {
-    name?: string;
-    company?: string;
-    website?: string;
-    bankName?: string;
-    accountNumber?: string;
-}
-
-const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-    }).format(amount);
-};
+const quoteSchema = z.object({
+  clientId: z.string().min(1, 'Please select a client'),
+  projectDetails: z.string().min(10, 'Details must be at least 10 characters'),
+});
+type QuoteFormData = z.infer<typeof quoteSchema>;
 
 export function QuotesPage() {
-  const { toast } = useToast();
-  const [user, setUser] = useState<User | null>(null);
-  const [userProfile, setUserProfile] = useState<UserProfile>({});
+  const { user, userProfile } = useAuth();
   const [clients, setClients] = useState<Client[]>([]);
-  const [loadingData, setLoadingData] = useState(true);
+  const [generatedQuote, setGeneratedQuote] = useState<GenerateQuoteOutput | null>(null);
   const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState({
-    clientName: '',
-    projectName: '',
-    projectDetails: '',
-    model: 'gemini-1.5-flash-latest',
-  });
-  const [quote, setQuote] = useState<GenerateQuoteOutput | null>(null);
-
-   useEffect(() => {
-    const auth = getFirebaseAuth();
-    const unsubscribeAuth = auth.onAuthStateChanged((currentUser) => {
-      setUser(currentUser);
-      if (!currentUser) {
-        setLoadingData(false);
-      }
-    });
-    return () => unsubscribeAuth();
-  }, []);
 
   useEffect(() => {
-    if (!user) {
-      setClients([]);
-      setUserProfile({});
-      setLoadingData(false);
-      return;
-    }
+    if (!user) return;
 
-    setLoadingData(true);
-    let unsubProfile: () => void;
-    let unsubClients: () => void;
+    // A user's clients are users who have the current user in their "providers" network list.
+    const usersRef = collection(db, 'users');
+    const q = query(usersRef, where('network.providers', 'array-contains', user.uid));
 
-    const fetchAllData = async () => {
-        const profileRef = doc(db, 'users', user.uid);
-        unsubProfile = onSnapshot(profileRef, (docSnap) => {
-            if (docSnap.exists()) {
-                setUserProfile(docSnap.data() as UserProfile);
-            }
-        });
-        
-        const clientsQuery = query(collection(db, 'clients'), where('providerId', '==', user.uid));
-        unsubClients = onSnapshot(clientsQuery, (snapshot) => {
-            const clientsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client));
-            setClients(clientsData);
-            setLoadingData(false);
-        }, (error) => {
-            console.error("Error fetching clients: ", error);
-            toast({
-                variant: 'destructive',
-                title: 'Error al cargar clientes',
-            });
-            setLoadingData(false);
-        });
-    }
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const fetchedClients = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        displayName: doc.data().displayName || doc.data().email || 'Unnamed Client',
+      }));
+      setClients(fetchedClients);
+    });
 
-    fetchAllData();
+    return () => unsubscribe();
+  }, [user]);
 
-    return () => {
-        if (unsubProfile) unsubProfile();
-        if (unsubClients) unsubClients();
-    };
-  }, [user, toast]);
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<QuoteFormData>({
+    resolver: zodResolver(quoteSchema),
+    defaultValues: { clientId: '', projectDetails: '' },
+  });
 
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setForm(prev => ({ ...prev, [name]: value }));
-  };
-  
-  const handleModelChange = (model: string) => {
-    setForm(prev => ({ ...prev, model: model }));
-  };
-
-  const handleClientAutocomplete = (clientId: string) => {
-    const client = clients.find(c => c.id === clientId);
-    if (client) {
-      setForm(prev => ({ ...prev, clientName: client.name }));
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.clientName.trim()) {
-        toast({
-            variant: 'destructive',
-            title: 'Nombre del cliente requerido',
-        });
-        return;
-    }
+  const onSubmit = async (data: QuoteFormData) => {
+    if (!user || !userProfile) return;
     setLoading(true);
-    setQuote(null);
+    setGeneratedQuote(null);
     try {
-      const payload = {
-          ...form,
-          providerName: userProfile.name,
-          providerCompany: userProfile.company,
-          providerWebsite: userProfile.website,
-          providerBankName: userProfile.bankName,
-          providerAccountNumber: userProfile.accountNumber,
-      }
-      const result = await generateQuote(payload);
-      setQuote(result);
-    } catch (error) {
-      console.error(error);
-      toast({
-        variant: 'destructive',
-        title: 'Error al generar la cotización',
-        description: 'Hubo un problema al contactar a la IA. Inténtalo de nuevo.',
+      const clientDoc = await getDoc(doc(db, 'users', data.clientId));
+      const clientName = clientDoc.data()?.displayName || 'Valued Client';
+
+      const quote = await generateQuote({
+        clientName: clientName,
+        providerName: userProfile.displayName || 'Me',
+        projectDetails: data.projectDetails,
       });
+
+      // Pre-fill notes with bank info if available
+      if (userProfile.bankInfo?.bankName && userProfile.bankInfo?.accountNumber) {
+        const bankDetails = `Payment Information:\nBank: ${userProfile.bankInfo.bankName}\nAccount: ${userProfile.bankInfo.accountNumber}`;
+        quote.notes = quote.notes ? `${quote.notes}\n\n${bankDetails}` : bankDetails;
+      }
+      
+      setGeneratedQuote(quote);
+    } catch (error) {
+      console.error('Error generating quote:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDownloadExcel = () => {
-    if (!quote || !form.projectName) return;
-
-    const wb = XLSX.utils.book_new();
+   const handleDownloadExcel = () => {
+    if (!generatedQuote) return;
     
-    // Main data for the sheet
-    const quoteData = [
-      ["Proyecto:", form.projectName],
-      ["Cliente:", form.clientName],
+    const { items, subtotal, tax, grandTotal, notes, clientInfo, providerInfo } = generatedQuote;
+    
+    // Create worksheet data
+    const wsData = [
+      ["Quote"],
       [],
-      ["Descripción", "Cantidad", "Precio Unitario", "Total"],
-      ...quote.items.map(item => [item.description, item.quantity, item.unitPrice, item.total]),
+      ["From:", providerInfo.name],
+      ["To:", clientInfo.name],
       [],
-      ["", "", "Subtotal", quote.subtotal],
-      ["", "", "Impuestos (18%)", quote.tax],
-      ["", "", "Total General", quote.grandTotal],
+      ["Description", "Quantity", "Unit Price", "Total"],
+      ...items.map(item => [item.description, item.quantity, item.unitPrice, item.total]),
       [],
-      ["Notas:", quote.notes]
+      ["", "", "Subtotal", subtotal],
+      ["", "", "Tax (18%)", tax],
+      ["", "", "Grand Total", grandTotal],
+      [],
+      ["Notes:"],
+      [notes || ''],
     ];
 
-    const ws = XLSX.utils.aoa_to_sheet(quoteData);
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Quote");
 
-    // Styling and formatting
-    ws['!cols'] = [{ wch: 40 }, { wch: 10 }, { wch: 15 }, { wch: 15 }];
-    
-    const currencyFormat = '$#,##0.00';
-    const numberFormat = '#,##0';
-
-    quote.items.forEach((_, index) => {
-        const rowIndex = index + 5;
-        ws[`B${rowIndex}`].z = numberFormat;
-        ws[`C${rowIndex}`].z = currencyFormat;
-        ws[`D${rowIndex}`].z = currencyFormat;
-    });
-
-    const subtotalRow = quote.items.length + 7;
-    ws[`D${subtotalRow}`].z = currencyFormat;
-    ws[`D${subtotalRow + 1}`].z = currencyFormat;
-    ws[`D${subtotalRow + 2}`].z = currencyFormat;
-
-    XLSX.utils.book_append_sheet(wb, ws, "Cotización");
-    XLSX.writeFile(wb, `Cotizacion_${form.projectName.replace(/\s+/g, '_')}.xlsx`);
-  }
+    XLSX.writeFile(wb, "Quote.xlsx");
+  };
 
   return (
-    <main className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 xl:grid-cols-3">
-        <Card className="xl:col-span-1">
-          <CardHeader>
-            <CardTitle>Generar Nueva Cotización</CardTitle>
-            <CardDescription>
-              Completa los detalles para que la IA genere una cotización profesional y estructurada.
-            </CardDescription>
-          </CardHeader>
-          <form onSubmit={handleSubmit}>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="clientName">Nombre del Cliente</Label>
-                <div className="flex gap-2">
-                  <Input 
-                    id="clientName"
-                    name="clientName"
-                    placeholder="Escribe el nombre del cliente"
-                    value={form.clientName}
-                    onChange={handleInputChange}
-                    required
-                  />
-                   <Select onValueChange={handleClientAutocomplete} disabled={loadingData || clients.length === 0}>
-                      <SelectTrigger className="w-[180px]">
-                          <SelectValue placeholder={loadingData ? "Cargando..." : "Autocompletar"} />
-                      </SelectTrigger>
-                      <SelectContent>
-                          {clients.length > 0 ? (
-                              clients.map((client) => (
-                                  <SelectItem key={client.id} value={client.id}>
-                                      {client.name}
-                                  </SelectItem>
-                              ))
-                          ) : (
-                             <SelectItem value="no-clients" disabled>No hay clientes</SelectItem>
-                          )}
-                      </SelectContent>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <Card>
+        <CardHeader>
+          <CardTitle>Generate a New Quote</CardTitle>
+          <CardDescription>
+            Fill in the details below and let AI create a professional quote for you.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="clientId">Client</Label>
+              <Controller
+                name="clientId"
+                control={control}
+                render={({ field }) => (
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a client" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {clients.map((client) => (
+                        <SelectItem key={client.id} value={client.id}>
+                          {client.displayName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
                   </Select>
-                </div>
-              </div>
-              <div className="space-y-2">
-                  <Label htmlFor="model">Modelo de IA</Label>
-                  <Select onValueChange={handleModelChange} defaultValue={form.model}>
-                      <SelectTrigger>
-                          <SelectValue placeholder="Elige un modelo" />
-                      </SelectTrigger>
-                      <SelectContent>
-                          <SelectItem value="gemini-1.5-flash-latest">Gemini 1.5 Flash</SelectItem>
-                          <SelectItem value="gemini-1.5-pro-latest">Gemini 1.5 Pro</SelectItem>
-                      </SelectContent>
-                  </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="projectName">Nombre del Proyecto</Label>
-                <Input 
-                  id="projectName" 
-                  name="projectName" 
-                  placeholder="Ej: Desarrollo de Sitio Web Corporativo" 
-                  value={form.projectName}
-                  onChange={handleInputChange}
-                  required 
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="projectDetails">Detalles del Proyecto</Label>
-                <Textarea
-                  id="projectDetails"
-                  name="projectDetails"
-                  placeholder="Describe el alcance, los requerimientos, y cualquier otro detalle importante..."
-                  className="min-h-[150px]"
-                  value={form.projectDetails}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button type="submit" disabled={loading || loadingData}>
-                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Generar Cotización
-              </Button>
-            </CardFooter>
-          </form>
-        </Card>
+                )}
+              />
+              {errors.clientId && <p className="text-sm text-destructive">{errors.clientId.message}</p>}
+            </div>
 
-        <Card className="xl:col-span-2">
-          <CardHeader>
-            <CardTitle>Cotización Generada</CardTitle>
-            <CardDescription>
-              Revisa la cotización desglosada. Puedes descargarla en formato Excel.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-              {loading && (
-                <div className="flex items-center justify-center h-full min-h-[400px]">
-                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                </div>
+            <div className="space-y-2">
+              <Label htmlFor="projectDetails">Project Details</Label>
+              <Controller
+                name="projectDetails"
+                control={control}
+                render={({ field }) => (
+                  <Textarea
+                    {...field}
+                    placeholder="Describe the work to be done..."
+                    className="min-h-[150px]"
+                  />
+                )}
+              />
+              {errors.projectDetails && <p className="text-sm text-destructive">{errors.projectDetails.message}</p>}
+            </div>
+
+            <Button type="submit" disabled={loading} className="w-full">
+               {loading ? (
+                <>
+                  <Bot className="mr-2 h-4 w-4 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                'Generate Quote with AI'
               )}
-              {quote && (
-                <div className="space-y-4">
-                    <p className="text-sm p-3 bg-muted rounded-md"><span className="font-semibold">Resumen:</span> {quote.summary}</p>
-                    <div className="border rounded-lg overflow-hidden">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Descripción</TableHead>
-                                    <TableHead className="text-center">Cant.</TableHead>
-                                    <TableHead className="text-right">Precio Unit.</TableHead>
-                                    <TableHead className="text-right">Total</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {quote.items.map((item, index) => (
-                                    <TableRow key={index}>
-                                        <TableCell className="font-medium">{item.description}</TableCell>
-                                        <TableCell className="text-center">{item.quantity}</TableCell>
-                                        <TableCell className="text-right">{formatCurrency(item.unitPrice)}</TableCell>
-                                        <TableCell className="text-right">{formatCurrency(item.total)}</TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                            <TableFooterUI className="bg-muted/50">
-                                <TableRow>
-                                    <TableCell colSpan={3} className="text-right font-medium">Subtotal</TableCell>
-                                    <TableCell className="text-right font-bold">{formatCurrency(quote.subtotal)}</TableCell>
-                                </TableRow>
-                                <TableRow>
-                                    <TableCell colSpan={3} className="text-right font-medium">Impuestos (18%)</TableCell>
-                                    <TableCell className="text-right font-bold">{formatCurrency(quote.tax)}</TableCell>
-                                </TableRow>
-                                <TableRow>
-                                    <TableCell colSpan={3} className="text-right font-semibold text-lg">Total General</TableCell>
-                                    <TableCell className="text-right font-bold text-lg">{formatCurrency(quote.grandTotal)}</TableCell>
-                                </TableRow>
-                            </TableFooterUI>
-                        </Table>
-                    </div>
-                     <div>
-                        <Label>Notas y Términos</Label>
-                        <p className="text-sm text-muted-foreground whitespace-pre-wrap p-3 border rounded-md min-h-[60px]">{quote.notes}</p>
-                    </div>
-                </div>
-              )}
-              {!loading && !quote && (
-                <div className="flex items-center justify-center h-48 border-2 border-dashed rounded-md">
-                    <p className="text-muted-foreground">La cotización aparecerá aquí.</p>
-                </div>
-              )}
-          </CardContent>
-          <CardFooter className="justify-between">
-             <Button 
-                onClick={handleDownloadExcel}
-                disabled={!quote || loading}
-                variant="outline"
-            >
-                <FileSpreadsheet className="mr-2 h-4 w-4" />
-                Descargar Excel
             </Button>
-             <Button disabled={!quote || loading}>Guardar y Enviar</Button>
-          </CardFooter>
-        </Card>
-      </div>
-    </main>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+           <div className="flex justify-between items-center">
+             <div>
+              <CardTitle>Generated Quote</CardTitle>
+              <CardDescription>Review the AI-generated quote below.</CardDescription>
+            </div>
+             {generatedQuote && (
+                <Button variant="outline" size="sm" onClick={handleDownloadExcel}>
+                    <Download className="mr-2 h-4 w-4" />
+                    Download Excel
+                </Button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          {loading && (
+             <div className="flex flex-col items-center justify-center h-full text-center">
+                <Bot className="h-12 w-12 mb-4 animate-pulse" />
+                <p className="text-muted-foreground">AI is crafting your quote...</p>
+             </div>
+          )}
+          {!loading && !generatedQuote && (
+             <div className="flex flex-col items-center justify-center h-full text-center border-2 border-dashed rounded-lg p-12">
+                <p className="text-muted-foreground">Your quote will appear here once generated.</p>
+             </div>
+          )}
+          {generatedQuote && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div><strong>From:</strong> {generatedQuote.providerInfo.name}</div>
+                <div><strong>To:</strong> {generatedQuote.clientInfo.name}</div>
+              </div>
+              
+              <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>Description</TableHead>
+                        <TableHead className="text-center">Qty</TableHead>
+                        <TableHead className="text-right">Unit Price</TableHead>
+                        <TableHead className="text-right">Total</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {generatedQuote.items.map((item, index) => (
+                        <TableRow key={index}>
+                            <TableCell className="font-medium">{item.description}</TableCell>
+                            <TableCell className="text-center">{item.quantity}</TableCell>
+                            <TableCell className="text-right">${item.unitPrice.toFixed(2)}</TableCell>
+                            <TableCell className="text-right">${item.total.toFixed(2)}</TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+                <TableFooter>
+                    <TableRow>
+                        <TableCell colSpan={3} className="text-right font-bold">Subtotal</TableCell>
+                        <TableCell className="text-right">${generatedQuote.subtotal.toFixed(2)}</TableCell>
+                    </TableRow>
+                     <TableRow>
+                        <TableCell colSpan={3} className="text-right font-bold">Tax (18%)</TableCell>
+                        <TableCell className="text-right">${generatedQuote.tax.toFixed(2)}</TableCell>
+                    </TableRow>
+                     <TableRow>
+                        <TableCell colSpan={3} className="text-right font-bold text-lg">Grand Total</TableCell>
+                        <TableCell className="text-right font-bold text-lg">${generatedQuote.grandTotal.toFixed(2)}</TableCell>
+                    </TableRow>
+                </TableFooter>
+              </Table>
+              
+              {generatedQuote.notes && (
+                <div>
+                  <h4 className="font-semibold">Notes:</h4>
+                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">{generatedQuote.notes}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }

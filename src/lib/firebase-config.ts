@@ -1,25 +1,21 @@
-// IMPORTANT: PASTE YOUR FIREBASE CONFIGURATION OBJECT HERE
-// This object should be obtained from your Firebase project console.
+// src/lib/firebase-config.ts
 
-// Go to Project Settings > General > Your apps > Web app > Firebase SDK snippet > Config
-// Example:
-/*
-export const firebaseConfig = {
-  apiKey: "AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXX",
-  authDomain: "your-project-id.firebaseapp.com",
-  projectId: "your-project-id",
-  storageBucket: "your-project-id.appspot.com",
-  messagingSenderId: "1234567890",
-  appId: "1:1234567890:web:XXXXXXXXXXXXXXXXXXXXXX"
-};
-*/
+// Import the functions you need from the SDKs you need
+import { initializeApp, getApps, getApp } from "firebase/app";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
 
-// PASTE YOUR CONFIGURATION BELOW THIS LINE
-export const firebaseConfig = {
-  apiKey: "AIzaSyDnezVuswO91mDc-6zf5kbAv_-VfILpHoI",
-  authDomain: "afkdpu-8wn45.firebaseapp.com",
-  projectId: "afkdpu-8wn45",
-  storageBucket: "afkdpu-8wn45.firebasestorage.app",
-  messagingSenderId: "247899523977",
-  appId: "1:247899523977:web:8c0b8ea8272f52f2666f58"
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
+
+// Initialize Firebase
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+
+export { app };
