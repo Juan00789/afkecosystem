@@ -1091,3 +1091,22 @@ INFO: Websocket client disconnected
 [debug] [2025-07-19T02:34:53.284Z] Jul 19, 2025 2:34:53 AM com.google.cloud.datastore.emulator.firestore.websocket.WebSocketChannelHandler channelClosed
 INFO: Websocket client disconnected
  {"metadata":{"emulator":{"name":"firestore"},"message":"Jul 19, 2025 2:34:53 AM com.google.cloud.datastore.emulator.firestore.websocket.WebSocketChannelHandler channelClosed\nINFO: Websocket client disconnected\n"}}
+[info] i  firestore: Change detected, updating rules... 
+[debug] [2025-07-19T02:54:08.989Z] >>> [apiv2][query] PUT http://127.0.0.1:8080/emulator/v1/projects/demo-app:securityRules [none]
+[debug] [2025-07-19T02:54:08.990Z] >>> [apiv2][body] PUT http://127.0.0.1:8080/emulator/v1/projects/demo-app:securityRules {"ignore_errors":true,"rules":{"files":[{"name":"security.rules","content":""}]}}
+[debug] [2025-07-19T02:54:09.013Z] Jul 19, 2025 2:54:09 AM io.gapi.emulators.netty.HttpVersionRoutingHandler channelRead
+INFO: Detected non-HTTP/2 connection.
+ {"metadata":{"emulator":{"name":"firestore"},"message":"Jul 19, 2025 2:54:09 AM io.gapi.emulators.netty.HttpVersionRoutingHandler channelRead\nINFO: Detected non-HTTP/2 connection.\n"}}
+[info] i  firestore: Change detected, updating rules... 
+[debug] [2025-07-19T02:54:09.066Z] >>> [apiv2][query] PUT http://127.0.0.1:8080/emulator/v1/projects/demo-app:securityRules [none]
+[debug] [2025-07-19T02:54:09.068Z] >>> [apiv2][body] PUT http://127.0.0.1:8080/emulator/v1/projects/demo-app:securityRules {"ignore_errors":true,"rules":{"files":[{"name":"security.rules","content":"rules_version = '2';\n\nservice cloud.firestore {\n  match /databases/{database}/documents {\n\n    // Helper function to check if a user is the client or provider for a given case\n    function isCaseParticipant(caseId) {\n      let caseData = get(/databases/$(database)/documents/cases/$(caseId)).data;\n      return request.auth.uid == caseData.clientId || request.auth.uid == caseData.providerId;\n    }\n\n    match /users/{userId} {\n      allow read, write: if request.auth.uid == userId;\n    }\n\n    match /clients/{clientId} {\n      allow read, write: if request.auth.uid != null; \n    }\n\n    match /services/{serviceId} {\n      allow read;\n      allow write: if request.auth.uid == request.resource.data.userId;\n    }\n\n    match /cases/{caseId} {\n      allow read, create: if request.auth.uid != null;\n      allow update: if isCaseParticipant(caseId);\n      allow delete: if isCaseParticipant(caseId);\n\n      // Rules for the 'comments' subcollection\n      match /comments/{commentId} {\n        allow read: if isCaseParticipant(caseId);\n        allow create: if isCaseParticipant(caseId) && request.auth.uid == request.resource.data.userId;\n        allow update, delete: if isCaseParticipant(caseId) && request.auth.uid == resource.data.userId;\n      }\n    }\n\n     match /invoices/{invoiceId} {\n       allow read, create: if request.auth.uid != null;\n       allow update, delete: if request.auth.uid == resource.data.providerId;\n    }\n  }\n}\n"}]}}
+[debug] [2025-07-19T02:54:09.086Z] Jul 19, 2025 2:54:09 AM io.gapi.emulators.netty.HttpVersionRoutingHandler channelRead
+INFO: Detected non-HTTP/2 connection.
+ {"metadata":{"emulator":{"name":"firestore"},"message":"Jul 19, 2025 2:54:09 AM io.gapi.emulators.netty.HttpVersionRoutingHandler channelRead\nINFO: Detected non-HTTP/2 connection.\n"}}
+[debug] [2025-07-19T02:54:09.204Z] <<< [apiv2][status] PUT http://127.0.0.1:8080/emulator/v1/projects/demo-app:securityRules 200
+[debug] [2025-07-19T02:54:09.204Z] <<< [apiv2][body] PUT http://127.0.0.1:8080/emulator/v1/projects/demo-app:securityRules {"issues":[{"sourcePosition":{"fileName":"security.rules"},"description":"Rules content empty. Compilation aborted.","severity":"ERROR"}]}
+[warn] ⚠  firestore.rules:0:0 - ERROR Rules content empty. Compilation aborted. 
+[info] ✔  firestore: Rules updated. 
+[debug] [2025-07-19T02:54:09.404Z] <<< [apiv2][status] PUT http://127.0.0.1:8080/emulator/v1/projects/demo-app:securityRules 200
+[debug] [2025-07-19T02:54:09.404Z] <<< [apiv2][body] PUT http://127.0.0.1:8080/emulator/v1/projects/demo-app:securityRules {}
+[info] ✔  firestore: Rules updated. 
