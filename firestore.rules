@@ -4,50 +4,63 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check ownership
-    function isOwner(userId) {
-      return request.auth.uid == userId;
+    // Helper function to check if a client pre-registration exists for the user.
+    function isLinkingToExistingClient(userId, phoneNumber) {
+      return exists(/databases/$(database)/documents/clients/$(*)/{
+        // Check for documents where phone matches and userId is null (pre-registered)
+        let client = get(/databases/$(database)/documents/clients/$(clientDoc)).data;
+        client.phone == phoneNumber && client.userId == null
+      });
     }
 
-    // USERS
+    // Allow users to read and update their own user document
     match /users/{userId} {
-      allow read;
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId);
-
-      // PROVIDERS (subcollection of users, for clients)
-      match /providers/{providerId} {
-        allow read, create, update, delete: if isOwner(userId);
+      allow read: if request.auth != null && request.auth.uid == userId;
+      // Allow user to create their own account
+      allow create: if request.auth != null;
+      // Allow user to update their own document,
+      // OR allow an update if it's part of the signup magic link process
+      allow update: if request.auth != null && 
+                    (request.auth.uid == userId || 
+                     (request.resource.data.activeRole == 'client' && 
+                      isLinkingToExistingClient(userId, request.resource.data.phoneNumber)));
+      
+      // Allow users to manage their own providers subcollection
+      match /providers/{providerDocId} {
+        allow read, create, delete: if request.auth != null && request.auth.uid == userId;
       }
     }
 
-    // CLIENTS (for providers)
+    // Rules for the 'clients' collection
     match /clients/{clientId} {
-      allow read, create, update, delete: if request.auth.uid == resource.data.providerId;
+        allow create: if request.auth != null && request.auth.uid == request.resource.data.providerId;
+        allow read: if request.auth != null && (request.auth.uid == resource.data.providerId || request.auth.uid == resource.data.userId);
+        // Allow a provider to update their client, 
+        // OR allow a new user to update the client doc to link their own UID.
+        allow update: if request.auth != null && 
+                      (request.auth.uid == resource.data.providerId || 
+                       (request.auth.uid == request.resource.data.userId && resource.data.userId == null));
+        allow delete: if request.auth != null && request.auth.uid == resource.data.providerId;
     }
 
-    // SERVICES
+    // Rules for 'cases' collection and its subcollections
+    match /cases/{caseId} {
+      allow read, create, update, delete: if request.auth != null && (request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId);
+      
+      match /comments/{commentId} {
+        allow read, create: if request.auth != null;
+      }
+    }
+
+    // Rules for 'services' collection
     match /services/{serviceId} {
-      allow read;
-      allow create, update, delete: if request.auth.uid == request.resource.data.userId;
+        allow read: if request.auth != null;
+        allow create, update, delete: if request.auth != null && request.auth.uid == request.resource.data.userId;
     }
     
-    // INVOICES
+    // Rules for 'invoices' collection
     match /invoices/{invoiceId} {
-      allow read, create, update: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
-    }
-
-    // CASES
-    match /cases/{caseId} {
-      allow read, delete: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
-      allow create: if request.auth.uid == request.resource.data.clientId || request.auth.uid == request.resource.data.providerId;
-      allow update: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
-      
-      // COMMENTS (subcollection of cases)
-      match /comments/{commentId} {
-        allow read: if request.auth.uid == get(/databases/$(database)/documents/cases/$(caseId)).data.clientId || request.auth.uid == get(/databases/$(database)/documents/cases/$(caseId)).data.providerId;
-        allow create: if request.auth.uid != null && (request.auth.uid == get(/databases/$(database)/documents/cases/$(caseId)).data.clientId || request.auth.uid == get(/databases/$(database)/documents/cases/$(caseId)).data.providerId);
-      }
+        allow read, create, update: if request.auth != null && (request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId);
     }
   }
 }
