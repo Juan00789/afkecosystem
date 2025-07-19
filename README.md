@@ -6,7 +6,7 @@
 **Tecnologías:** Next.js, Firebase Hosting, Firestore, LLM-integrated AI Tools
 
 ## 🌱 Descripción del Proyecto:
-AFKEcosystem es una plataforma digital diseñada para empoderar a microemprendedores y fortalecer comunidades locales a través de herramientas tecnológicas, educación exprés y redes colaborativas.
+AFKEcosystem es una plataforma digital diseñada para empoderar a microemprendedores y fortalecer comunidades locales a través de herramientas tecnológicas, educación exprés y redes colaborativas. El concepto de "Rapidito", por ejemplo, representa un multiservicio tangible dentro del ecosistema, ejemplificado a través de clientes y proveedores como Jendry.
 
 ## 🧩 ¿Qué incluye AFKEcosystem?
 - **🛍️ Marketplace local:** Espacio para ofrecer y encontrar servicios dentro de tu comunidad.
