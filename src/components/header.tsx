@@ -11,6 +11,7 @@ import {
   Settings,
   LogOut,
   Menu,
+  CandlestickChart,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -41,6 +42,7 @@ export function Header({}: HeaderProps) {
     { href: '/dashboard/network', label: 'Network', icon: Users },
     { href: '/dashboard/services', label: 'Services', icon: Briefcase },
     { href: '/dashboard/quotes', label: 'Quotes', icon: FileText },
+    { href: '/dashboard/binance', label: 'Binance', icon: CandlestickChart },
     { href: '/dashboard/profile', label: 'Settings', icon: Settings },
   ];
 

@@ -7,6 +7,7 @@ import {
   Briefcase,
   FileText,
   Settings,
+  CandlestickChart,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -22,6 +23,7 @@ const navLinks = [
   { href: '/dashboard/network', label: 'Network', icon: Users },
   { href: '/dashboard/services', label: 'Services', icon: Briefcase },
   { href: '/dashboard/quotes', label: 'Quotes', icon: FileText },
+  { href: '/dashboard/binance', label: 'Binance', icon: CandlestickChart },
 ];
 
 const bottomLinks = [
@@ -33,7 +35,8 @@ export function Sidebar() {
 
   const renderLink = (link: { href: string; label: string; icon: any }) => {
     const { href, label, icon: Icon } = link;
-    const isActive = pathname === href;
+    const isActive = pathname.startsWith(href) && (href !== '/dashboard' || pathname === '/dashboard');
+
 
     return (
       <Tooltip key={label}>
