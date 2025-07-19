@@ -106,9 +106,13 @@ const ClientsTab = ({ user }: { user: User | null }) => {
         setSaving(true);
         try {
             // Check if client with this phone number already exists for this provider
-            const q = query(collection(db, 'clients'), where('providerId', '==', user.uid), where('phone', '==', newClient.phone));
-            const existingClient = await getDocs(q);
-            if (!existingClient.empty) {
+            const q = query(
+              collection(db, 'clients'), 
+              where('providerId', '==', user.uid), 
+              where('phone', '==', newClient.phone)
+            );
+            const existingClientSnapshot = await getDocs(q);
+            if (!existingClientSnapshot.empty) {
                 toast({ variant: 'destructive', title: 'Cliente duplicado', description: 'Ya tienes un cliente con este número de teléfono.' });
                 setSaving(false);
                 return;
@@ -117,7 +121,7 @@ const ClientsTab = ({ user }: { user: User | null }) => {
             await addDoc(collection(db, 'clients'), {
                 ...newClient,
                 providerId: user.uid, 
-                userId: null, // Explicitly set userId to null initially
+                userId: null, // Explicitly set userId to null for pre-registration
                 avatar: `https://placehold.co/100x100.png`,
                 createdAt: serverTimestamp(),
             });
@@ -126,7 +130,7 @@ const ClientsTab = ({ user }: { user: User | null }) => {
             setNewClient({ name: '', company: '', email: '', phone: '' }); 
         } catch (error) {
             console.error('Error al añadir cliente:', error);
-            toast({ variant: 'destructive', title: 'Error al guardar' });
+            toast({ variant: 'destructive', title: 'Error al guardar', description: 'Ocurrió un error al guardar el cliente.' });
         } finally {
             setSaving(false);
         }
@@ -603,3 +607,5 @@ export default function NetworkPage() {
     </main>
   );
 }
+
+    
