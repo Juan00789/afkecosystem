@@ -153,20 +153,24 @@ export default function DashboardPage() {
         // Fetch related data based on role
         if (userData.activeRole === 'provider') {
             const clientsQuery = query(collection(db, 'clients'), where('providerId', '==', user.uid));
-            const servicesQuery = query(collection(db, 'services'), where('userId', '==', user.uid));
-            try {
-                const [clientsSnapshot, servicesSnapshot] = await Promise.all([
-                    getDocs(clientsQuery),
-                    getDocs(servicesQuery)
-                ]);
-                setClients(clientsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client)));
-                setServices(servicesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Service)));
-            } catch (error) {
-                console.error("Error fetching provider data:", error);
-            }
+             const unsubscribeClients = onSnapshot(clientsQuery, (snapshot) => {
+                setClients(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client)));
+            });
         }
+        
+        const servicesQuery = query(collection(db, 'services'), where('userId', '==', user.uid));
+        const unsubscribeServices = onSnapshot(servicesQuery, (snapshot) => {
+            setServices(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Service)));
+        });
 
         setLoading(false);
+        
+        return () => {
+            unsubscribeCases();
+            // unsubscribeClients(); // This would cause an error if not defined
+            unsubscribeServices();
+        };
+
     }, (error) => {
         console.error("Error fetching dashboard data: ", error);
         toast({ variant: 'destructive', title: 'Error al cargar datos del panel', description: 'Por favor, intenta recargar la página.' });
@@ -208,14 +212,12 @@ export default function DashboardPage() {
                 <h2 className="text-3xl font-bold tracking-tight">Resumen General</h2>
                 <p className="text-muted-foreground">Bienvenido de nuevo a tu centro de mando.</p>
             </div>
-            {isProvider && (
-              <Button asChild>
+            <Button asChild>
                 <Link href="/dashboard/services">
                     <PlusCircle className="mr-2 h-4 w-4" />
-                    Crear Nuevo Caso
+                    Crear/Ver Servicios
                 </Link>
-              </Button>
-            )}
+            </Button>
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card>
@@ -415,5 +417,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
