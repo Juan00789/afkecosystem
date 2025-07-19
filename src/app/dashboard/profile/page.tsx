@@ -19,7 +19,7 @@ import { onAuthStateChanged, type User, updateProfile } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Camera, Copy, Globe, Key } from 'lucide-react';
+import { Loader2, Camera, Copy, Globe, Key, Building } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -33,6 +33,7 @@ export default function ProfilePage() {
   const [copied, setCopied] = useState(false);
   const [form, setForm] = useState({
     name: '',
+    company: '',
     email: '',
     phoneNumber: '',
     photoURL: '',
@@ -53,6 +54,7 @@ export default function ProfilePage() {
           
           setForm({
             name: userData.name || currentUser.displayName || '',
+            company: userData.company || '',
             email: currentUser.email || '',
             phoneNumber: userData.phoneNumber || '',
             photoURL: userData.photoURL || currentUser.photoURL || '',
@@ -138,6 +140,7 @@ export default function ProfilePage() {
       const userRef = doc(db, 'users', user.uid);
       await setDoc(userRef, { 
         name: form.name,
+        company: form.company,
         phoneNumber: form.phoneNumber,
         website: form.website,
       }, { merge: true });
@@ -249,6 +252,20 @@ export default function ProfilePage() {
                     />
                 </div>
                 <div className="space-y-2">
+                    <Label htmlFor="company">Nombre de la Empresa (Opcional)</Label>
+                     <div className="flex items-center gap-2">
+                        <Building className="h-5 w-5 text-muted-foreground" />
+                        <Input
+                            id="company"
+                            name="company"
+                            value={form.company}
+                            onChange={handleInputChange}
+                            placeholder="Ej: Innovaciones Digitales"
+                            disabled={saving || uploading}
+                        />
+                    </div>
+                </div>
+                <div className="space-y-2">
                     <Label htmlFor="email">Correo Electrónico</Label>
                     <Input
                         id="email"
@@ -308,3 +325,5 @@ export default function ProfilePage() {
     </main>
   );
 }
+
+    
