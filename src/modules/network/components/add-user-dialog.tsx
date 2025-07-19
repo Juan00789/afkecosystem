@@ -162,9 +162,6 @@ export function AddUserDialog({ roleToAdd, onUserAdded }: AddUserDialogProps) {
           </div>
         </div>
         <DialogFooter>
-          <Button onClick={handleadd}>
-            Add a client
-          </Button>
           <Button onClick={handleAddUser} disabled={loading}>
             {loading ? 'Adding...' : `Add ${roleToAdd}`}
           </Button>
