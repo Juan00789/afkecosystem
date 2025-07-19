@@ -78,7 +78,7 @@ export function AuthSignIn() {
             </Button>
           </div>
            <div className="mt-6 text-xs text-gray-500">
-             &copy; {new Date().getFullYear()} Quickie Rapidito
+             &copy; {new Date().getFullYear()} AFKEcosystem
            </div>
         </CardContent>
       </Card>
