@@ -38,14 +38,6 @@ export function ProfilePage() {
 
   const { control, handleSubmit, reset, formState: { errors, isDirty } } = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
-    defaultValues: {
-      displayName: '',
-      phoneNumber: '',
-      companyName: '',
-      website: '',
-      bankName: '',
-      accountNumber: '',
-    },
   });
 
   useEffect(() => {
@@ -89,7 +81,8 @@ export function ProfilePage() {
         }
         
         const userDocRef = doc(db, 'users', user.uid);
-        const profileData = {
+        const updatedProfileData = {
+            ...userProfile, // Start with existing profile data
             uid: user.uid,
             email: user.email,
             displayName: data.displayName,
@@ -103,7 +96,7 @@ export function ProfilePage() {
             }
         };
 
-        await setDoc(userDocRef, profileData, { merge: true });
+        await setDoc(userDocRef, updatedProfileData, { merge: true });
 
         toast({ title: 'Success', description: 'Your profile has been updated.' });
         
@@ -196,10 +189,12 @@ export function ProfilePage() {
                            <p className="text-sm text-muted-foreground">Share this ID with your clients so they can add you to their network.</p>
                       </div>
                        <div className="flex items-center space-x-2">
-                          <Input type="text" value={user?.uid} readOnly />
+                          <Input type="text" value={user?.uid || ''} readOnly />
                           <Button type="button" onClick={() => {
-                              navigator.clipboard.writeText(user?.uid || '');
-                              toast({ title: 'Copied!', description: 'Provider ID copied to clipboard.' });
+                              if (user?.uid) {
+                                navigator.clipboard.writeText(user.uid);
+                                toast({ title: 'Copied!', description: 'Provider ID copied to clipboard.' });
+                              }
                           }}>Copy ID</Button>
                       </div>
                   </TabsContent>
