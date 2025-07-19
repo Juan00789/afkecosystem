@@ -1,9 +1,15 @@
 
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Briefcase, FileText, Users, Search, Handshake } from 'lucide-react';
+import { ArrowRight, Briefcase, FileText, Users, Search, Handshake, Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import { db } from '@/lib/firebase';
+import { collection, getDocs, query, where, limit } from 'firebase/firestore';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 
 const WhatsAppIcon = () => (
     <svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" className="h-5 w-5">
@@ -15,11 +21,67 @@ const WhatsAppIcon = () => (
 const InstagramIcon = () => (
     <svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" className="h-5 w-5">
       <title>Instagram</title>
-      <path d="M12 0C8.74 0 8.333.015 7.053.072 5.775.132 4.905.333 4.14.63c-.784.297-1.457.717-2.126 1.387C1.344 2.687.925 3.36.63 4.14c-.297.765-.497 1.635-.558 2.913-.058 1.28-.072 1.687-.072 4.947s.015 3.667.072 4.947c.06 1.278.26 2.148.558 2.913.297.784.717 1.457 1.387 2.126.67.67 1.343 1.09 2.126 1.387.765.297 1.635.497 2.913.558 1.28.058 1.687.072 4.947.072s3.667-.015 4.947-.072c1.278-.06 2.148-.26 2.913-.558.784-.297 1.457-.717 2.126-1.387.67-.67 1.09-1.343 1.387-2.126.297-.765.497-1.635.558-2.913.058-1.28.072-1.687.072-4.947s-.015-3.667-.072-4.947c-.06-1.278-.26-2.148-.558-2.913-.297-.784-.717-1.457-1.387-2.126C21.313 1.344 20.64.925 19.86.63c-.765-.297-1.635-.497-2.913-.558C15.667.015 15.26 0 12 0zm0 2.16c3.203 0 3.585.012 4.85.07 1.17.052 1.805.248 2.227.415.562.217.96.477 1.382.896.42.42.678.82.896 1.382.167.422.363 1.057.413 2.227.058 1.265.07 1.646.07 4.85s-.012 3.585-.07 4.85c-.052 1.17-.248 1.805-.413 2.227-.217.562-.477.96-.896 1.382-.42.42-.82.678-1.382.896-.422.167-1.057.363-2.227.413-1.265.058-1.646.07-4.85.07s-3.585-.012-4.85-.07c-1.17-.052-1.805-.248-2.227-.413-.562-.217-.96-.477-1.382-.896-.42-.42-.678.82-.896-1.382-.167-.422-.363-1.057-.413-2.227-.058-1.265-.07-1.646-.07-4.85s.012-3.585.07-4.85c.052-1.17.248-1.805.413 2.227.217-.562.477.96.896-1.382.42-.42.82-.678 1.382-.896.422-.167 1.057.363 2.227.413C8.415 2.172 8.797 2.16 12 2.16zm0 9.24c-1.958 0-3.562 1.604-3.562 3.562s1.604 3.562 3.562 3.562 3.562-1.604 3.562-3.562-1.604-3.562-3.562-3.562zM12 17c-1.105 0-2-.895-2-2s.895-2 2-2 2 .895 2 2-.895 2-2 2zm6.202-8.918c-.62 0-1.12.5-1.12 1.12s.5 1.12 1.12 1.12c.62 0 1.12-.5 1.12-1.12s-.5-1.12-1.12-1.12z"/>
+      <path d="M12 0C8.74 0 8.333.015 7.053.072 5.775.132 4.905.333 4.14.63c-.784.297-1.457.717-2.126 1.387C1.344 2.687.925 3.36.63 4.14c-.297.765-.497 1.635-.558 2.913-.058 1.28-.072 1.687-.072 4.947s.015 3.667.072 4.947c.06 1.278.26 2.148.558 2.913.297.784.717 1.457 1.387 2.126.67.67 1.343 1.09 2.126 1.387.765.297 1.635.497 2.913.558 1.28.058 1.687.072 4.947.072s3.667-.015 4.947-.072c1.278-.06 2.148-.26 2.913-.558.784-.297 1.457-.717 2.126-1.387.67-.67 1.09-1.343 1.387-2.126.297-.765.497-1.635.558-2.913.058-1.28.072-1.687.072-4.947s-.015-3.667-.072-4.947c-.06-1.278-.26-2.148-.558-2.913-.297-.784-.717-1.457-1.387-2.126C21.313 1.344 20.64.925 19.86.63c-.765-.297-1.635-.497-2.913-.558C15.667.015 15.26 0 12 0zm0 2.16c3.203 0 3.585.012 4.85.07 1.17.052 1.805.248 2.227.415.562.217.96.477 1.382.896.42.42.678.82.896 1.382.167.422.363 1.057.413 2.227.058 1.265.07 1.646.07 4.85s-.012 3.585-.07 4.85c-.052 1.17-.248 1.805-.413 2.227-.217.562-.477.96-.896 1.382-.42.42-.82.678-1.382.896-.422.167-1.057.363-2.227.413-1.265.058-1.646.07-4.85.07s-3.585-.012-4.85-.07c-1.17-.052-1.805-.248-2.227-.413-.562-.217-.96-.477-1.382-.896-.42-.42-.678.82-.896-1.382-.167-.422-.363-1.057-.413-2.227-.058-1.265-.07-1.646-.07-4.85s.012-3.585.07-4.85c.052-1.17.248 1.805.413 2.227.217-.562.477.96.896-1.382.42-.42.82.678 1.382-.896.422.167 1.057.363 2.227.413C8.415 2.172 8.797 2.16 12 2.16zm0 9.24c-1.958 0-3.562 1.604-3.562 3.562s1.604 3.562 3.562 3.562 3.562-1.604 3.562-3.562-1.604-3.562-3.562-3.562zM12 17c-1.105 0-2-.895-2-2s.895-2 2-2 2 .895 2 2-.895 2-2 2zm6.202-8.918c-.62 0-1.12.5-1.12 1.12s.5 1.12 1.12 1.12c.62 0 1.12-.5 1.12-1.12s-.5-1.12-1.12-1.12z"/>
     </svg>
 );
 
+interface Service {
+  id: string;
+  name: string;
+  price: string;
+  currency: string;
+}
+
+interface Provider {
+  id: string;
+  name: string;
+  photoURL: string;
+  website?: string;
+  services: Service[];
+}
+
 export default function LandingPage() {
+  const [providers, setProviders] = useState<Provider[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchProviders = async () => {
+      try {
+        // 1. Get all unique provider IDs from the services collection
+        const servicesSnapshot = await getDocs(collection(db, 'services'));
+        const providerIds = [...new Set(servicesSnapshot.docs.map(doc => doc.data().userId))];
+        const allServices = servicesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Service & { userId: string }));
+
+        if (providerIds.length === 0) {
+          setLoading(false);
+          return;
+        }
+
+        // 2. Get user data for those provider IDs
+        const usersQuery = query(collection(db, 'users'), where('__name__', 'in', providerIds));
+        const usersSnapshot = await getDocs(usersQuery);
+        
+        const providersData = usersSnapshot.docs.map(doc => {
+          const userData = doc.data();
+          return {
+            id: doc.id,
+            name: userData.name || 'Proveedor Anónimo',
+            photoURL: userData.photoURL || `https://placehold.co/100x100.png`,
+            website: userData.website,
+            services: allServices.filter(service => service.userId === doc.id)
+          };
+        });
+
+        setProviders(providersData);
+      } catch (error) {
+        console.error("Error fetching providers:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProviders();
+  }, []);
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -44,6 +106,9 @@ export default function LandingPage() {
              <Link href="#features" className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary">
                 Características
               </Link>
+              <Link href="#providers" className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary">
+                Proveedores
+              </Link>
               <Link href="#contact" className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary">
                 Contacto
               </Link>
@@ -65,7 +130,7 @@ export default function LandingPage() {
             </p>
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
               <Button size="lg" asChild variant="outline">
-                <Link href="#contact">
+                <Link href="#providers">
                   <Search className="mr-2" />
                   Buscar Ayuda
                 </Link>
@@ -112,7 +177,68 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section id="contact" className="py-20 md:py-32">
+        <section id="providers" className="py-20 md:py-32">
+          <div className="container">
+            <div className="text-center max-w-2xl mx-auto">
+              <h2 className="text-3xl md:text-4xl font-bold">Encuentra tu Proveedor Ideal</h2>
+              <p className="mt-3 text-muted-foreground">Explora nuestra red de profesionales y los servicios que ofrecen. El próximo paso hacia tu solución está aquí.</p>
+            </div>
+            {loading ? (
+              <div className="flex justify-center mt-12">
+                <Loader2 className="h-10 w-10 animate-spin text-primary"/>
+              </div>
+            ) : providers.length > 0 ? (
+              <div className="mt-12 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+                {providers.map(provider => (
+                  <Card key={provider.id} className="flex flex-col">
+                    <CardHeader className="flex flex-row items-start gap-4">
+                      <Avatar className="h-16 w-16 border">
+                        <AvatarImage src={provider.photoURL} alt={provider.name} data-ai-hint="person face" />
+                        <AvatarFallback>{provider.name.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <CardTitle>{provider.name}</CardTitle>
+                        {provider.website && (
+                           <a href={`https://${provider.website}`} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline">
+                            {provider.website}
+                          </a>
+                        )}
+                      </div>
+                    </CardHeader>
+                    <CardContent className="flex-1">
+                      <h4 className="font-semibold mb-2">Servicios Ofrecidos:</h4>
+                      {provider.services.length > 0 ? (
+                        <ul className="space-y-1">
+                          {provider.services.slice(0, 4).map(service => (
+                            <li key={service.id} className="flex justify-between items-center text-sm">
+                              <span>{service.name}</span>
+                              <Badge variant="secondary">{service.price} {service.currency}</Badge>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">No hay servicios listados.</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-12 text-center text-muted-foreground">
+                <p>Actualmente no hay proveedores de servicios disponibles. ¡Vuelve pronto!</p>
+              </div>
+            )}
+            <div className="mt-12 text-center">
+                <Button size="lg" asChild>
+                    <Link href="/signup">
+                        ¿Quieres ser proveedor? Regístrate aquí <ArrowRight className="ml-2"/>
+                    </Link>
+                </Button>
+            </div>
+          </div>
+        </section>
+
+        <section id="contact" className="py-20 md:py-32 bg-secondary">
           <div className="container max-w-2xl">
               <div className="text-center">
                   <h2 className="text-3xl md:text-4xl font-bold">¿Listo para empezar?</h2>
@@ -145,5 +271,3 @@ export default function LandingPage() {
     </div>
   );
 }
-
-    
