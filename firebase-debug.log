@@ -1662,3 +1662,6 @@ INFO: Detected non-HTTP/2 connection.
 [warn] ⚠  firestore.rules:17:80 - WARNING Invalid variable name: data. 
 [warn] ⚠  firestore.rules:29:76 - WARNING Invalid variable name: data. 
 [info] ✔  firestore: Rules updated. 
+[debug] [2025-07-19T14:14:15.101Z] Jul 19, 2025 2:14:15 PM com.google.cloud.datastore.emulator.firestore.websocket.WebSocketChannelHandler channelClosed
+INFO: Websocket client disconnected
+ {"metadata":{"emulator":{"name":"firestore"},"message":"Jul 19, 2025 2:14:15 PM com.google.cloud.datastore.emulator.firestore.websocket.WebSocketChannelHandler channelClosed\nINFO: Websocket client disconnected\n"}}

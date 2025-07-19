@@ -18,7 +18,7 @@ import { UserNav } from "@/components/user-nav";
 import { Home, Briefcase, FileText, Settings, CreditCard, Bell, Receipt, Search, ListTodo, BrainCircuit, Network } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { onAuthStateChanged, type User } from 'firebase/auth';
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, collection, query, where, getDocs, writeBatch, serverTimestamp, updateDoc } from "firebase/firestore";
 import { getFirebaseAuth, db } from "@/lib/firebase";
 import { useRouter, usePathname } from 'next/navigation';
 import { RoleSwitcher } from '@/components/role-switcher';
@@ -53,23 +53,33 @@ export default function DashboardLayout({
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
         setUser(currentUser);
-        const docRef = doc(db, 'users', currentUser.uid);
-        const docSnap = await getDoc(docRef);
+        const userRef = doc(db, 'users', currentUser.uid);
+        const docSnap = await getDoc(userRef);
+
+        let userData;
         if (docSnap.exists()) {
-          const userData = docSnap.data();
-          const name = userData.name || currentUser.displayName;
-          setUserName(name ? `¡Hola, ${name.split(' ')[0]}!` : '¡Hola!');
-          setActiveRole(userData.activeRole || 'provider');
+          userData = docSnap.data();
         } else {
+           // This case is for social auth users who might not have a doc yet.
            const name = currentUser.displayName;
-           setUserName(name ? `¡Hola, ${name.split(' ')[0]}!` : '¡Hola!');
-           await setDoc(docRef, { 
-             name: currentUser.displayName, 
+           userData = { 
+             name: name, 
              email: currentUser.email,
              activeRole: 'provider',
              roles: ['provider', 'client']
-            }, { merge: true });
+           };
+           await setDoc(userRef, userData, { merge: true });
         }
+        
+        const name = userData.name || currentUser.displayName;
+        setUserName(name ? `¡Hola, ${name.split(' ')[0]}!` : '¡Hola!');
+        setActiveRole(userData.activeRole || 'provider');
+
+        // Magic Link logic moved here
+        if (userData.phoneNumber) {
+            await linkPreRegisteredClient(currentUser, userData.phoneNumber);
+        }
+
       } else {
         router.push('/login');
       }
@@ -78,12 +88,48 @@ export default function DashboardLayout({
      return () => unsubscribe();
   }, [router]);
   
+  const linkPreRegisteredClient = async (user: User, phoneNumber: string) => {
+      // Find a client pre-registered with this phone number that hasn't been linked yet
+      const clientsQuery = query(
+          collection(db, 'clients'), 
+          where('phone', '==', phoneNumber),
+          where('userId', '==', null)
+      );
+      const querySnapshot = await getDocs(clientsQuery);
+
+      if (!querySnapshot.empty) {
+          const batch = writeBatch(db);
+          const clientDoc = querySnapshot.docs[0]; // Link the first one found
+          const clientData = clientDoc.data();
+          const userRef = doc(db, 'users', user.uid);
+
+          // 1. Update the client doc with the new user's UID
+          batch.update(clientDoc.ref, { userId: user.uid });
+
+          // 2. Add the provider to the new user's network
+          if (clientData.providerId) {
+              const providerSubCollectionRef = doc(collection(db, 'users', user.uid, 'providers'));
+              batch.set(providerSubCollectionRef, {
+                  providerId: clientData.providerId,
+                  status: 'main', // Make them the main provider automatically
+                  createdAt: serverTimestamp()
+              });
+              // 3. Update the user's role to client, since they were invited
+              batch.update(userRef, { activeRole: 'client' });
+          }
+          
+          await batch.commit();
+          // Force a reload to reflect the new role and data
+          window.location.reload(); 
+      }
+  };
+
+
   const handleRoleChange = async (newRole: string) => {
     if (user) {
         setActiveRole(newRole);
         const userRef = doc(db, 'users', user.uid);
         await setDoc(userRef, { activeRole: newRole }, { merge: true });
-        // Instead of router.push, we refresh the page to ensure all data reloads with the new role.
         window.location.href = '/dashboard';
     }
   };
