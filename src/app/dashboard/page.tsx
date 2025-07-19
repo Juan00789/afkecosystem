@@ -21,7 +21,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowUpRight, PlusCircle, Briefcase, Users, UserCheck, Activity, Loader2, MessageSquare } from "lucide-react";
+import { ArrowUpRight, PlusCircle, Briefcase, Users, UserCheck, Activity, Loader2, MessageSquare, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from 'next/navigation';
 import { db, auth } from '@/lib/firebase';
@@ -140,7 +140,7 @@ export default function DashboardPage() {
 
         // Fetch clients if the user is a provider
         if (userData.activeRole === 'provider') {
-            const clientsQuery = query(collection(db, 'clients'), where('userId', '==', user.uid));
+            const clientsQuery = query(collection(db, 'clients'), where('providerId', '==', user.uid));
             try {
                 const clientsSnapshot = await getDocs(clientsQuery);
                 setClients(clientsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client)));
@@ -163,7 +163,9 @@ export default function DashboardPage() {
   }, [user, userData.activeRole, toast]);
 
 
-  const activeCasesCount = cases.filter(c => c.status === 'En Progreso').length;
+  const activeCases = cases.filter(c => c.status === 'En Progreso');
+  const activeCasesCount = activeCases.length;
+  const nextTaskCase = activeCases.length > 0 ? activeCases[0] : null;
   const isProvider = userData.activeRole === 'provider';
 
   const getStatusVariant = (status: string) => {
@@ -226,8 +228,26 @@ export default function DashboardPage() {
                     <UserCheck className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-xl font-bold">¡Todo en orden!</div>
-                    <p className="text-xs text-muted-foreground">No hay acciones urgentes por ahora.</p>
+                    {nextTaskCase ? (
+                        <>
+                            <div className="text-xl font-bold truncate">
+                               {isProvider ? nextTaskCase.clientName : nextTaskCase.providerName}
+                            </div>
+                            <div className="text-xs text-muted-foreground flex items-center">
+                                <p className="truncate flex-1">Revisar caso: {nextTaskCase.services.map(s => s.name).join(', ')}</p>
+                                <Button variant="ghost" size="icon" className="h-6 w-6 ml-1" asChild>
+                                    <Link href={`/dashboard/cases/${nextTaskCase.id}`}>
+                                        <ExternalLink className="h-4 w-4"/>
+                                    </Link>
+                                </Button>
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <div className="text-xl font-bold">¡Todo en orden!</div>
+                            <p className="text-xs text-muted-foreground">No hay acciones urgentes por ahora.</p>
+                        </>
+                    )}
                 </CardContent>
             </Card>
             <Card>
