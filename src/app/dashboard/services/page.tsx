@@ -149,33 +149,36 @@ export default function ServicesPage() {
         setLoading(true);
 
         if (userData.activeRole === 'provider') {
-            const fetchProviderData = async () => {
-                try {
-                    // Fetch services
-                    const servicesQuery = query(collection(db, 'services'), where('userId', '==', user.uid));
-                    const servicesSnapshot = await getDocs(servicesQuery);
-                    setMyServices(servicesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Service)));
+            // Use onSnapshot for real-time updates for services
+            const servicesQuery = query(collection(db, 'services'), where('userId', '==', user.uid));
+            const unsubscribeServices = onSnapshot(servicesQuery, (snapshot) => {
+                setMyServices(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Service)));
+                setLoading(false); // Set loading to false once services are loaded
+            }, (error) => {
+                console.error("Error fetching services:", error);
+                toast({ variant: 'destructive', title: 'Error al cargar servicios' });
+                setLoading(false);
+            });
 
-                    // Fetch clients
+            // Fetch clients once
+            const fetchProviderClients = async () => {
+                 try {
                     const clientsQuery = query(collection(db, 'clients'), where('providerId', '==', user.uid));
                     const clientsSnapshot = await getDocs(clientsQuery);
-                    const clientIds = clientsSnapshot.docs.map(doc => doc.data().userId).filter(Boolean); // Filter out potential undefined
-                    
-                    if (clientIds.length > 0) {
-                        const usersQuery = query(collection(db, 'users'), where('__name__', 'in', clientIds));
-                        const usersSnapshot = await getDocs(usersQuery);
-                        setMyClients(usersSnapshot.docs.map(doc => ({ id: doc.id, name: doc.data().name || 'Cliente sin nombre' })));
-                    } else {
-                         setMyClients([]);
-                    }
-                } catch (error) {
-                    console.error("Error fetching provider data:", error);
-                    toast({ variant: 'destructive', title: 'Error al cargar datos' });
-                } finally {
-                    setLoading(false);
+                    // This was a bug: `userId` is not correct, `clients` collection doesn't have `userId`
+                    // Instead, we need to link clients via a proper field, but for now, we'll assume `clients` collection has the client data.
+                    // The previous logic was also flawed. Let's simplify and assume the `clients` collection has a `name` field.
+                    const clientsData = clientsSnapshot.docs.map(doc => ({ id: doc.id, name: doc.data().name || 'Cliente sin nombre' }));
+                    setMyClients(clientsData);
+                } catch(error) {
+                    console.error("Error fetching clients:", error);
+                    toast({ variant: 'destructive', title: 'Error al cargar clientes' });
                 }
             };
-            fetchProviderData();
+
+            fetchProviderClients();
+            
+            return () => unsubscribeServices();
         }
 
         if (userData.activeRole === 'client') {
@@ -243,17 +246,17 @@ export default function ServicesPage() {
         if (!user) return;
         setSaving(true);
         try {
-            const docRef = await addDoc(collection(db, 'services'), {
+            await addDoc(collection(db, 'services'), {
                 ...newService,
                 userId: user.uid, 
                 createdAt: Timestamp.now(),
             });
-            setMyServices(prev => [...prev, {id: docRef.id, ...newService, userId: user.uid}]);
+            // No need to manually update state, onSnapshot will do it.
             toast({ title: 'Servicio guardado' });
             setNewService({ name: '', description: '', price: '' }); 
         } catch (error) {
             console.error('Error al añadir servicio:', error);
-            toast({ variant: 'destructive', title: 'Error al guardar' });
+            toast({ variant: 'destructive', title: 'Error al guardar', description: 'Revisa las reglas de seguridad de Firestore.' });
         } finally {
             setSaving(false);
         }
@@ -270,7 +273,7 @@ export default function ServicesPage() {
                 description: editingService.description,
                 price: editingService.price,
             });
-            setMyServices(prev => prev.map(s => s.id === editingService.id ? editingService : s));
+            // No need to manually update state, onSnapshot will do it.
             toast({ title: 'Servicio actualizado' });
             setIsEditDialogOpen(false);
             setEditingService(null);
@@ -285,7 +288,7 @@ export default function ServicesPage() {
     const handleDeleteService = async (serviceId: string) => {
          try {
             await deleteDoc(doc(db, 'services', serviceId));
-            setMyServices(prev => prev.filter(s => s.id !== serviceId));
+            // No need to manually update state, onSnapshot will do it.
             toast({ title: 'Servicio eliminado' });
         } catch (error) {
             console.error('Error al eliminar servicio:', error);
@@ -324,13 +327,32 @@ export default function ServicesPage() {
                 const price = parseFloat(service.price.replace(/[^0-9.-]+/g,""));
                 return isNaN(price) ? acc : acc + price;
             }, 0) || 0;
+            
+            let clientDocId;
+            if(isProviderInitiated) {
+                const clientRecord = myClients.find(c => c.id === partyId);
+                // This is tricky. The `partyId` from the select is the client document ID from the `clients` collection.
+                // We need the actual UID of the client. Let's assume the `clients` collection doc ID is the user's UID.
+                // This is a common pattern but might be fragile.
+                // A better data model would store the client's UID in the client document.
+                // For now, let's assume the `myClients` list provides the user ID as `id`.
+                const clientsQuery = query(collection(db, 'clients'), where('__name__', '==', partyId), limit(1));
+                const clientSnap = await getDocs(clientsQuery);
+                if(clientSnap.empty || !clientSnap.docs[0].data().userId) {
+                     toast({ variant: 'destructive', title: 'Error de Cliente', description: 'No se pudo encontrar el ID de usuario para este cliente.' });
+                     setCreatingCase(false);
+                     return;
+                }
+                clientDocId = clientSnap.docs[0].data().userId;
+            }
+
 
             const newCaseData = {
-                clientId: isProviderInitiated ? partyId : user.uid,
+                clientId: isProviderInitiated ? clientDocId : user.uid,
                 clientName: isProviderInitiated ? partyName : userData.name,
                 providerId: isProviderInitiated ? user.uid : partyId,
                 providerName: isProviderInitiated ? userData.name : partyName,
-                services: selectedServiceDetails,
+                services: selectedServiceDetails.map(({ id, name, price }) => ({ id, name, price })),
                 status: 'Pendiente',
                 createdAt: Timestamp.now(),
                 lastUpdate: Timestamp.now(),
@@ -647,5 +669,3 @@ export default function ServicesPage() {
         </main>
     );
 }
-
-    

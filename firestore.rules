@@ -3,58 +3,41 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // USERS
+    
     match /users/{userId} {
-      allow read: if request.auth.uid == userId;
-      allow update: if request.auth.uid == userId;
-      allow create: if request.auth.uid == userId;
+      allow read, update: if request.auth.uid == userId;
       allow list: if request.auth.uid != null;
       
-      // Subcollection for providers linked to a client
       match /providers/{providerDocId} {
         allow read, create, delete, list: if request.auth.uid == userId;
       }
     }
     
-    // CLIENTS (as in, customers of a provider)
-    match /clients/{clientId} {
-      // A user can read their own client entry (if they are one)
-      // A provider can read the client entries linked to them
-      allow read, create, list: if request.auth.uid != null;
-      allow update, delete: if request.auth.uid == resource.data.providerId;
+    match /clients/{clientDocId} {
+      allow read, create, delete: if request.auth.uid == request.resource.data.providerId;
+      allow list: if request.auth.uid != null;
     }
-
-    // SERVICES
+    
     match /services/{serviceId} {
-      allow read: if true;
+      // Any authenticated user can read services to explore them
+      allow read, list: if request.auth.uid != null;
+      // Only the owner can create, update, or delete their services
       allow create, update, delete: if request.auth.uid == request.resource.data.userId;
     }
 
-    // CASES
     match /cases/{caseId} {
-      allow read: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
-      allow update: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
+      allow read, update: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
       allow create: if request.auth.uid == request.resource.data.clientId || request.auth.uid == request.resource.data.providerId;
       allow delete: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
 
-      // Subcollection for comments within a case
       match /comments/{commentId} {
-        allow read: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
-        allow create: if request.auth.uid != null;
+        allow read, create: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
       }
     }
-
-    // INVOICES
+    
     match /invoices/{invoiceId} {
-      allow read, update: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
-      allow create: if request.auth.uid == request.resource.data.providerId;
-    }
-
-    match /{document=**} {
-      allow read, write: if false;
+       allow read, list: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
+       allow create: if request.auth.uid == request.resource.data.providerId;
     }
   }
 }
-
-    
