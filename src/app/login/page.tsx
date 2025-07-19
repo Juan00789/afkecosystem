@@ -14,12 +14,11 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Logo } from '@/components/logo';
-import { useState, useEffect } from 'react';
-import { signInWithEmailAndPassword, signInWithRedirect, getRedirectResult, GoogleAuthProvider, GithubAuthProvider, OAuthProvider, type AuthProvider } from 'firebase/auth';
-import { getFirebaseAuth, db } from '@/lib/firebase';
+import { useState } from 'react';
+import { signInWithEmailAndPassword, signInWithRedirect, GoogleAuthProvider, GithubAuthProvider, OAuthProvider, type AuthProvider } from 'firebase/auth';
+import { getFirebaseAuth } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
 
 const GoogleIcon = () => (
     <svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" className="h-4 w-4">
@@ -90,36 +89,6 @@ export default function LoginPage() {
         description: description,
     });
   }
-
-  useEffect(() => {
-    const handleRedirectResult = async () => {
-      setLoading(true);
-      try {
-        const auth = getFirebaseAuth();
-        const result = await getRedirectResult(auth);
-        if (result) {
-          const user = result.user;
-          const userRef = doc(db, 'users', user.uid);
-          const docSnap = await getDoc(userRef);
-
-          if (!docSnap.exists()) {
-            await setDoc(userRef, {
-              name: user.displayName,
-              email: user.email,
-              createdAt: new Date(),
-            }, { merge: true });
-          }
-          router.push('/dashboard');
-        } else {
-            setLoading(false);
-        }
-      } catch (error) {
-        handleError(error);
-      }
-    };
-
-    handleRedirectResult();
-  }, [router]);
 
   const handleSocialLogin = async (provider: AuthProvider) => {
     setLoading(true);
