@@ -53,29 +53,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      setLoading(true);
       if (firebaseUser) {
         setUser(firebaseUser);
         await fetchUserProfile(firebaseUser);
-        if (pathname.startsWith('/auth')) {
-          router.push('/dashboard');
-        }
       } else {
         setUser(null);
         setUserProfile(null);
-        if (pathname.startsWith('/dashboard')) {
-          router.push('/auth/sign-in');
-        }
       }
       setLoading(false);
     });
 
     return () => unsubscribe();
-  }, [router, pathname, fetchUserProfile]);
+  }, [fetchUserProfile]);
+
+  useEffect(() => {
+    if (loading) return;
+
+    const isAuthPage = pathname.startsWith('/auth');
+    const isDashboardPage = pathname.startsWith('/dashboard');
+
+    if (!user && isDashboardPage) {
+        router.push('/auth/sign-in');
+    } else if (user && isAuthPage) {
+        router.push('/dashboard');
+    }
+  }, [user, pathname, loading, router]);
 
   const signOutUser = async () => {
     try {
       await signOut(auth);
-      // The onAuthStateChanged listener will handle routing
+      // The onAuthStateChanged listener and useEffect will handle routing
     } catch (error) {
       console.error('Error signing out:', error);
     }
