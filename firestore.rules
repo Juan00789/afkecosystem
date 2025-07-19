@@ -2,53 +2,56 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Users: Public read for profiles, but only owners can write.
+
+    // Helper function to check ownership
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    // Users can read anyone's profile, but only write to their own.
+    // They can also manage their own subcollections.
     match /users/{userId} {
       allow read: if true;
-      allow create: if request.auth.uid == userId;
-      allow update: if request.auth.uid == userId;
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if isOwner(userId);
 
-      // Subcollection for a client's network of providers.
-      // Only the client can manage their own network.
+      // A user can manage their own network of providers.
       match /providers/{providerDocId} {
-        allow read, create, update, delete: if request.auth.uid == userId;
+        allow read, write: if isOwner(userId);
       }
     }
 
-    // Clients: Can be created by providers. Can be linked by the user themselves upon signup.
-    // Can be read/updated/deleted only by the associated provider.
+    // Providers can manage their clients.
+    // A user can be linked to a client record during signup.
     match /clients/{clientId} {
-      allow create: if request.auth.uid == request.resource.data.providerId;
-      allow read, update, delete: if resource.data.providerId == request.auth.uid;
-      // Allow a new user to link themselves to a pre-registered client entry.
-      allow update: if request.auth.uid == request.resource.data.userId;
+      allow read, write: if request.auth != null && request.resource.data.providerId == request.auth.uid;
+      // Allow a user to link themselves to a pre-registered client entry.
+      allow update: if request.auth != null && request.auth.uid == request.resource.data.userId;
+    }
+    
+    // Services can be listed by anyone (for the landing page),
+    // but only created, updated, or deleted by the owner.
+    match /services/{serviceId} {
+      allow list: if true;
+      allow get: if request.auth != null;
+      allow create, update, delete: if request.auth != null && request.resource.data.userId == request.auth.uid;
     }
 
-    // Services: Publicly listable for the landing page.
-    // Management (create, update, delete) is restricted to the provider (owner).
-    match /services/{serviceId} {
-      allow list: if true; // Allows anyone to see the list of services for the landing page.
-      allow get: if request.auth != null; // Allows any authenticated user to get a single service.
-      allow create, update, delete: if request.auth.uid == request.resource.data.userId;
-    }
-    
-    // Cases: Only the involved client or provider can interact with them.
+    // Cases can only be accessed by the client or the provider involved.
     match /cases/{caseId} {
-      allow read, update, delete: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
-      allow create: if request.auth.uid == request.resource.data.clientId;
-      
-      // Comments within a case
+      allow read, update, delete: if request.auth != null && (request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId);
+      allow create: if request.auth != null; // Anyone authenticated can create a case initially
+
+      // Comments within a case follow the same access rules.
       match /comments/{commentId} {
-         allow read, create: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
+        allow read, create: if request.auth != null && (request.auth.uid == get(/databases/$(database)/documents/cases/$(caseId)).data.clientId || request.auth.uid == get(/databases/$(database)/documents/cases/$(caseId)).data.providerId);
       }
     }
-    
-    // Invoices: Can only be read by the involved client or provider.
+
+    // Invoices can only be accessed by the client or provider involved.
     match /invoices/{invoiceId} {
-       allow get: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
-       allow list: if request.resource.data.clientId == request.auth.uid || request.resource.data.providerId == request.auth.uid;
-       allow create: if request.auth.uid == request.resource.data.providerId;
+       allow read, write: if request.auth != null && (request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId);
     }
   }
 }
