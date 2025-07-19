@@ -2,63 +2,53 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-  
-    // USERS: Can read/write their own data. Can look up others by phone number.
+
     match /users/{userId} {
       allow read, update, delete: if request.auth.uid == userId;
       allow create: if request.auth.uid != null;
-      
-      // Allow authenticated users to search for other users by phone number
-      // This is safe because it doesn't allow listing all users.
-      allow list: if request.auth.uid != null;
+      allow list: if request.auth.uid != null; // Allow authenticated users to query the collection (e.g., to find a provider by phone)
 
-      // PROVIDERS subcollection (for clients to manage their provider network)
       match /providers/{providerDocId} {
-        allow read, create, delete, list: if request.auth.uid == userId;
+        // A user can manage their own list of providers.
+        allow read, create, delete, list, update: if request.auth.uid == userId;
       }
     }
-    
-    // CLIENTS: Providers can manage their own list of clients.
+
     match /clients/{clientId} {
-        // Only the linked provider can create, read, update, or delete a client record.
-        allow read, write, delete: if request.auth.uid == resource.data.providerId;
-        // Any authenticated user can create a client record (e.g., when a client signs up via a provider's link)
-        // The rule above will ensure only the provider can manage it afterward.
-        allow create: if request.auth.uid != null;
-        // Providers can list their own clients.
-        allow list: if request.auth.uid == request.query.where.providerId;
+      // Only the provider who created the client record can manage it.
+      allow read, write, delete: if request.auth.uid == resource.data.providerId;
     }
-    
-    // SERVICES: Only providers can create/manage their services.
+
     match /services/{serviceId} {
-        // Any authenticated user can read/list services (clients need to browse them)
-        allow read, list: if request.auth.uid != null;
-        // Only the user who owns the service can create/update/delete it
-        allow create, update, delete: if request.auth.uid == request.resource.data.userId;
+      // Any authenticated user can read services (for the "explore" page)
+      allow read: if request.auth.uid != null;
+      // Only the provider who owns the service can create, update or delete it.
+      allow create, update, delete: if request.auth.uid == request.resource.data.userId;
     }
 
-    // CASES: Only involved parties (client or provider) can access a case.
     match /cases/{caseId} {
-      // Allow read/update if user is either the client or the provider.
+      // Only the client or the provider involved in the case can read it.
       allow read, update: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
-      // Allow create for any authenticated user (client initiates the case).
-      allow create: if request.auth.uid != null;
-      // Allow delete if the user is the client or the provider. The UI will control when this is allowed.
+       // Allow deletion only by the client or provider (the UI logic controlled by the AI will show/hide the button).
       allow delete: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
+      // A new case can be created by a client.
+      allow create: if request.auth.uid == request.resource.data.clientId;
 
-      // COMMENTS: Only involved parties can access comments within a case.
       match /comments/{commentId} {
-        allow read, create: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
-        allow list: if request.auth.uid != null && (request.auth.uid == get(/databases/$(database)/documents/cases/$(caseId)).data.clientId || request.auth.uid == get(/databases/$(database)/documents/cases/$(caseId)).data.providerId);
+        // Only the client or provider involved can read comments.
+        allow read: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
+        // Any authenticated user involved in the case can create a comment.
+        allow create: if request.auth.uid == request.resource.data.userId &&
+                       (request.auth.uid == get(/databases/$(database)/documents/cases/$(caseId)).data.clientId ||
+                        request.auth.uid == get(/databases/$(database)/documents/cases/$(caseId)).data.providerId);
       }
     }
-
-    // INVOICES: Only involved parties can access an invoice.
+    
     match /invoices/{invoiceId} {
-        allow read: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
-        // Only the provider can create an invoice.
-        allow create: if request.auth.uid == request.resource.data.providerId;
+      // Only the client or provider involved can read it.
+      allow read: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
+      // Only the provider can create the invoice.
+      allow create: if request.auth.uid == request.resource.data.providerId;
     }
-
   }
 }
