@@ -10,21 +10,25 @@ const modules = [
     icon: <Layers className="h-8 w-8 text-primary" />,
     title: 'Broki',
     description: 'Conexión entre talentos diversos. Colaborar es construir con alma.',
+    href: '/dashboard/broki',
   },
   {
     icon: <Heart className="h-8 w-8 text-primary" />,
     title: 'Moneda',
     description: 'Reputación emocional como valor. Ayudar también recompensa.',
+    href: '/',
   },
   {
     icon: <BookOpen className="h-8 w-8 text-primary" />,
     title: 'Contenido',
     description: 'Galería de memorias vivas. Lo que se comparte, se siente.',
+    href: '/',
   },
   {
     icon: <Sparkles className="h-8 w-8 text-primary" />,
     title: 'Oniara',
     description: 'Centro espiritual del sistema. Protege la intención desde lo invisible.',
+    href: '/',
   },
 ];
 
@@ -71,17 +75,19 @@ export default function HomePage() {
                 </h2>
                 <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
                     {modules.map((module) => (
-                        <Card key={module.title} className="text-center transition-transform duration-300 hover:-translate-y-2">
-                           <CardHeader>
-                                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 mb-4">
-                                    {module.icon}
-                                </div>
-                                <CardTitle className="text-primary">{module.title}</CardTitle>
-                           </CardHeader>
-                           <CardContent>
-                                <p className="text-sm text-muted-foreground">{module.description}</p>
-                           </CardContent>
-                        </Card>
+                        <Link href={module.href} key={module.title}>
+                          <Card className="text-center transition-transform duration-300 hover:-translate-y-2 h-full">
+                            <CardHeader>
+                                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 mb-4">
+                                      {module.icon}
+                                  </div>
+                                  <CardTitle className="text-primary">{module.title}</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                  <p className="text-sm text-muted-foreground">{module.description}</p>
+                            </CardContent>
+                          </Card>
+                        </Link>
                     ))}
                 </div>
             </div>
