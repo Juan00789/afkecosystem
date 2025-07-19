@@ -71,12 +71,16 @@ export default function LoginPage() {
                 title = 'Error de Red';
                 description = 'No se pudo conectar. Revisa tu conexión a internet y asegúrate de haber creado la base de datos de Firestore en la consola de Firebase.';
                 break;
-            case 'auth/wrong-password':
             case 'auth/user-not-found':
+            case 'auth/wrong-password':
             case 'auth/invalid-credential':
                  title = 'Credenciales Incorrectas';
                  description = 'El correo o la contraseña son incorrectos. Por favor, verifica tus datos e inténtalo de nuevo.';
                  break;
+             case 'auth/user-disabled':
+                title = 'Usuario Deshabilitado';
+                description = 'Esta cuenta ha sido deshabilitada por un administrador.';
+                break;
             default:
                  description = `Código de error: ${error.code}. Por favor, inténtalo de nuevo.`;
                  break;

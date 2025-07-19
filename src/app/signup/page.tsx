@@ -83,6 +83,10 @@ export default function SignupPage() {
                 title = 'Contraseña Débil';
                 description = 'La contraseña debe tener al menos 6 caracteres.';
                 break;
+            case 'auth/invalid-email':
+                title = 'Correo Inválido';
+                description = 'El formato del correo electrónico no es válido. Por favor, verifícalo.';
+                break;
             default:
                  description = `Código de error: ${error.code}. Por favor, inténtalo de nuevo.`;
                  break;
