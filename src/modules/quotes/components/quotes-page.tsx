@@ -10,6 +10,15 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+    TableFooter as TableFooterUI,
+} from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -22,13 +31,12 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { generateQuote, type GenerateQuoteOutput } from '@/ai/flows/quote-flow';
-import { textToSpeech } from '@/ai/flows/tts-flow';
-import type { TextToSpeechOutput } from '@/ai/flows/tts-flow.schema';
-import { Loader2, Volume2, Download } from 'lucide-react';
+import { Loader2, Download, FileSpreadsheet } from 'lucide-react';
 import { db, getFirebaseAuth } from '@/lib/firebase';
-import { collection, query, where, onSnapshot, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
-import { jsPDF } from 'jspdf';
+import * as XLSX from 'xlsx';
+
 
 interface Client {
   id: string;
@@ -43,6 +51,13 @@ interface UserProfile {
     accountNumber?: string;
 }
 
+const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+    }).format(amount);
+};
+
 export function QuotesPage() {
   const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
@@ -50,7 +65,6 @@ export function QuotesPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [loading, setLoading] = useState(false);
-  const [generatingAudio, setGeneratingAudio] = useState(false);
   const [form, setForm] = useState({
     clientName: '',
     projectName: '',
@@ -58,7 +72,6 @@ export function QuotesPage() {
     model: 'gemini-1.5-flash-latest',
   });
   const [quote, setQuote] = useState<GenerateQuoteOutput | null>(null);
-  const [audio, setAudio] = useState<TextToSpeechOutput | null>(null);
 
    useEffect(() => {
     const auth = getFirebaseAuth();
@@ -84,7 +97,6 @@ export function QuotesPage() {
     let unsubClients: () => void;
 
     const fetchAllData = async () => {
-        // Fetch user profile
         const profileRef = doc(db, 'users', user.uid);
         unsubProfile = onSnapshot(profileRef, (docSnap) => {
             if (docSnap.exists()) {
@@ -92,18 +104,16 @@ export function QuotesPage() {
             }
         });
         
-        // Fetch clients
         const clientsQuery = query(collection(db, 'clients'), where('providerId', '==', user.uid));
         unsubClients = onSnapshot(clientsQuery, (snapshot) => {
             const clientsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client));
             setClients(clientsData);
-            setLoadingData(false); // Set loading to false after clients are fetched
+            setLoadingData(false);
         }, (error) => {
             console.error("Error fetching clients: ", error);
             toast({
                 variant: 'destructive',
                 title: 'Error al cargar clientes',
-                description: 'No se pudieron obtener los datos.'
             });
             setLoadingData(false);
         });
@@ -140,13 +150,11 @@ export function QuotesPage() {
         toast({
             variant: 'destructive',
             title: 'Nombre del cliente requerido',
-            description: 'Por favor, introduce el nombre de un cliente.',
         });
         return;
     }
     setLoading(true);
     setQuote(null);
-    setAudio(null);
     try {
       const payload = {
           ...form,
@@ -163,112 +171,109 @@ export function QuotesPage() {
       toast({
         variant: 'destructive',
         title: 'Error al generar la cotización',
-        description: 'Hubo un problema al contactar a la IA. Por favor, inténtalo de nuevo.',
+        description: 'Hubo un problema al contactar a la IA. Inténtalo de nuevo.',
       });
     } finally {
       setLoading(false);
     }
   };
-  
-  const handleGenerateAudio = async () => {
-    if (!quote?.quoteText) return;
-    setGeneratingAudio(true);
-    setAudio(null);
-    try {
-        const result = await textToSpeech(quote.quoteText);
-        setAudio(result);
-    } catch(error) {
-        console.error(error);
-        toast({
-            variant: 'destructive',
-            title: 'Error al generar el audio',
-            description: 'No se pudo convertir el texto a voz. Inténtalo de nuevo.',
-        });
-    } finally {
-        setGeneratingAudio(false);
-    }
-  }
 
-  const handleDownloadPdf = () => {
-    if (!quote?.quoteText) return;
+  const handleDownloadExcel = () => {
+    if (!quote || !form.projectName) return;
 
-    const doc = new jsPDF();
-    const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
-    const pageWidth = doc.internal.pageSize.width || doc.internal.pageSize.getWidth();
-    const margin = 20;
-    const maxLineWidth = pageWidth - margin * 2;
+    const wb = XLSX.utils.book_new();
     
-    doc.setFontSize(12);
+    // Main data for the sheet
+    const quoteData = [
+      ["Proyecto:", form.projectName],
+      ["Cliente:", form.clientName],
+      [],
+      ["Descripción", "Cantidad", "Precio Unitario", "Total"],
+      ...quote.items.map(item => [item.description, item.quantity, item.unitPrice, item.total]),
+      [],
+      ["", "", "Subtotal", quote.subtotal],
+      ["", "", "Impuestos (18%)", quote.tax],
+      ["", "", "Total General", quote.grandTotal],
+      [],
+      ["Notas:", quote.notes]
+    ];
 
-    const textLines = doc.splitTextToSize(quote.quoteText, maxLineWidth);
+    const ws = XLSX.utils.aoa_to_sheet(quoteData);
+
+    // Styling and formatting
+    ws['!cols'] = [{ wch: 40 }, { wch: 10 }, { wch: 15 }, { wch: 15 }];
     
-    let y = margin;
-    textLines.forEach((line: string) => {
-        if (y > pageHeight - margin) {
-            doc.addPage();
-            y = margin;
-        }
-        doc.text(line, margin, y);
-        y += 7; // Line height
+    const currencyFormat = '$#,##0.00';
+    const numberFormat = '#,##0';
+
+    quote.items.forEach((_, index) => {
+        const rowIndex = index + 5;
+        ws[`B${rowIndex}`].z = numberFormat;
+        ws[`C${rowIndex}`].z = currencyFormat;
+        ws[`D${rowIndex}`].z = currencyFormat;
     });
 
-    doc.save('cotizacion.pdf');
+    const subtotalRow = quote.items.length + 7;
+    ws[`D${subtotalRow}`].z = currencyFormat;
+    ws[`D${subtotalRow + 1}`].z = currencyFormat;
+    ws[`D${subtotalRow + 2}`].z = currencyFormat;
+
+    XLSX.utils.book_append_sheet(wb, ws, "Cotización");
+    XLSX.writeFile(wb, `Cotizacion_${form.projectName.replace(/\s+/g, '_')}.xlsx`);
   }
 
   return (
     <main className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-        <Card>
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 xl:grid-cols-3">
+        <Card className="xl:col-span-1">
           <CardHeader>
             <CardTitle>Generar Nueva Cotización</CardTitle>
             <CardDescription>
-              Completa los detalles para que la IA genere una cotización profesional usando tus datos de perfil.
+              Completa los detalles para que la IA genere una cotización profesional y estructurada.
             </CardDescription>
           </CardHeader>
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2 col-span-2">
-                  <Label htmlFor="clientName">Nombre del Cliente</Label>
-                  <div className="flex gap-2">
-                    <Input 
-                      id="clientName"
-                      name="clientName"
-                      placeholder="Escribe el nombre del cliente"
-                      value={form.clientName}
-                      onChange={handleInputChange}
-                      required
-                    />
-                     <Select onValueChange={handleClientAutocomplete} disabled={loadingData || clients.length === 0}>
-                        <SelectTrigger className="w-[180px]">
-                            <SelectValue placeholder={loadingData ? "Cargando..." : "Autocompletar"} />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {clients.length > 0 ? (
-                                clients.map((client) => (
-                                    <SelectItem key={client.id} value={client.id}>
-                                        {client.name}
-                                    </SelectItem>
-                                ))
-                            ) : (
-                               <SelectItem value="no-clients" disabled>No hay clientes</SelectItem>
-                            )}
-                        </SelectContent>
-                    </Select>
-                  </div>
+              <div className="space-y-2">
+                <Label htmlFor="clientName">Nombre del Cliente</Label>
+                <div className="flex gap-2">
+                  <Input 
+                    id="clientName"
+                    name="clientName"
+                    placeholder="Escribe el nombre del cliente"
+                    value={form.clientName}
+                    onChange={handleInputChange}
+                    required
+                  />
+                   <Select onValueChange={handleClientAutocomplete} disabled={loadingData || clients.length === 0}>
+                      <SelectTrigger className="w-[180px]">
+                          <SelectValue placeholder={loadingData ? "Cargando..." : "Autocompletar"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                          {clients.length > 0 ? (
+                              clients.map((client) => (
+                                  <SelectItem key={client.id} value={client.id}>
+                                      {client.name}
+                                  </SelectItem>
+                              ))
+                          ) : (
+                             <SelectItem value="no-clients" disabled>No hay clientes</SelectItem>
+                          )}
+                      </SelectContent>
+                  </Select>
                 </div>
-                <div className="space-y-2 col-span-2">
-                    <Label htmlFor="model">Modelo de IA</Label>
-                    <Select onValueChange={handleModelChange} defaultValue={form.model}>
-                        <SelectTrigger>
-                            <SelectValue placeholder="Elige un modelo" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="gemini-1.5-flash-latest">Gemini 1.5 Flash</SelectItem>
-                            <SelectItem value="gemini-1.5-pro-latest">Gemini 1.5 Pro</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
+              </div>
+              <div className="space-y-2">
+                  <Label htmlFor="model">Modelo de IA</Label>
+                  <Select onValueChange={handleModelChange} defaultValue={form.model}>
+                      <SelectTrigger>
+                          <SelectValue placeholder="Elige un modelo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                          <SelectItem value="gemini-1.5-flash-latest">Gemini 1.5 Flash</SelectItem>
+                          <SelectItem value="gemini-1.5-pro-latest">Gemini 1.5 Pro</SelectItem>
+                      </SelectContent>
+                  </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="projectName">Nombre del Proyecto</Label>
@@ -303,43 +308,62 @@ export function QuotesPage() {
           </form>
         </Card>
 
-        <Card>
+        <Card className="xl:col-span-2">
           <CardHeader>
             <CardTitle>Cotización Generada</CardTitle>
             <CardDescription>
-              Revisa el texto generado. Puedes escucharlo, copiarlo y pegarlo donde necesites.
+              Revisa la cotización desglosada. Puedes descargarla en formato Excel.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
               {loading && (
-                <div className="flex items-center justify-center h-full">
+                <div className="flex items-center justify-center h-full min-h-[400px]">
                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                 </div>
               )}
               {quote && (
                 <div className="space-y-4">
-                    <div>
-                        <Label>Resumen</Label>
-                        <p className="text-sm text-muted-foreground p-3 bg-muted rounded-md">{quote.summary}</p>
+                    <p className="text-sm p-3 bg-muted rounded-md"><span className="font-semibold">Resumen:</span> {quote.summary}</p>
+                    <div className="border rounded-lg overflow-hidden">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Descripción</TableHead>
+                                    <TableHead className="text-center">Cant.</TableHead>
+                                    <TableHead className="text-right">Precio Unit.</TableHead>
+                                    <TableHead className="text-right">Total</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {quote.items.map((item, index) => (
+                                    <TableRow key={index}>
+                                        <TableCell className="font-medium">{item.description}</TableCell>
+                                        <TableCell className="text-center">{item.quantity}</TableCell>
+                                        <TableCell className="text-right">{formatCurrency(item.unitPrice)}</TableCell>
+                                        <TableCell className="text-right">{formatCurrency(item.total)}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                            <TableFooterUI className="bg-muted/50">
+                                <TableRow>
+                                    <TableCell colSpan={3} className="text-right font-medium">Subtotal</TableCell>
+                                    <TableCell className="text-right font-bold">{formatCurrency(quote.subtotal)}</TableCell>
+                                </TableRow>
+                                <TableRow>
+                                    <TableCell colSpan={3} className="text-right font-medium">Impuestos (18%)</TableCell>
+                                    <TableCell className="text-right font-bold">{formatCurrency(quote.tax)}</TableCell>
+                                </TableRow>
+                                <TableRow>
+                                    <TableCell colSpan={3} className="text-right font-semibold text-lg">Total General</TableCell>
+                                    <TableCell className="text-right font-bold text-lg">{formatCurrency(quote.grandTotal)}</TableCell>
+                                </TableRow>
+                            </TableFooterUI>
+                        </Table>
                     </div>
-                    <div>
-                        <Label>Texto de la Cotización</Label>
-                        <Textarea readOnly value={quote.quoteText} className="min-h-[250px] bg-muted" />
+                     <div>
+                        <Label>Notas y Términos</Label>
+                        <p className="text-sm text-muted-foreground whitespace-pre-wrap p-3 border rounded-md min-h-[60px]">{quote.notes}</p>
                     </div>
-                    {generatingAudio && (
-                        <div className="flex items-center justify-center p-4">
-                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                            <p className="ml-2 text-muted-foreground">Generando audio...</p>
-                        </div>
-                    )}
-                    {audio?.media && (
-                        <div>
-                             <Label>Audio de la Cotización</Label>
-                            <audio controls className="w-full mt-2" src={audio.media}>
-                                Tu navegador no soporta el elemento de audio.
-                            </audio>
-                        </div>
-                    )}
                 </div>
               )}
               {!loading && !quote && (
@@ -349,25 +373,14 @@ export function QuotesPage() {
               )}
           </CardContent>
           <CardFooter className="justify-between">
-             <div className="flex gap-2">
-                <Button 
-                    onClick={handleGenerateAudio}
-                    disabled={!quote || loading || generatingAudio}
-                    variant="outline"
-                >
-                    {(generatingAudio) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    <Volume2 className="mr-2 h-4 w-4" />
-                    {audio ? 'Volver a generar' : 'Escuchar'}
-                </Button>
-                 <Button 
-                    onClick={handleDownloadPdf}
-                    disabled={!quote || loading}
-                    variant="outline"
-                >
-                    <Download className="mr-2 h-4 w-4" />
-                    Descargar PDF
-                </Button>
-             </div>
+             <Button 
+                onClick={handleDownloadExcel}
+                disabled={!quote || loading}
+                variant="outline"
+            >
+                <FileSpreadsheet className="mr-2 h-4 w-4" />
+                Descargar Excel
+            </Button>
              <Button disabled={!quote || loading}>Guardar y Enviar</Button>
           </CardFooter>
         </Card>

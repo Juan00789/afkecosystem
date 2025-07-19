@@ -1,32 +1,42 @@
-
 'use server';
 /**
- * @fileOverview Un agente de IA para generar cotizaciones de proyectos.
+ * @fileOverview An AI agent for generating professional project quotes.
  *
- * - generateQuote - Una función que maneja la generación de cotizaciones.
- * - GenerateQuoteInput - El tipo de entrada para la función generateQuote.
- * - GenerateQuoteOutput - El tipo de retorno para la función generateQuote.
+ * - generateQuote - A function that handles quote generation.
+ * - GenerateQuoteInput - The input type for the generateQuote function.
+ * - GenerateQuoteOutput - The return type for the generateQuote function.
  */
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 
 const GenerateQuoteInputSchema = z.object({
-  clientName: z.string().describe('El nombre del cliente o empresa.'),
-  projectName: z.string().describe('El nombre del proyecto para el cual es la cotización.'),
-  projectDetails: z.string().describe('Una descripción detallada del alcance y los requerimientos del proyecto.'),
+  clientName: z.string().describe('The name of the client or company.'),
+  projectName: z.string().describe('The name of the project for the quote.'),
+  projectDetails: z.string().describe('A detailed description of the project scope and requirements.'),
   // Provider details
-  providerName: z.string().optional().describe('El nombre del proveedor del servicio.'),
-  providerCompany: z.string().optional().describe('El nombre de la empresa del proveedor.'),
-  providerWebsite: z.string().optional().describe('El sitio web del proveedor.'),
-  providerBankName: z.string().optional().describe('El nombre del banco del proveedor para pagos.'),
-  providerAccountNumber: z.string().optional().describe('El número de cuenta del proveedor para pagos.'),
+  providerName: z.string().optional().describe('The service provider\'s name.'),
+  providerCompany: z.string().optional().describe('The provider\'s company name.'),
+  providerWebsite: z.string().optional().describe('The provider\'s website.'),
+  providerBankName: z.string().optional().describe('The provider\'s bank name for payments.'),
+  providerAccountNumber: z.string().optional().describe('The provider\'s account number for payments.'),
 });
 export type GenerateQuoteInput = z.infer<typeof GenerateQuoteInputSchema>;
 
+const QuoteItemSchema = z.object({
+    description: z.string().describe('A clear and concise description of the line item or service.'),
+    quantity: z.number().describe('The quantity of the item or service. Default to 1 if not specified.'),
+    unitPrice: z.number().describe('The price per unit of the item or service.'),
+    total: z.number().describe('The total price for this line item (quantity * unitPrice).'),
+});
+
 const GenerateQuoteOutputSchema = z.object({
-  summary: z.string().describe('Un resumen muy breve (máximo 10 palabras) de la cotización. Por ejemplo: "Cotización para Sitio Web Corporativo".'),
-  quoteText: z.string().describe('El texto completo y profesional de la cotización, formateado para ser enviado al cliente.'),
+  summary: z.string().describe('A very brief summary (max 10 words) of the quote. E.g., "Quote for Corporate Website".'),
+  notes: z.string().describe('Any additional notes, terms, or clarifications for the client.'),
+  items: z.array(QuoteItemSchema).describe('A list of all billable items or services for the project.'),
+  subtotal: z.number().describe('The sum of all item totals before taxes.'),
+  tax: z.number().describe('The calculated tax amount. Assume a standard 18% tax rate (ITBIS in DR) unless specified otherwise. Calculate it from the subtotal.'),
+  grandTotal: z.number().describe('The final total amount (subtotal + tax).'),
 });
 export type GenerateQuoteOutput = z.infer<typeof GenerateQuoteOutputSchema>;
 
@@ -38,32 +48,30 @@ const prompt = ai.definePrompt({
   name: 'generateQuotePrompt',
   input: { schema: GenerateQuoteInputSchema },
   output: { schema: GenerateQuoteOutputSchema },
-  prompt: `Eres un asistente experto en la creación de cotizaciones para servicios de consultoría y desarrollo de software. Tu tono debe ser profesional, claro y convincente.
+  prompt: `You are an expert assistant specializing in creating detailed and professional quotes for software development and consulting services. Your tone should be clear, professional, and convincing.
 
-  Basado en la siguiente información, genera una cotización formal.
+  Based on the following information, generate a formal quote in a structured format.
 
-  **Información del Cliente y Proyecto:**
-  - Cliente: {{{clientName}}}
-  - Proyecto: {{{projectName}}}
-  - Detalles del Proyecto: {{{projectDetails}}}
+  **Client and Project Information:**
+  - Client: {{{clientName}}}
+  - Project: {{{projectName}}}
+  - Project Details: {{{projectDetails}}}
 
-  **Información del Proveedor (Tú):**
-  - Nombre: {{#if providerName}}{{{providerName}}}{{else}}N/A{{/if}}
-  - Empresa: {{#if providerCompany}}{{{providerCompany}}}{{else}}N/A{{/if}}
-  - Sitio Web: {{#if providerWebsite}}{{{providerWebsite}}}{{else}}N/A{{/if}}
-  - Banco para Pagos: {{#if providerBankName}}{{{providerBankName}}}{{else}}N/A{{/if}}
-  - Número de Cuenta: {{#if providerAccountNumber}}{{{providerAccountNumber}}}{{else}}N/A{{/if}}
+  **Provider Information (You):**
+  - Name: {{#if providerName}}{{{providerName}}}{{else}}N/A{{/if}}
+  - Company: {{#if providerCompany}}{{{providerCompany}}}{{else}}N/A{{/if}}
 
-  **Instrucciones para la Cotización:**
-  1.  Un saludo cordial y profesional dirigido al cliente.
-  2.  Una introducción que mencione el nombre del proyecto.
-  3.  Una sección que resuma el alcance del trabajo basado en los detalles proporcionados.
-  4.  Una sección de "Próximos Pasos".
-  5.  Si se proporcionaron datos bancarios (banco y número de cuenta), incluye una sección de "Información de Pago" con esos detalles. Si no, omite esta sección.
-  6.  Una despedida profesional. Utiliza el nombre del proveedor y de la empresa (si está disponible) en la firma.
+  **Quote Generation Instructions:**
+  1.  **Analyze Project Details:** Carefully read the project details. Break down the work into logical, billable line items (e.g., "UI/UX Design," "Frontend Development - Home Page," "Backend API Integration," "Database Setup").
+  2.  **Estimate and Price:** For each line item, estimate the quantity (e.g., hours, pages, features) and assign a realistic, professional unit price. You MUST invent professional and credible prices. Calculate the total for each item.
+  3.  **Calculate Totals:**
+      *   Calculate the 'subtotal' by summing the 'total' of all line items.
+      *   Calculate an 18% 'tax' on the subtotal.
+      *   Calculate the 'grandTotal' by adding the subtotal and the tax.
+  4.  **Add Notes:** Write brief, relevant notes. Mention the estimated delivery timeline (e.g., "Estimated delivery: 4-6 weeks") and payment terms (e.g., "Payment Terms: 50% upfront, 50% upon completion"). If provider bank details are available, include them here: "Payments can be made to {{providerBankName}} account {{providerAccountNumber}}".
+  5.  **Create Summary:** Generate a concise summary for the quote.
 
-  **Importante:** NO inventes precios ni fechas. En lugar de eso, utiliza placeholders como "[Monto a convenir]" o "[Fecha de entrega estimada]".
-  Genera el texto completo de la cotización en el campo 'quoteText' y un resumen corto en el campo 'summary'.`,
+  **IMPORTANT:** Populate all fields of the structured output, including the array of items and all calculated financial figures. The response must be a valid JSON object matching the output schema.`,
 });
 
 const generateQuoteFlow = ai.defineFlow(
