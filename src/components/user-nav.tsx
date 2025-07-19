@@ -107,16 +107,20 @@ export function UserNav() {
               <DropdownMenuShortcut>⌘B</DropdownMenuShortcut>
             </Link>
           </DropdownMenuItem>
-          <DropdownMenuItem>
-            <Settings className="mr-2 h-4 w-4" />
-            <span>Configuración</span>
-            <DropdownMenuShortcut>⌘S</DropdownMenuShortcut>
+          <DropdownMenuItem asChild>
+             <Link href="/dashboard/profile">
+                <Settings className="mr-2 h-4 w-4" />
+                <span>Configuración</span>
+                <DropdownMenuShortcut>⌘S</DropdownMenuShortcut>
+             </Link>
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem>
-            <LifeBuoy className="mr-2 h-4 w-4" />
-            <span>Soporte</span>
+        <DropdownMenuItem asChild>
+            <Link href="https://wa.me/18299226556" target="_blank" rel="noopener noreferrer">
+                <LifeBuoy className="mr-2 h-4 w-4" />
+                <span>Soporte</span>
+            </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleSignOut}>
