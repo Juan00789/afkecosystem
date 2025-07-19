@@ -257,7 +257,7 @@ export default function CaseDetailsPage() {
     };
 
     const handleDeleteCase = async () => {
-        if (!user || !caseData || userData.activeRole !== 'client') return;
+        if (!user || !caseData || userData.activeRole !== 'provider') return;
 
         setSaving(true);
         try {
@@ -310,7 +310,7 @@ export default function CaseDetailsPage() {
                         <CardTitle>Línea de Tiempo del Caso</CardTitle>
                         <CardDescription>Historial de actividad y comunicaciones.</CardDescription>
                     </div>
-                     {userData.activeRole === 'client' && (
+                     {userData.activeRole === 'provider' && (
                         <AlertDialog>
                             <AlertDialogTrigger asChild>
                                 <Button variant="destructive" size="sm" disabled={saving}>
