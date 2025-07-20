@@ -14,6 +14,7 @@ import {
   MessageSquareText,
   Sparkles,
   Bot,
+  GraduationCap,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -29,6 +30,7 @@ const navLinks = [
   { href: '/dashboard/marketplace', label: 'Marketplace', icon: ShoppingBag },
   { href: '/dashboard/oniara', label: 'Oniara AI', icon: Bot },
   { href: '/dashboard/cursos', label: 'Cursos', icon: BookOpen },
+  { href: '/dashboard/my-courses', label: 'My Courses', icon: GraduationCap },
   { href: '/dashboard/creditos', label: 'Créditos', icon: HandCoins },
   { href: '/dashboard/consultorias', label: 'Consultorías', icon: MessageSquareText },
   { href: '/dashboard/network', label: 'Brokis', icon: Users },
@@ -45,7 +47,6 @@ export function Sidebar() {
 
   const renderLink = (link: { href: string; label: string; icon: any }) => {
     const { href, label, icon: Icon } = link;
-    // Corrected logic: The link is active if the pathname is exactly the href.
     // The dashboard link is a special case, active only when the path is exactly '/dashboard'.
     const isActive = href === '/dashboard' ? pathname === href : pathname.startsWith(href);
 

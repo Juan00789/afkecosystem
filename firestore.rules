@@ -22,8 +22,15 @@ service cloud.firestore {
     // but only the provider can manage them.
     match /services/{serviceId} {
       allow read: if request.auth != null;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.providerId;
-      allow update, delete: if request.auth != null && request.auth.uid == resource.data.providerId;
+      allow create: if request.auth.uid == request.resource.data.providerId;
+      allow update, delete: if request.auth.uid == resource.data.providerId;
+    }
+    
+    // Courses are public to authenticated users, but only the provider can manage them.
+    match /courses/{courseId} {
+        allow read: if request.auth != null;
+        allow create: if request.auth.uid == request.resource.data.providerId;
+        allow update, delete: if request.auth.uid == resource.data.providerId;
     }
 
     // Cases can only be accessed or modified by the client or provider involved.

@@ -18,6 +18,7 @@ import {
   MessageSquareText,
   Sparkles,
   Bot,
+  GraduationCap,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -48,6 +49,7 @@ export function Header({}: HeaderProps) {
     { href: '/dashboard/marketplace', label: 'Marketplace', icon: ShoppingBag },
     { href: '/dashboard/oniara', label: 'Oniara AI', icon: Bot },
     { href: '/dashboard/cursos', label: 'Cursos', icon: BookOpen },
+    { href: '/dashboard/my-courses', label: 'My Courses', icon: GraduationCap },
     { href: '/dashboard/creditos', label: 'Créditos', icon: HandCoins },
     { href: '/dashboard/consultorias', label: 'Consultorías', icon: MessageSquareText },
     { href: '/dashboard/network', label: 'Brokis', icon: Users },
