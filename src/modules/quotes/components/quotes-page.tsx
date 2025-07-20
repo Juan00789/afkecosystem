@@ -57,7 +57,13 @@ export function QuotesPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !userProfile) return;
+
+    // Start with the user themselves as an option
+    const selfClient: Client = {
+      id: user.uid,
+      displayName: `${userProfile.displayName || 'Me'} (Yo mismo)`,
+    };
 
     // A user's clients are users who have the current user in their "providers" network list.
     const usersRef = collection(db, 'users');
@@ -68,11 +74,11 @@ export function QuotesPage() {
         id: doc.id,
         displayName: doc.data().displayName || doc.data().email || 'Unnamed Client',
       }));
-      setClients(fetchedClients);
+      setClients([selfClient, ...fetchedClients]);
     });
 
     return () => unsubscribe();
-  }, [user]);
+  }, [user, userProfile]);
 
   const {
     control,
