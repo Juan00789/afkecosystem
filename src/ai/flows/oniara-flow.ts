@@ -9,6 +9,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { gemini15Flash } from '@genkit-ai/googleai';
+import { courseSearchTool } from '@/ai/tools/course-search-tool';
 
 export const ChatWithOniaraHistorySchema = z.array(
   z.object({
@@ -25,7 +26,8 @@ const oniaraPrompt = `You are Oniara, an expert business mentor and the friendly
 - Keep your answers concise and actionable.
 - You specialize in business strategy, marketing, finance for startups, and local Dominican Republic market trends.
 - Use the provided chat history to maintain context and provide relevant, coherent responses.
-- If a user's question is outside your expertise, be honest and suggest they consult a human expert or use other platform features like forums.
+- **You have a tool to search for available courses on the platform. If a user asks about learning, business topics, or seems to need guidance, use the courseSearchTool to find relevant courses and recommend them.**
+- If a user's question is outside your expertise and you can't find a relevant course, be honest and suggest they consult a human expert or use other platform features like forums.
 `;
 
 export async function chatWithOniara(
@@ -40,6 +42,7 @@ export async function chatWithOniara(
       role: msg.role,
       content: [{ text: msg.content }],
     })),
+    tools: [courseSearchTool],
   });
 
   return text;

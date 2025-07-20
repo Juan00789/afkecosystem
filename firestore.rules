@@ -17,6 +17,14 @@ service cloud.firestore {
       allow update: if request.auth.uid == userId;
       allow delete: if false; // Deleting users is not allowed via client
     }
+    
+    // Courses can be read by any authenticated user.
+    // Only the provider who created the course can manage it.
+    match /courses/{courseId} {
+      allow read, list: if request.auth != null;
+      allow create: if request.auth.uid == request.resource.data.providerId;
+      allow update, delete: if request.auth.uid == resource.data.providerId;
+    }
 
     // Services are public to authenticated users (for the marketplace),
     // but only the provider can manage them.
@@ -24,13 +32,6 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow create: if request.auth.uid == request.resource.data.providerId;
       allow update, delete: if request.auth.uid == resource.data.providerId;
-    }
-    
-    // Courses are public to authenticated users, but only the provider can manage them.
-    match /courses/{courseId} {
-        allow read: if request.auth != null;
-        allow create: if request.auth.uid == request.resource.data.providerId;
-        allow update, delete: if request.auth.uid == resource.data.providerId;
     }
 
     // Cases can only be accessed or modified by the client or provider involved.
