@@ -56,9 +56,10 @@ export default function PublicProfilePage({ params }: ProfilePageParams) {
           return;
         }
 
-        setProfile(userDocSnap.data() as UserProfile);
+        const userProfileData = userDocSnap.data() as UserProfile;
+        setProfile(userProfileData);
 
-        // Check connection status
+        // Check connection status if a current user exists and has a profile
         if (currentUserProfile?.network?.providers?.includes(id)) {
             setIsConnected(true);
         }
@@ -138,7 +139,7 @@ export default function PublicProfilePage({ params }: ProfilePageParams) {
              <Avatar className="h-32 w-32 border-4 border-primary">
                 <AvatarImage src={profile.photoURL} alt={profile.displayName} />
                 <AvatarFallback className="text-4xl">
-                    {profile.displayName ? profile.displayName[0] : 'U'}
+                    {profile.displayName ? profile.displayName.charAt(0) : 'U'}
                 </AvatarFallback>
             </Avatar>
             <div className="mt-4 sm:ml-6">
