@@ -104,35 +104,29 @@ export function AddUserDialog({ roleToAdd, onUserAdded }: AddUserDialogProps) {
         if (!currentUserSnap.exists()) throw "Current user not found!";
         
         const currentUserData = currentUserSnap.data();
-        const network = currentUserData.network || {};
+        const network = currentUserData.network || { clients: [], providers: [] };
         
         const isProvider = roleToAdd === 'provider';
-        const myNetworkList = isProvider ? (network.providers || []) : (network.clients || []);
+        const myList = isProvider ? network.providers : network.clients;
 
-        if (myNetworkList.includes(foundUserId)) {
+        if (myList.includes(foundUserId)) {
              toast({
               title: 'Already exists',
               description: `This user is already in your ${roleToAdd}s list.`,
             });
-            return; // Exit transaction
+            return;
         }
 
-        const isFirstConnection = myNetworkList.length === 0;
+        const isFirstConnection = myList.length === 0;
 
-        // Update both users' networks symmetrically
         if (isProvider) {
-          // I add them as a provider
           transaction.update(currentUserRef, { 'network.providers': arrayUnion(foundUserId) });
-          // They add me as a client
           transaction.update(otherUserRef, { 'network.clients': arrayUnion(user.uid) });
-        } else { // isClient
-          // I add them as a client
+        } else {
           transaction.update(currentUserRef, { 'network.clients': arrayUnion(foundUserId) });
-          // They add me as a provider
           transaction.update(otherUserRef, { 'network.providers': arrayUnion(user.uid) });
         }
 
-        // Award credits for the first client OR first provider
         if (isFirstConnection) {
             transaction.update(currentUserRef, { credits: increment(5) });
             toast({
@@ -152,18 +146,11 @@ export function AddUserDialog({ roleToAdd, onUserAdded }: AddUserDialogProps) {
 
     } catch (error: any) {
       console.error(`Error adding ${roleToAdd}:`, error);
-      // Don't show a generic error if we already showed a specific one (like "Already exists")
-      if (error.message) {
+      if (error.message && !toast.toasts.some(t => t.title === 'Already exists' || t.title === '¡Créditos Ganados!')) {
          toast({
           title: 'Error',
           description: error.message,
           variant: 'destructive',
-        });
-      } else if (!toast.toasts.find(t => t.title === 'Already exists' || t.title === '¡Créditos Ganados!')) {
-         toast({
-            title: 'Error',
-            description: `There was a problem adding the user.`,
-            variant: 'destructive',
         });
       }
     } finally {
