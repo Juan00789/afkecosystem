@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
+import { MessageSquare } from 'lucide-react';
 
 interface Service {
   id: string;
@@ -104,7 +105,7 @@ export function Marketplace() {
     </div>
   );
   
-  const displayedServices = services.filter(service => service.providerId !== user?.uid);
+  const displayedServices = services;
 
   return (
     <div className="space-y-6">
@@ -130,9 +131,9 @@ export function Marketplace() {
                 <CardContent className="flex-grow">
                   <p className="text-sm text-muted-foreground line-clamp-3">{service.description}</p>
                 </CardContent>
-                <CardFooter className="flex justify-between items-center">
-                   <div className="flex items-center gap-2">
-                      <Avatar>
+                <CardFooter className="flex flex-col items-stretch gap-2">
+                   <div className="flex items-center gap-2 mb-2">
+                      <Avatar className="h-8 w-8">
                           <AvatarImage src={service.provider?.photoURL} />
                           <AvatarFallback>{service.provider?.displayName?.[0] || 'P'}</AvatarFallback>
                       </Avatar>
@@ -140,14 +141,22 @@ export function Marketplace() {
                           {service.provider?.displayName || 'Ver Proveedor'}
                        </Link>
                   </div>
-                    {phoneNumber && (
+                  <div className="flex justify-end gap-2">
+                      <Button asChild variant="outline" size="sm">
+                          <Link href={`/dashboard/cases/create?providerId=${service.providerId}&serviceName=${encodeURIComponent(service.name)}`}>
+                              <MessageSquare className="h-4 w-4 mr-2" />
+                              Crear Caso
+                          </Link>
+                      </Button>
+                     {phoneNumber && (
                         <Button asChild size="sm">
                             <a href={`https://wa.me/${phoneNumber}?text=${message}`} target="_blank" rel="noopener noreferrer">
                                 <WhatsAppIcon />
-                                Solicitar
+                                WhatsApp
                             </a>
                         </Button>
                     )}
+                  </div>
                 </CardFooter>
               </Card>
             )
