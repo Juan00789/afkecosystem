@@ -77,6 +77,7 @@ export function AddUserDialog({ roleToAdd, onUserAdded }: AddUserDialogProps) {
           description: `No user found with this ${fieldToQuery}.`,
           variant: 'destructive',
         });
+        setLoading(false);
         return;
       }
 
@@ -89,16 +90,18 @@ export function AddUserDialog({ roleToAdd, onUserAdded }: AddUserDialogProps) {
           description: "You cannot add yourself to your network.",
           variant: 'destructive',
         });
+        setLoading(false);
         return;
       }
-
+      
       const currentUserRef = doc(db, 'users', user.uid);
       const otherUserRef = doc(db, 'users', foundUserId);
       
+      // Determine the fields to update for both users to create the connection
       const fieldForCurrentUser = roleToAdd === 'provider' ? 'network.providers' : 'network.clients';
       const fieldForOtherUser = roleToAdd === 'provider' ? 'network.clients' : 'network.providers';
 
-      // Check if user is already in the network
+      // Check if user is already in the network to avoid duplicates
       const currentUserSnap = await getDoc(currentUserRef);
       const currentUserData = currentUserSnap.data();
       const existingNetwork = roleToAdd === 'provider' ? currentUserData?.network?.providers : currentUserData?.network?.clients;
@@ -106,17 +109,18 @@ export function AddUserDialog({ roleToAdd, onUserAdded }: AddUserDialogProps) {
       if (existingNetwork && existingNetwork.includes(foundUserId)) {
         toast({
           title: 'Already exists',
-          description: `This user is already in your ${roleToAdd} list.`,
+          description: `This user is already in your ${roleToAdd}s list.`,
         });
+        setLoading(false);
         return;
       }
 
-      // Update current user's document
+      // Update current user's document to add the new connection
       await updateDoc(currentUserRef, {
         [fieldForCurrentUser]: arrayUnion(foundUserId),
       });
 
-      // Update the other user's document to establish the two-way connection
+      // Update the other user's document to establish the reciprocal connection
       await updateDoc(otherUserRef, {
           [fieldForOtherUser]: arrayUnion(user.uid),
       });
