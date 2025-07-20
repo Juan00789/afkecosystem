@@ -1,23 +1,12 @@
-
 rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    
-    // By default, deny all reads and writes
-    match /{allPaths=**} {
-      allow read, write: if false;
-    }
-
-    // User avatars:
-    // - Allow anyone to read (for public profiles).
-    // - Allow only the authenticated user to write/update their own avatar.
-    // - Ensure the file is an image and not too large.
-    match /avatars/{userId}/{fileName} {
-      allow read: if true;
-      allow write: if request.auth != null && request.auth.uid == userId
-                   && request.resource.size < 5 * 1024 * 1024 // 5MB limit
-                   && request.resource.contentType.matches('image/.*');
+    // Allow users to upload their own avatar.
+    // The file name must be the user's UID.
+    match /avatars/{userId} {
+      allow read;
+      allow write: if request.auth != null && request.auth.uid == userId;
     }
   }
 }
