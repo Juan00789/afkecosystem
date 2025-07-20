@@ -30,7 +30,12 @@ export async function chatWithOniara(
   newMessage: string,
   fileDataUri?: string,
 ): Promise<ModelResponse> {
-  const promptParts: z.infer<typeof gemini15Flash.schema.prompt> = [{ text: newMessage }];
+  const promptParts: z.infer<typeof gemini15Flash.schema.prompt> = [];
+  
+  if (newMessage) {
+    promptParts.push({ text: newMessage });
+  }
+
   if (fileDataUri) {
     promptParts.push({ media: { url: fileDataUri } });
   }
@@ -40,29 +45,55 @@ export async function chatWithOniara(
     prompt: promptParts,
     system: oniaraPrompt,
     history: history.map((msg) => {
-      let content: z.infer<typeof gemini15Flash.schema.content>;
+      let content: z.infer<typeof gemini15Flash.schema.content> = [];
       if (msg.role === 'user') {
-          content = [{ text: msg.content.text }];
-      } else { // 'model'
-          if(msg.content.type === 'course') {
-            // We simplify the model's history by just showing it generated a course.
-            // This prevents confusion in subsequent turns.
-            content = [{text: `I have generated a course titled "${msg.content.course.title}".`}]
+          // For user messages, just pass the text content.
+          // The new file is handled in the main prompt, not history.
+          content.push({ text: msg.content.text });
+      } else { // 'model' role
+          if (msg.content.type === 'course') {
+            // When the model's response was a course, we create a tool call history item.
+            // This accurately represents that the model decided to use the courseCreationTool.
+             content.push({
+              toolResponse: {
+                name: 'courseCreationTool',
+                output: msg.content.course,
+              }
+            });
           } else {
-            content = [{ text: msg.content.text }];
+            // For standard text responses from the model.
+            content.push({ text: msg.content.text });
           }
       }
       return { role: msg.role, content };
     }),
     tools: [courseSearchTool, courseCreationTool],
+    toolChoice: 'auto'
   });
 
   const toolCalls = llmResponse.toolCalls(courseCreationTool);
-
   if (toolCalls && toolCalls.length > 0) {
+    // The model decided to use the tool, and the tool's output is what we want.
     const courseData = toolCalls[0].output;
     return { type: 'course', course: courseData };
   }
   
-  return { type: 'text', text: llmResponse.text };
+  const textResponse = llmResponse.text;
+  if (textResponse) {
+    return { type: 'text', text: textResponse };
+  }
+
+  // Handle cases where the model might respond with other tool calls or empty responses
+  const searchToolCalls = llmResponse.toolCalls(courseSearchTool);
+  if (searchToolCalls && searchToolCalls.length > 0) {
+      const searchResult = searchToolCalls[0].output;
+      if (searchResult.courses.length > 0) {
+          const courseList = searchResult.courses.map(c => `- ${c.title}`).join('\n');
+          return { type: 'text', text: `¡Encontré estos cursos que te pueden interesar! 📚\n\n${courseList}` };
+      } else {
+          return { type: 'text', text: "No pude encontrar ningún curso sobre ese tema. ¿Te gustaría que creara uno para ti?" };
+      }
+  }
+
+  return { type: 'text', text: "No estoy segura de cómo responder a eso. ¿Podrías intentar de otra manera?" };
 }
