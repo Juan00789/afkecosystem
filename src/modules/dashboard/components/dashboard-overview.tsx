@@ -1,7 +1,7 @@
 // src/modules/dashboard/components/dashboard-overview.tsx
 'use client';
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { collection, query, where, orderBy, onSnapshot, limit } from 'firebase/firestore';
+import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Case } from '@/modules/cases/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -90,43 +90,53 @@ export function DashboardOverview({ userId }: DashboardOverviewProps) {
     return uniqueCases.sort((a, b) => b.lastUpdate.toMillis() - a.lastUpdate.toMillis());
   }, [clientCases, providerCases]);
 
-  const onDataLoaded = useCallback(() => {
-    setLoading(false);
-  }, []);
-
   useEffect(() => {
-    if (!userId) return;
+    if (!userId) {
+        setLoading(false);
+        return;
+    }
 
     setLoading(true);
+    let clientLoaded = false;
+    let providerLoaded = false;
+
+    const checkLoadingDone = () => {
+        if (clientLoaded && providerLoaded) {
+            setLoading(false);
+        }
+    };
+
     const casesRef = collection(db, 'cases');
     
     const clientQuery = query(
       casesRef, 
       where('clientId', '==', userId), 
-      orderBy('lastUpdate', 'desc'),
-      limit(5)
+      orderBy('lastUpdate', 'desc')
     );
     const providerQuery = query(
       casesRef, 
       where('providerId', '==', userId), 
-      orderBy('lastUpdate', 'desc'),
-      limit(5)
+      orderBy('lastUpdate', 'desc')
     );
 
     const unsubClient = onSnapshot(clientQuery, (snapshot) => {
         setClientCases(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Case)));
-        onDataLoaded();
+        clientLoaded = true;
+        checkLoadingDone();
     }, (error) => {
         console.error("Error fetching client cases: ", error);
-        onDataLoaded();
+        clientLoaded = true;
+        checkLoadingDone();
     });
 
     const unsubProvider = onSnapshot(providerQuery, (snapshot) => {
         setProviderCases(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Case)));
-        onDataLoaded();
+        providerLoaded = true;
+        checkLoadingDone();
     }, (error) => {
         console.error("Error fetching provider cases: ", error);
-        onDataLoaded();
+        providerLoaded = true;
+        checkLoadingDone();
     });
     
     return () => {
@@ -134,7 +144,7 @@ export function DashboardOverview({ userId }: DashboardOverviewProps) {
       unsubProvider();
     };
 
-  }, [userId, onDataLoaded]);
+  }, [userId]);
   
 
   const renderSkeleton = () => (
