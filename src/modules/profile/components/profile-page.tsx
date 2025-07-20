@@ -17,6 +17,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Award } from 'lucide-react';
 
 const profileSchema = z.object({
   displayName: z.string().min(2, 'Name must be at least 2 characters').max(50),
@@ -98,6 +99,7 @@ export function ProfilePage() {
             companyName: data.companyName,
             website: data.website,
             photoURL: photoURL || userProfile?.photoURL || '',
+            credits: userProfile?.credits || 0, // Ensure credits are preserved
             bankInfo: {
                 bankName: data.bankName,
                 accountNumber: data.accountNumber,
@@ -126,9 +128,16 @@ export function ProfilePage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Settings</h1>
-        <p className="text-muted-foreground">Manage your account and profile information.</p>
+      <div className="flex justify-between items-start">
+        <div>
+            <h1 className="text-3xl font-bold">Settings</h1>
+            <p className="text-muted-foreground">Manage your account and profile information.</p>
+        </div>
+        <div className="flex items-center gap-2 rounded-full bg-secondary/20 px-4 py-2 text-secondary">
+            <Award className="h-6 w-6" />
+            <span className="text-xl font-bold">{userProfile?.credits || 0}</span>
+            <span className="font-medium">Créditos</span>
+        </div>
       </div>
       
       <form onSubmit={handleSubmit(onSubmit)}>

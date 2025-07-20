@@ -13,6 +13,7 @@ export interface UserProfile {
   phoneNumber?: string;
   companyName?: string;
   website?: string;
+  credits?: number;
   bankInfo?: {
     bankName?: string;
     accountNumber?: string;

@@ -24,6 +24,8 @@ import {
   arrayUnion,
   getDoc,
   documentId,
+  increment,
+  runTransaction,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
@@ -94,36 +96,42 @@ export function AddUserDialog({ roleToAdd, onUserAdded }: AddUserDialogProps) {
         return;
       }
       
-      const currentUserRef = doc(db, 'users', user.uid);
-      const otherUserRef = doc(db, 'users', foundUserId);
-      
-      // Determine the fields to update for both users to create the connection
-      const fieldForCurrentUser = roleToAdd === 'provider' ? 'network.providers' : 'network.clients';
-      const fieldForOtherUser = roleToAdd === 'provider' ? 'network.clients' : 'network.providers';
+      await runTransaction(db, async (transaction) => {
+        const currentUserRef = doc(db, 'users', user.uid);
+        const otherUserRef = doc(db, 'users', foundUserId);
+        
+        const currentUserSnap = await transaction.get(currentUserRef);
+        if (!currentUserSnap.exists()) throw "Current user not found!";
+        
+        const currentUserData = currentUserSnap.data();
+        const network = currentUserData.network || {};
+        const isFirstConnection = (roleToAdd === 'client' && !network.clients?.length) || (roleToAdd === 'provider' && !network.providers?.length);
+        
+        const fieldForCurrentUser = roleToAdd === 'provider' ? 'network.providers' : 'network.clients';
+        const fieldForOtherUser = roleToAdd === 'provider' ? 'network.clients' : 'network.providers';
 
-      // Check if user is already in the network to avoid duplicates
-      const currentUserSnap = await getDoc(currentUserRef);
-      const currentUserData = currentUserSnap.data();
-      const existingNetwork = roleToAdd === 'provider' ? currentUserData?.network?.providers : currentUserData?.network?.clients;
+        const existingNetwork = currentUserData[fieldForCurrentUser.split('.')[0]]?.[fieldForCurrentUser.split('.')[1]] || [];
+        if (existingNetwork.includes(foundUserId)) {
+            toast({
+              title: 'Already exists',
+              description: `This user is already in your ${roleToAdd}s list.`,
+            });
+            return;
+        }
 
-      if (existingNetwork && existingNetwork.includes(foundUserId)) {
-        toast({
-          title: 'Already exists',
-          description: `This user is already in your ${roleToAdd}s list.`,
-        });
-        setLoading(false);
-        return;
-      }
+        // Update both users' networks
+        transaction.update(currentUserRef, { [fieldForCurrentUser]: arrayUnion(foundUserId) });
+        transaction.update(otherUserRef, { [fieldForOtherUser]: arrayUnion(user.uid) });
 
-      // Update current user's document to add the new connection
-      await updateDoc(currentUserRef, {
-        [fieldForCurrentUser]: arrayUnion(foundUserId),
+        if (isFirstConnection) {
+            transaction.update(currentUserRef, { credits: increment(5) });
+            toast({
+                title: '¡Créditos Ganados!',
+                description: `Has ganado 5 créditos por añadir tu primer ${roleToAdd}.`,
+            });
+        }
       });
 
-      // Update the other user's document to establish the reciprocal connection
-      await updateDoc(otherUserRef, {
-          [fieldForOtherUser]: arrayUnion(user.uid),
-      });
 
       toast({
         title: 'Success!',

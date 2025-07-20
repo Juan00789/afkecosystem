@@ -16,6 +16,7 @@ import {
   updateDoc,
   deleteDoc,
   serverTimestamp,
+  increment,
 } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -120,6 +121,7 @@ export function MyCoursesManagement() {
     setLoading(true);
 
     try {
+      const userRef = doc(db, 'users', user.uid);
       if (editingCourse) {
         const courseRef = doc(db, 'courses', editingCourse.id);
         await updateDoc(courseRef, { ...data, updatedAt: serverTimestamp() });
@@ -131,7 +133,8 @@ export function MyCoursesManagement() {
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         });
-        toast({ title: 'Success', description: 'New course created.' });
+        await updateDoc(userRef, { credits: increment(25) });
+        toast({ title: 'Success', description: 'New course created. You earned 25 credits!' });
       }
       setIsDialogOpen(false);
       reset();

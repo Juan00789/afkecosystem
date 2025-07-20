@@ -1,7 +1,7 @@
 // src/modules/cases/components/case-detail.tsx
 'use client';
 import { useState, useEffect, useCallback } from 'react';
-import { doc, getDoc, onSnapshot, updateDoc, collection, query, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, updateDoc, collection, query, orderBy, addDoc, serverTimestamp, runTransaction, increment } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
 import type { Case, Comment } from '../types';
@@ -83,16 +83,37 @@ export function CaseDetail({ caseId }: CaseDetailProps) {
   }, [caseId]);
 
   const handleStatusChange = async (newStatus: string) => {
-    if (!caseData) return;
-    const caseRef = doc(db, 'cases', caseId);
+    if (!caseData || newStatus === caseData.status) return;
+    
     try {
-      await updateDoc(caseRef, { status: newStatus, lastUpdate: serverTimestamp() });
-      toast({ title: 'Success', description: 'Case status updated.' });
+        await runTransaction(db, async (transaction) => {
+            const caseRef = doc(db, 'cases', caseId);
+            const caseDoc = await transaction.get(caseRef);
+            if (!caseDoc.exists()) throw "Case does not exist!";
+
+            // Update case status and timestamp
+            transaction.update(caseRef, { status: newStatus, lastUpdate: serverTimestamp() });
+
+            // If case is completed, award credits
+            if (newStatus === 'completed') {
+                const clientRef = doc(db, 'users', caseData.clientId);
+                const providerRef = doc(db, 'users', caseData.providerId);
+                
+                // Award 10 credits to both client and provider
+                transaction.update(clientRef, { credits: increment(10) });
+                transaction.update(providerRef, { credits: increment(10) });
+            }
+        });
+        
+        toast({ title: 'Success', description: 'Case status updated.' });
+         if (newStatus === 'completed') {
+            toast({ title: '¡Créditos Ganados!', description: '¡Cliente y proveedor han ganado 10 créditos cada uno!' });
+        }
     } catch (error) {
-      console.error("Error updating status: ", error);
-      toast({ title: 'Error', description: 'Failed to update status.', variant: 'destructive' });
+        console.error("Error updating status: ", error);
+        toast({ title: 'Error', description: 'Failed to update status.', variant: 'destructive' });
     }
-  };
+};
 
   const handleAddComment = async () => {
     if (!newComment.trim() || !user || !userProfile) return;
