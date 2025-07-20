@@ -26,7 +26,7 @@ export default function OniaraChatPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [attachedFile, setAttachedFile] = useState<AttachedFile | null>(null);
   const { userProfile } = useAuth();
-  const { register, handleSubmit, reset } = useForm<Inputs>();
+  const { register, handleSubmit, reset, watch } = useForm<Inputs>();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
