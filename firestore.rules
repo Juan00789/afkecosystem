@@ -1,11 +1,56 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // WARNING: These rules are permissive and not suitable for production.
-    // They allow any authenticated user to read, write, and delete any data.
-    match /{document=**} {
-      allow read, write, delete: if request.auth != null;
+
+    // Helper function to check if a user is part of a case
+    function isCaseParticipant(caseId) {
+      let caseData = get(/databases/$(database)/documents/cases/$(caseId)).data;
+      return request.auth.uid == caseData.clientId || request.auth.uid == caseData.providerId;
+    }
+
+    // Users can only manage their own profile.
+    // Public profiles are readable by any authenticated user.
+    match /users/{userId} {
+      allow read, list: if request.auth != null;
+      allow create: if request.auth.uid == userId;
+      allow update: if request.auth.uid == userId;
+      allow delete: if false; // Deleting users is not allowed via client
+    }
+
+    // Services are public to authenticated users (for the marketplace),
+    // but only the provider can manage them.
+    match /services/{serviceId} {
+        allow read: if request.auth != null;
+        allow create: if request.auth.uid == request.resource.data.providerId;
+        allow update: if request.auth.uid == resource.data.providerId;
+        allow delete: if request.auth.uid == resource.data.providerId;
+    }
+
+    // Cases can only be accessed or modified by the client or provider involved.
+    match /cases/{caseId} {
+      allow read, update: if isCaseParticipant(caseId);
+      // A user can only create a case where they are the client.
+      allow create: if request.auth.uid == request.resource.data.clientId;
+      allow delete: if false; // Cases should be marked as "cancelled" instead
+      
+      // Comments follow the parent case's permissions.
+      match /comments/{commentId} {
+        allow read: if isCaseParticipant(caseId);
+        // A participant can create a comment if they are the author.
+        allow create: if isCaseParticipant(caseId) && request.auth.uid == request.resource.data.authorId;
+        allow update, delete: if false;
+      }
+    }
+
+    // Courses are public to authenticated users,
+    // but only the provider can manage them.
+     match /courses/{courseId} {
+        allow read: if request.auth != null;
+        allow create: if request.auth.uid == request.resource.data.providerId;
+        allow update: if request.auth.uid == resource.data.providerId;
+        allow delete: if request.auth.uid == resource.data.providerId;
     }
   }
 }
