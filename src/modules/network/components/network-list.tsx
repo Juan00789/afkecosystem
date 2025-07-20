@@ -28,6 +28,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { useToast } from '@/hooks/use-toast';
+import Link from 'next/link';
 
 
 interface NetworkListProps {
@@ -135,7 +136,9 @@ export function NetworkList({ roleToList, refreshTrigger, onUserRemoved }: Netwo
                         {networkUser.displayName?.[0] || networkUser.email?.[0] || 'U'}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="font-medium">{networkUser.displayName || 'N/A'}</span>
+                     <Link href={`/profile/${networkUser.uid}`} className="font-medium hover:underline">
+                        {networkUser.displayName || 'N/A'}
+                    </Link>
                   </div>
                 </TableCell>
                 <TableCell>{networkUser.email || networkUser.phoneNumber || 'N/A'}</TableCell>
