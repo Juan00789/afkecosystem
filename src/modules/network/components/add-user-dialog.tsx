@@ -105,23 +105,32 @@ export function AddUserDialog({ roleToAdd, onUserAdded }: AddUserDialogProps) {
         
         const currentUserData = currentUserSnap.data();
         const network = currentUserData.network || {};
-        const isFirstConnection = (roleToAdd === 'client' && !network.clients?.length) || (roleToAdd === 'provider' && !network.providers?.length);
         
-        const fieldForCurrentUser = roleToAdd === 'provider' ? 'network.providers' : 'network.clients';
-        const fieldForOtherUser = roleToAdd === 'provider' ? 'network.clients' : 'network.providers';
+        const isClient = roleToAdd === 'client';
+        const isProvider = roleToAdd === 'provider';
+        
+        const myClients = network.clients || [];
+        const myProviders = network.providers || [];
 
-        const existingNetwork = network?.[fieldForCurrentUser.split('.')[1]] || [];
-        if (existingNetwork.includes(foundUserId)) {
-            toast({
+        // Check if already in network
+        if ((isProvider && myProviders.includes(foundUserId)) || (isClient && myClients.includes(foundUserId))) {
+             toast({
               title: 'Already exists',
               description: `This user is already in your ${roleToAdd}s list.`,
             });
             return;
         }
 
+        const isFirstConnection = (isClient && !myClients.length) || (isProvider && !myProviders.length);
+
         // Update both users' networks
-        transaction.update(currentUserRef, { [fieldForCurrentUser]: arrayUnion(foundUserId) });
-        transaction.update(otherUserRef, { [fieldForOtherUser]: arrayUnion(user.uid) });
+        if (isProvider) {
+          transaction.update(currentUserRef, { 'network.providers': arrayUnion(foundUserId) });
+          transaction.update(otherUserRef, { 'network.clients': arrayUnion(user.uid) });
+        } else { // isClient
+          transaction.update(currentUserRef, { 'network.clients': arrayUnion(foundUserId) });
+          transaction.update(otherUserRef, { 'network.providers': arrayUnion(user.uid) });
+        }
 
         if (isFirstConnection) {
             transaction.update(currentUserRef, { credits: increment(5) });
