@@ -1,7 +1,7 @@
 // src/modules/marketplace/components/marketplace.tsx
 'use client';
 import { useState, useEffect } from 'react';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, getDocs, query, where, documentId } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { UserProfile } from '@/modules/auth/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Briefcase } from 'lucide-react';
+import { useAuth } from '@/modules/auth/hooks/use-auth';
 
 interface Service {
   id: string;
@@ -21,6 +22,7 @@ interface Service {
 }
 
 export function Marketplace() {
+  const { user } = useAuth();
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -35,8 +37,15 @@ export function Marketplace() {
         })) as Service[];
 
         if (servicesData.length > 0) {
-          const providerIds = [...new Set(servicesData.map(s => s.providerId))];
-          const usersSnapshot = await getDocs(query(collection(db, 'users'), where('__name__', 'in', providerIds)));
+          const providerIds = [...new Set(servicesData.map(s => s.providerId))].filter(Boolean);
+          
+          if (providerIds.length === 0) {
+            setServices(servicesData); // Set services without providers if no IDs found
+            setLoading(false);
+            return;
+          }
+
+          const usersSnapshot = await getDocs(query(collection(db, 'users'), where(documentId(), 'in', providerIds)));
           const providersMap = new Map(usersSnapshot.docs.map(doc => [doc.id, doc.data() as UserProfile]));
 
           const enrichedServices = servicesData.map(service => ({
@@ -95,32 +104,34 @@ export function Marketplace() {
       ) : services.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {services.map(service => (
-            <Card key={service.id} className="flex flex-col">
-              <CardHeader>
-                <CardTitle>{service.name}</CardTitle>
-                <CardDescription>${service.price.toFixed(2)}</CardDescription>
-              </CardHeader>
-              <CardContent className="flex-grow">
-                <p className="text-sm text-muted-foreground line-clamp-3">{service.description}</p>
-              </CardContent>
-              <CardFooter className="flex justify-between items-center">
-                 <div className="flex items-center gap-2">
-                    <Avatar>
-                        <AvatarImage src={service.provider?.photoURL} />
-                        <AvatarFallback>{service.provider?.displayName?.[0] || 'P'}</AvatarFallback>
-                    </Avatar>
-                     <Link href={`/profile/${service.providerId}`} className="text-sm font-medium hover:underline">
-                        {service.provider?.displayName || 'Ver Proveedor'}
-                     </Link>
-                </div>
-                <Button asChild size="sm">
-                  <Link href={`/dashboard/cases/create?providerId=${service.providerId}&serviceName=${encodeURIComponent(service.name)}`}>
-                    <Briefcase className="mr-2 h-4 w-4" />
-                    Solicitar
-                  </Link>
-                </Button>
-              </CardFooter>
-            </Card>
+            service.providerId !== user?.uid && (
+              <Card key={service.id} className="flex flex-col">
+                <CardHeader>
+                  <CardTitle>{service.name}</CardTitle>
+                  <CardDescription>${service.price ? service.price.toFixed(2) : '0.00'}</CardDescription>
+                </CardHeader>
+                <CardContent className="flex-grow">
+                  <p className="text-sm text-muted-foreground line-clamp-3">{service.description}</p>
+                </CardContent>
+                <CardFooter className="flex justify-between items-center">
+                   <div className="flex items-center gap-2">
+                      <Avatar>
+                          <AvatarImage src={service.provider?.photoURL} />
+                          <AvatarFallback>{service.provider?.displayName?.[0] || 'P'}</AvatarFallback>
+                      </Avatar>
+                       <Link href={`/profile/${service.providerId}`} className="text-sm font-medium hover:underline">
+                          {service.provider?.displayName || 'Ver Proveedor'}
+                       </Link>
+                  </div>
+                  <Button asChild size="sm">
+                    <Link href={`/dashboard/cases/create?providerId=${service.providerId}&serviceName=${encodeURIComponent(service.name)}`}>
+                      <Briefcase className="mr-2 h-4 w-4" />
+                      Solicitar
+                    </Link>
+                  </Button>
+                </CardFooter>
+              </Card>
+            )
           ))}
         </div>
       ) : (
