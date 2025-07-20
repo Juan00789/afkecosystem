@@ -14,12 +14,7 @@ service cloud.firestore {
     match /users/{userId} {
       allow read, list: if request.auth != null;
       allow create: if request.auth.uid == userId;
-      // Allow update if user is the owner and is only changing allowed fields.
-      allow update: if request.auth.uid == userId &&
-                       request.resource.data.uid == resource.data.uid &&
-                       request.resource.data.email == resource.data.email &&
-                       request.resource.data.diff(resource.data).affectedKeys()
-                         .hasOnly(['displayName', 'phoneNumber', 'companyName', 'website', 'photoURL', 'bankInfo', 'network', 'credits']);
+      allow update: if request.auth.uid == userId && request.resource.data.uid == resource.data.uid;
       allow delete: if false; // Deleting users is not allowed via client
     }
 
@@ -32,14 +27,14 @@ service cloud.firestore {
         allow delete: if request.auth != null && request.auth.uid == resource.data.providerId;
     }
 
-    // Courses are public to authenticated users, but only the provider can manage them.
+    // Courses are public to authenticated users,
+    // but only the provider can manage them.
     match /courses/{courseId} {
         allow read: if request.auth != null;
         allow create: if request.auth != null && request.auth.uid == request.resource.data.providerId;
         allow update: if request.auth != null && request.auth.uid == resource.data.providerId;
         allow delete: if request.auth != null && request.auth.uid == resource.data.providerId;
     }
-    
 
     // Cases can only be accessed or modified by the client or provider involved.
     match /cases/{caseId} {
