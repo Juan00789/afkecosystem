@@ -1,6 +1,6 @@
 // src/modules/dashboard/components/dashboard-overview.tsx
 'use client';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { collection, query, where, orderBy, onSnapshot, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Case } from '@/modules/cases/types';
@@ -75,22 +75,29 @@ const modules = [
 
 export function DashboardOverview({ userId }: DashboardOverviewProps) {
   const { userProfile } = useAuth();
-  const [allCases, setAllCases] = useState<Case[]>([]);
+  const [clientCases, setClientCases] = useState<Case[]>([]);
+  const [providerCases, setProviderCases] = useState<Case[]>([]);
   const [loading, setLoading] = useState(true);
 
   const isProfileIncomplete = useMemo(() => {
     return !userProfile?.companyName;
   }, [userProfile]);
 
+  const allCases = useMemo(() => {
+    const combined = [...clientCases, ...providerCases];
+    const uniqueCases = Array.from(new Map(combined.map(c => [c.id, c])).values());
+    return uniqueCases.sort((a, b) => b.lastUpdate.toMillis() - a.lastUpdate.toMillis());
+  }, [clientCases, providerCases]);
+
+  const onDataLoaded = useCallback(() => {
+    setLoading(false);
+  }, []);
+
   useEffect(() => {
     if (!userId) return;
 
     setLoading(true);
     const casesRef = collection(db, 'cases');
-    
-    // Firestore does not support 'OR' queries on different fields directly.
-    // The most scalable approach for this specific scenario (my cases as client OR provider) is to run two separate queries and merge the results on the client.
-    // This avoids complex data duplication or single-field denormalization.
     
     const clientQuery = query(
       casesRef, 
@@ -105,24 +112,20 @@ export function DashboardOverview({ userId }: DashboardOverviewProps) {
       limit(5)
     );
 
-    const unsubClient = onSnapshot(clientQuery, clientSnap => {
-      const clientCases = clientSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Case));
-      setAllCases(prevCases => {
-        const combined = [...clientCases, ...prevCases.filter(p => p.providerId === userId)];
-        return Array.from(new Map(combined.map(c => [c.id, c])).values())
-               .sort((a, b) => b.lastUpdate.toMillis() - a.lastUpdate.toMillis());
-      });
-      setLoading(false);
+    const unsubClient = onSnapshot(clientQuery, (snapshot) => {
+        setClientCases(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Case)));
+        onDataLoaded();
+    }, (error) => {
+        console.error("Error fetching client cases: ", error);
+        onDataLoaded();
     });
 
-    const unsubProvider = onSnapshot(providerQuery, providerSnap => {
-      const providerCases = providerSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Case));
-       setAllCases(prevCases => {
-        const combined = [...providerCases, ...prevCases.filter(p => p.clientId === userId)];
-        return Array.from(new Map(combined.map(c => [c.id, c])).values())
-               .sort((a, b) => b.lastUpdate.toMillis() - a.lastUpdate.toMillis());
-      });
-      setLoading(false);
+    const unsubProvider = onSnapshot(providerQuery, (snapshot) => {
+        setProviderCases(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Case)));
+        onDataLoaded();
+    }, (error) => {
+        console.error("Error fetching provider cases: ", error);
+        onDataLoaded();
     });
     
     return () => {
@@ -130,7 +133,7 @@ export function DashboardOverview({ userId }: DashboardOverviewProps) {
       unsubProvider();
     };
 
-  }, [userId]);
+  }, [userId, onDataLoaded]);
   
 
   const renderSkeleton = () => (
