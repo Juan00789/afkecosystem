@@ -106,32 +106,33 @@ export function AddUserDialog({ roleToAdd, onUserAdded }: AddUserDialogProps) {
         const currentUserData = currentUserSnap.data();
         const network = currentUserData.network || {};
         
-        const isClient = roleToAdd === 'client';
         const isProvider = roleToAdd === 'provider';
-        
-        const myClients = network.clients || [];
-        const myProviders = network.providers || [];
+        const myNetworkList = isProvider ? (network.providers || []) : (network.clients || []);
 
-        // Check if already in network
-        if ((isProvider && myProviders.includes(foundUserId)) || (isClient && myClients.includes(foundUserId))) {
+        if (myNetworkList.includes(foundUserId)) {
              toast({
               title: 'Already exists',
               description: `This user is already in your ${roleToAdd}s list.`,
             });
-            return;
+            return; // Exit transaction
         }
 
-        const isFirstConnection = (isClient && !myClients.length) || (isProvider && !myProviders.length);
+        const isFirstConnection = myNetworkList.length === 0;
 
-        // Update both users' networks
+        // Update both users' networks symmetrically
         if (isProvider) {
+          // I add them as a provider
           transaction.update(currentUserRef, { 'network.providers': arrayUnion(foundUserId) });
+          // They add me as a client
           transaction.update(otherUserRef, { 'network.clients': arrayUnion(user.uid) });
         } else { // isClient
+          // I add them as a client
           transaction.update(currentUserRef, { 'network.clients': arrayUnion(foundUserId) });
+          // They add me as a provider
           transaction.update(otherUserRef, { 'network.providers': arrayUnion(user.uid) });
         }
 
+        // Award credits for the first client OR first provider
         if (isFirstConnection) {
             transaction.update(currentUserRef, { credits: increment(5) });
             toast({
@@ -141,7 +142,6 @@ export function AddUserDialog({ roleToAdd, onUserAdded }: AddUserDialogProps) {
         }
       });
 
-
       toast({
         title: 'Success!',
         description: `User has been added as a ${roleToAdd}.`,
@@ -150,13 +150,22 @@ export function AddUserDialog({ roleToAdd, onUserAdded }: AddUserDialogProps) {
       setIsOpen(false);
       setIdentifier('');
 
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Error adding ${roleToAdd}:`, error);
-      toast({
-        title: 'Error',
-        description: `There was a problem adding the user.`,
-        variant: 'destructive',
-      });
+      // Don't show a generic error if we already showed a specific one (like "Already exists")
+      if (error.message) {
+         toast({
+          title: 'Error',
+          description: error.message,
+          variant: 'destructive',
+        });
+      } else if (!toast.toasts.find(t => t.title === 'Already exists' || t.title === '¡Créditos Ganados!')) {
+         toast({
+            title: 'Error',
+            description: `There was a problem adding the user.`,
+            variant: 'destructive',
+        });
+      }
     } finally {
       setLoading(false);
     }
