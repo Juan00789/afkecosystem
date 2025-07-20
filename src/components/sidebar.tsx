@@ -13,6 +13,7 @@ import {
   Rocket,
   MessageSquareText,
   Sparkles,
+  Bot,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -26,6 +27,7 @@ import {
 const navLinks = [
   { href: '/dashboard', label: 'Dashboard', icon: Home },
   { href: '/dashboard/marketplace', label: 'Marketplace', icon: ShoppingBag },
+  { href: '/dashboard/oniara', label: 'Oniara AI', icon: Bot },
   { href: '/dashboard/cursos', label: 'Cursos', icon: BookOpen },
   { href: '/dashboard/creditos', label: 'Créditos', icon: HandCoins },
   { href: '/dashboard/consultorias', label: 'Consultorías', icon: MessageSquareText },
