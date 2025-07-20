@@ -45,27 +45,33 @@ export async function chatWithOniara(
     prompt: promptParts,
     system: oniaraPrompt,
     history: history.map((msg) => {
-      let content: z.infer<typeof gemini15Flash.schema.content> = [];
-      if (msg.role === 'user') {
-          // For user messages, just pass the text content.
-          // The new file is handled in the main prompt, not history.
-          content.push({ text: msg.content.text });
-      } else { // 'model' role
-          if (msg.content.type === 'course') {
-            // When the model's response was a course, we create a tool call history item.
-            // This accurately represents that the model decided to use the courseCreationTool.
-             content.push({
-              toolResponse: {
-                name: 'courseCreationTool',
-                output: msg.content.course,
-              }
-            });
-          } else {
-            // For standard text responses from the model.
-            content.push({ text: msg.content.text });
-          }
-      }
-      return { role: msg.role, content };
+        let content: z.infer<typeof gemini15Flash.schema.content>;
+        if (msg.role === 'user') {
+            // User messages are simpler, they just have text content.
+            // Any files are handled in the main prompt, not the history.
+            content = [{ text: msg.content.text }];
+        } else { // 'model' role
+            if (msg.content.type === 'course') {
+                // To represent a model's "course" response in history, we frame it as
+                // the model calling the courseCreationTool. This accurately reflects
+                // the action taken by the model.
+                content = [{
+                    toolRequest: {
+                        name: 'courseCreationTool',
+                        input: { topic: 'User-requested topic' }, // Placeholder topic
+                    },
+                }, {
+                    toolResponse: {
+                        name: 'courseCreationTool',
+                        output: msg.content.course,
+                    }
+                }];
+            } else {
+                // For standard text responses from the model.
+                content = [{ text: msg.content.text }];
+            }
+        }
+        return { role: msg.role, content };
     }),
     tools: [courseSearchTool, courseCreationTool],
     toolChoice: 'auto'
