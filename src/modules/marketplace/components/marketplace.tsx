@@ -91,6 +91,8 @@ export function Marketplace() {
       ))}
     </div>
   );
+  
+  const displayedServices = services.filter(service => service.providerId !== user?.uid);
 
   return (
     <div className="space-y-6">
@@ -101,9 +103,9 @@ export function Marketplace() {
 
       {loading ? (
         renderSkeleton()
-      ) : services.length > 0 ? (
+      ) : displayedServices.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {services.map(service => (
+          {displayedServices.map(service => (
             <Card key={service.id} className="flex flex-col">
               <CardHeader>
                 <CardTitle>{service.name}</CardTitle>
@@ -122,14 +124,12 @@ export function Marketplace() {
                         {service.provider?.displayName || 'Ver Proveedor'}
                      </Link>
                 </div>
-                {service.providerId !== user?.uid && (
                   <Button asChild size="sm">
                     <Link href={`/dashboard/cases/create?providerId=${service.providerId}&serviceName=${encodeURIComponent(service.name)}`}>
                       <Briefcase className="mr-2 h-4 w-4" />
                       Solicitar
                     </Link>
                   </Button>
-                )}
               </CardFooter>
             </Card>
           ))}
@@ -137,7 +137,7 @@ export function Marketplace() {
       ) : (
          <div className="text-center py-20 border-2 border-dashed rounded-lg">
             <h2 className="text-xl font-semibold">El mercado está tranquilo</h2>
-            <p className="text-muted-foreground mt-2">No hay servicios publicados en este momento. ¡Vuelve pronto!</p>
+            <p className="text-muted-foreground mt-2">No hay servicios de otros proveedores publicados en este momento. ¡Vuelve pronto!</p>
         </div>
       )}
     </div>
