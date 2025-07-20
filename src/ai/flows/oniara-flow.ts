@@ -3,22 +3,12 @@
  * @fileOverview An AI assistant flow for Oniara.
  *
  * - chatWithOniara - A function that handles the chat interaction.
- * - ChatWithOniaraHistory - The type for the chat history.
  */
 
 import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
 import { gemini15Flash } from '@genkit-ai/googleai';
 import { courseSearchTool } from '@/ai/tools/course-search-tool';
-
-export const ChatWithOniaraHistorySchema = z.array(
-  z.object({
-    role: z.enum(['user', 'model']),
-    content: z.string(),
-  })
-);
-
-export type ChatWithOniaraHistory = z.infer<typeof ChatWithOniaraHistorySchema>;
+import type { ChatWithOniaraHistory } from './oniara-types';
 
 const oniaraPrompt = `You are Oniara, an expert business mentor and the friendly AI assistant for AFKEcosystem. Your mission is to guide and support micro-entrepreneurs.
 

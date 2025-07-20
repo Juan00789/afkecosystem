@@ -5,10 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Bot, Send, User } from 'lucide-react';
-import {
-  chatWithOniara,
-  type ChatWithOniaraHistory,
-} from '@/ai/flows/oniara-flow';
+import { chatWithOniara } from '@/ai/flows/oniara-flow';
+import type { ChatWithOniaraHistory } from '@/ai/flows/oniara-types';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
