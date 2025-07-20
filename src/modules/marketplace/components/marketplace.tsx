@@ -104,34 +104,34 @@ export function Marketplace() {
       ) : services.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {services.map(service => (
-            service.providerId !== user?.uid && (
-              <Card key={service.id} className="flex flex-col">
-                <CardHeader>
-                  <CardTitle>{service.name}</CardTitle>
-                  <CardDescription>${service.price ? service.price.toFixed(2) : '0.00'}</CardDescription>
-                </CardHeader>
-                <CardContent className="flex-grow">
-                  <p className="text-sm text-muted-foreground line-clamp-3">{service.description}</p>
-                </CardContent>
-                <CardFooter className="flex justify-between items-center">
-                   <div className="flex items-center gap-2">
-                      <Avatar>
-                          <AvatarImage src={service.provider?.photoURL} />
-                          <AvatarFallback>{service.provider?.displayName?.[0] || 'P'}</AvatarFallback>
-                      </Avatar>
-                       <Link href={`/profile/${service.providerId}`} className="text-sm font-medium hover:underline">
-                          {service.provider?.displayName || 'Ver Proveedor'}
-                       </Link>
-                  </div>
+            <Card key={service.id} className="flex flex-col">
+              <CardHeader>
+                <CardTitle>{service.name}</CardTitle>
+                <CardDescription>${service.price ? service.price.toFixed(2) : '0.00'}</CardDescription>
+              </CardHeader>
+              <CardContent className="flex-grow">
+                <p className="text-sm text-muted-foreground line-clamp-3">{service.description}</p>
+              </CardContent>
+              <CardFooter className="flex justify-between items-center">
+                 <div className="flex items-center gap-2">
+                    <Avatar>
+                        <AvatarImage src={service.provider?.photoURL} />
+                        <AvatarFallback>{service.provider?.displayName?.[0] || 'P'}</AvatarFallback>
+                    </Avatar>
+                     <Link href={`/profile/${service.providerId}`} className="text-sm font-medium hover:underline">
+                        {service.provider?.displayName || 'Ver Proveedor'}
+                     </Link>
+                </div>
+                {service.providerId !== user?.uid && (
                   <Button asChild size="sm">
                     <Link href={`/dashboard/cases/create?providerId=${service.providerId}&serviceName=${encodeURIComponent(service.name)}`}>
                       <Briefcase className="mr-2 h-4 w-4" />
                       Solicitar
                     </Link>
                   </Button>
-                </CardFooter>
-              </Card>
-            )
+                )}
+              </CardFooter>
+            </Card>
           ))}
         </div>
       ) : (
