@@ -1,40 +1,63 @@
 'use client';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Bot, Send, User } from 'lucide-react';
+import { Bot, Send, User, Paperclip, X } from 'lucide-react';
 import { chatWithOniara } from '@/ai/flows/oniara-flow';
 import type { ChatWithOniaraHistory } from '@/ai/flows/oniara-types';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
+import { Label } from '@/components/ui/label';
 
 type Inputs = {
   message: string;
 };
 
+interface AttachedFile {
+  name: string;
+  dataUri: string;
+}
+
 export default function OniaraChatPage() {
   const [history, setHistory] = useState<ChatWithOniaraHistory>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [attachedFile, setAttachedFile] = useState<AttachedFile | null>(null);
   const { userProfile } = useAuth();
   const { register, handleSubmit, reset } = useForm<Inputs>();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (loadEvent) => {
+        const dataUri = loadEvent.target?.result as string;
+        setAttachedFile({ name: file.name, dataUri });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const onSubmit: SubmitHandler<Inputs> = async (data) => {
-    if (!data.message.trim()) return;
+    if (!data.message.trim() && !attachedFile) return;
 
     const userMessage = data.message;
     const newHistory: ChatWithOniaraHistory = [
       ...history,
-      { role: 'user', content: userMessage },
+      { role: 'user', content: userMessage + (attachedFile ? `\n\n(Archivo adjunto: ${attachedFile.name})` : '') },
     ];
     setHistory(newHistory);
     reset();
     setIsLoading(true);
 
     try {
-      const modelResponse = await chatWithOniara(history, userMessage);
+      const fileDataUri = attachedFile?.dataUri;
+      setAttachedFile(null); // Clear file after including it in the submission
+      
+      const modelResponse = await chatWithOniara(history, userMessage, fileDataUri);
       setHistory([
         ...newHistory,
         { role: 'model', content: modelResponse },
@@ -57,7 +80,7 @@ export default function OniaraChatPage() {
     <div className="flex h-[calc(100vh-8rem)] flex-col">
        <header className="mb-4">
         <h1 className="text-3xl font-bold">Habla con Oniara 🤖</h1>
-        <p className="text-muted-foreground">Tu asistente de IA para ayudarte a crecer.</p>
+        <p className="text-muted-foreground">Tu asistente de IA para ayudarte a crecer. Ahora puedes adjuntar archivos para su análisis.</p>
       </header>
       <ScrollArea className="flex-grow rounded-md border p-4">
         <div className="space-y-6">
@@ -96,6 +119,7 @@ export default function OniaraChatPage() {
             {history.length === 0 && (
                 <div className="text-center text-muted-foreground">
                     <p>¡Hola! Soy Oniara. ¿En qué puedo ayudarte hoy?</p>
+                    <p className="text-xs">Puedes adjuntar un archivo para que lo analice.</p>
                 </div>
             )}
            {isLoading && (
@@ -117,17 +141,52 @@ export default function OniaraChatPage() {
       </ScrollArea>
       <form
         onSubmit={handleSubmit(onSubmit)}
-        className="mt-4 flex items-center gap-2"
+        className="mt-4 flex flex-col gap-2"
       >
-        <Input
-          {...register('message')}
-          placeholder="Escribe tu pregunta aquí..."
-          autoComplete="off"
-          disabled={isLoading}
-        />
-        <Button type="submit" size="icon" disabled={isLoading}>
-          <Send className="h-5 w-5" />
-        </Button>
+        {attachedFile && (
+          <div className="flex items-center justify-between rounded-md border bg-muted/50 px-3 py-2 text-sm">
+            <span className="truncate pr-2">Adjunto: {attachedFile.name}</span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={() => {
+                setAttachedFile(null);
+                if(fileInputRef.current) fileInputRef.current.value = "";
+              }}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+        <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isLoading}
+            >
+              <Paperclip className="h-5 w-5" />
+            </Button>
+            <Input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                className="hidden"
+                disabled={isLoading}
+            />
+            <Input
+            {...register('message')}
+            placeholder="Escribe tu pregunta aquí o adjunta un archivo..."
+            autoComplete="off"
+            disabled={isLoading}
+            />
+            <Button type="submit" size="icon" disabled={isLoading || (!watch('message') && !attachedFile)}>
+            <Send className="h-5 w-5" />
+            </Button>
+        </div>
       </form>
     </div>
   );
