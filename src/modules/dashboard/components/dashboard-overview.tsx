@@ -19,6 +19,7 @@ import {
   MessageSquareText,
   Rocket,
   Sparkles,
+  Award,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
@@ -162,11 +163,18 @@ export function DashboardOverview({ userId }: DashboardOverviewProps) {
             <h1 className="text-3xl font-bold">Panel Personal</h1>
             <p className="text-muted-foreground">Sigue tu progreso y oportunidades en tiempo real.</p>
         </div>
-        <Button asChild>
-          <Link href="/dashboard/cases/create">
-            <PlusCircle className="mr-2 h-4 w-4" /> New Case
-          </Link>
-        </Button>
+        <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 rounded-full bg-secondary/20 px-4 py-2 text-secondary">
+                <Award className="h-6 w-6" />
+                <span className="text-xl font-bold">{userProfile?.credits || 0}</span>
+                <span className="font-medium">Créditos</span>
+            </div>
+            <Button asChild>
+                <Link href="/dashboard/cases/create">
+                    <PlusCircle className="mr-2 h-4 w-4" /> New Case
+                </Link>
+            </Button>
+        </div>
       </div>
       
       {isProfileIncomplete && (
