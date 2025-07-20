@@ -56,11 +56,13 @@ export function NetworkList({ roleToList, refreshTrigger, onUserRemoved }: Netwo
           const networkField = roleToList === 'provider' ? 'network.providers' : 'network.clients';
           const userIds = userData[networkField.split('.')[0]]?.[networkField.split('.')[1]] || [];
 
-
           if (userIds.length > 0) {
-            const usersQuery = query(collection(db, 'users'), where(documentId(), 'in', userIds));
-            const usersSnapshot = await getDocs(usersQuery);
-            const usersList = usersSnapshot.docs.map(doc => ({ ...doc.data(), uid: doc.id } as UserProfile));
+            // Fetch each user document individually
+            const userPromises = userIds.map((id: string) => getDoc(doc(db, 'users', id)));
+            const userDocs = await Promise.all(userPromises);
+            const usersList = userDocs
+              .filter(docSnap => docSnap.exists())
+              .map(docSnap => ({ ...docSnap.data(), uid: docSnap.id } as UserProfile));
             setUsers(usersList);
           } else {
             setUsers([]);
