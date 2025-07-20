@@ -16,7 +16,7 @@
  */
 
 import { genkit } from 'genkit';
-import { next } from '@genkit-ai/next';
+import next from '@genkit-ai/next';
 import { googleAI } from '@genkit-ai/googleai';
 
 const REGISTRY = new Map<string, any>();
