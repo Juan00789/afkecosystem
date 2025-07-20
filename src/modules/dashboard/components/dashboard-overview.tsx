@@ -18,6 +18,7 @@ import {
   HandCoins,
   MessageSquareText,
   Rocket,
+  Sparkles,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
@@ -53,13 +54,13 @@ const modules = [
     href: '/dashboard/consultorias',
   },
   {
-    icon: <Briefcase className="h-8 w-8 text-primary" />,
-    title: 'Network',
+    icon: <Users className="h-8 w-8 text-primary" />,
+    title: 'Brokis',
     description: 'Gestiona tus clientes y proveedores.',
     href: '/dashboard/network',
   },
   {
-    icon: <FileText className="h-8 w-8 text-primary" />,
+    icon: <Sparkles className="h-8 w-8 text-primary" />,
     title: 'Quotes',
     description: 'Genera cotizaciones con IA.',
     href: '/dashboard/quotes',

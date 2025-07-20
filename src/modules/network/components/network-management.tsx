@@ -17,13 +17,13 @@ export function NetworkManagement() {
   return (
     <div className="space-y-6">
        <div>
-        <h1 className="text-3xl font-bold">My Network</h1>
-        <p className="text-muted-foreground">Manage your clients and service providers.</p>
+        <h1 className="text-3xl font-bold">Mis Brokis</h1>
+        <p className="text-muted-foreground">Gestiona tus clientes y proveedores de confianza.</p>
       </div>
       <Tabs defaultValue="clients" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="clients">My Clients</TabsTrigger>
-          <TabsTrigger value="providers">My Providers</TabsTrigger>
+          <TabsTrigger value="clients">Mis Clientes</TabsTrigger>
+          <TabsTrigger value="providers">Mis Proveedores</TabsTrigger>
         </TabsList>
         
         <TabsContent value="clients">
@@ -31,9 +31,9 @@ export function NetworkManagement() {
             <CardHeader>
               <div className="flex justify-between items-center">
                 <div>
-                    <CardTitle>Clients</CardTitle>
+                    <CardTitle>Clientes</CardTitle>
                     <CardDescription>
-                    Users who have hired you for a service.
+                    Usuarios que han solicitado tus servicios.
                     </CardDescription>
                 </div>
                  <AddUserDialog roleToAdd="client" onUserAdded={handleUserAddedOrRemoved} />
@@ -50,9 +50,9 @@ export function NetworkManagement() {
             <CardHeader>
               <div className="flex justify-between items-center">
                 <div>
-                    <CardTitle>Providers</CardTitle>
+                    <CardTitle>Proveedores</CardTitle>
                     <CardDescription>
-                    Users you have hired or can hire for a service.
+                    Usuarios a quienes has contratado o puedes contratar.
                     </CardDescription>
                 </div>
                 <AddUserDialog roleToAdd="provider" onUserAdded={handleUserAddedOrRemoved} />

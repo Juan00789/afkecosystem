@@ -38,27 +38,32 @@ function CreateCaseFormComponent() {
   const { toast } = useToast();
   const [providers, setProviders] = useState<Provider[]>([]);
   const [loading, setLoading] = useState(false);
+  
   const preselectedProviderId = searchParams.get('providerId');
+  const serviceName = searchParams.get('serviceName');
 
   const {
     control,
     handleSubmit,
     formState: { errors },
     setValue,
+    watch,
   } = useForm<CaseFormData>({
     resolver: zodResolver(caseSchema),
     defaultValues: {
-      title: '',
+      title: serviceName || '',
       description: '',
       providerId: preselectedProviderId || '',
     },
   });
+  
+  const selectedProviderId = watch('providerId');
+
 
   useEffect(() => {
     const fetchProviders = async () => {
       if (!user || !userProfile) return;
       
-      // Start with the user themselves as a provider option
       const selfProvider: Provider = {
         id: user.uid,
         displayName: `${userProfile.displayName || user.email} (Yo mismo)`,
@@ -82,16 +87,30 @@ function CreateCaseFormComponent() {
             providersList = [...providersList, ...networkProviders];
         }
       }
+      // Ensure the preselected provider is in the list if they aren't already
+      if (preselectedProviderId && !providersList.some(p => p.id === preselectedProviderId)) {
+        const providerDoc = await getDoc(doc(db, 'users', preselectedProviderId));
+        if (providerDoc.exists()) {
+            providersList.push({
+                id: providerDoc.id,
+                displayName: providerDoc.data().displayName || providerDoc.data().email || 'Unnamed Provider',
+            });
+        }
+      }
+
       setProviders(providersList);
     };
     fetchProviders();
-  }, [user, userProfile]);
+  }, [user, userProfile, preselectedProviderId]);
   
   useEffect(() => {
     if (preselectedProviderId) {
       setValue('providerId', preselectedProviderId);
     }
-  }, [preselectedProviderId, setValue]);
+     if (serviceName) {
+      setValue('title', serviceName);
+    }
+  }, [preselectedProviderId, serviceName, setValue]);
 
   const onSubmit = async (data: CaseFormData) => {
     if (!user) {
@@ -127,7 +146,7 @@ function CreateCaseFormComponent() {
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="title">Title</Label>
+            <Label htmlFor="title">Title / Service Name</Label>
             <Controller
               name="title"
               control={control}
@@ -159,8 +178,8 @@ function CreateCaseFormComponent() {
               name="providerId"
               control={control}
               render={({ field }) => (
-                <Select onValueChange={field.onChange} value={field.value} defaultValue={preselectedProviderId || ""}>
-                  <SelectTrigger id="providerId">
+                <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
+                  <SelectTrigger id="providerId" disabled={!!preselectedProviderId}>
                     <SelectValue placeholder="Select a provider..." />
                   </SelectTrigger>
                   <SelectContent>
