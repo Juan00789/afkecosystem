@@ -1,34 +1,46 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Users can read public profiles, but only write to their own.
+    // Helper function to check if a user is part of a case
+    function isCaseParticipant(caseId) {
+      let caseData = get(/databases/$(database)/documents/cases/$(caseId)).data;
+      return request.auth.uid == caseData.clientId || request.auth.uid == caseData.providerId;
+    }
+
+    // Users can only manage their own profile.
+    // Public profiles are readable by any authenticated user.
     match /users/{userId} {
       allow read: if request.auth != null;
-      allow create, update: if request.auth.uid == userId;
+      allow create: if request.auth.uid == userId;
+      allow update: if request.auth.uid == userId;
+      allow delete: if false; // Deleting users is not allowed via client
     }
 
-    // Anyone can read services. Only the owning provider can manage them.
+    // Services are public to authenticated users (for the marketplace),
+    // but only the provider can manage them.
     match /services/{serviceId} {
       allow read: if request.auth != null;
-      // For create, check the ID in the incoming data.
-      allow create: if request.auth.uid == request.resource.data.providerId;
-      // For update/delete, check the ID in the existing data.
-      allow update, delete: if request.auth.uid == resource.data.providerId;
+      // For create, check the incoming data. For update/delete, check existing data.
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.providerId;
+      allow update, delete: if request.auth != null && request.auth.uid == resource.data.providerId;
     }
 
-    // Only the client or provider can read/update a case. Only a client can create.
+    // Cases can only be accessed or modified by the client or provider involved.
     match /cases/{caseId} {
-      allow read, update: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
-      allow create: if request.auth.uid == request.resource.data.clientId;
-    }
-
-    // Only participants of a case can read/write comments.
-    match /cases/{caseId}/comments/{commentId} {
-      // Allow read/write if the user is part of the parent case document.
-      allow read, create: if get(/databases/$(database)/documents/cases/$(caseId)).data.clientId == request.auth.uid || get(/databases/$(database)/documents/cases/$(caseId)).data.providerId == request.auth.uid;
+      allow read, update: if isCaseParticipant(caseId);
+      // A user can only create a case where they are the client.
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.clientId;
+      allow delete: if false; // Cases should be marked as "cancelled" instead
+      
+      // Comments follow the parent case's permissions.
+      match /comments/{commentId} {
+        allow read: if isCaseParticipant(caseId);
+        // A participant can create a comment if they are the author.
+        allow create: if isCaseParticipant(caseId) && request.auth.uid == request.resource.data.authorId;
+        allow update, delete: if false;
+      }
     }
   }
 }
