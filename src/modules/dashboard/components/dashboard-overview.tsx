@@ -59,6 +59,12 @@ const modules = [
     description: 'Gestiona tus clientes y proveedores.',
     href: '/dashboard/network',
   },
+   {
+    icon: <Briefcase className="h-8 w-8 text-primary" />,
+    title: 'My Services',
+    description: 'Gestiona los servicios que ofreces.',
+    href: '/dashboard/services',
+  },
   {
     icon: <Sparkles className="h-8 w-8 text-primary" />,
     title: 'Quotes',
@@ -69,8 +75,7 @@ const modules = [
 
 export function DashboardOverview({ userId }: DashboardOverviewProps) {
   const { userProfile } = useAuth();
-  const [clientCases, setClientCases] = useState<Case[]>([]);
-  const [providerCases, setProviderCases] = useState<Case[]>([]);
+  const [allCases, setAllCases] = useState<Case[]>([]);
   const [loading, setLoading] = useState(true);
 
   const isProfileIncomplete = useMemo(() => {
@@ -80,52 +85,53 @@ export function DashboardOverview({ userId }: DashboardOverviewProps) {
   useEffect(() => {
     if (!userId) return;
 
+    setLoading(true);
     const casesRef = collection(db, 'cases');
-
-    const clientCasesQuery = query(
-      casesRef,
-      where('clientId', '==', userId),
+    
+    // Firestore does not support 'OR' queries on different fields directly.
+    // The most scalable approach for this specific scenario (my cases as client OR provider) is to run two separate queries and merge the results on the client.
+    // This avoids complex data duplication or single-field denormalization.
+    
+    const clientQuery = query(
+      casesRef, 
+      where('clientId', '==', userId), 
+      orderBy('lastUpdate', 'desc'),
+      limit(5)
+    );
+    const providerQuery = query(
+      casesRef, 
+      where('providerId', '==', userId), 
       orderBy('lastUpdate', 'desc'),
       limit(5)
     );
 
-    const providerCasesQuery = query(
-      casesRef,
-      where('providerId', '==', userId),
-      orderBy('lastUpdate', 'desc'),
-      limit(5)
-    );
-
-    const unsubscribeClientCases = onSnapshot(clientCasesQuery, (snapshot) => {
-      const cases = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Case));
-      setClientCases(cases);
-      setLoading(false);
-    }, (error) => {
-      console.error("Error fetching client cases:", error);
+    const unsubClient = onSnapshot(clientQuery, clientSnap => {
+      const clientCases = clientSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Case));
+      setAllCases(prevCases => {
+        const combined = [...clientCases, ...prevCases.filter(p => p.providerId === userId)];
+        return Array.from(new Map(combined.map(c => [c.id, c])).values())
+               .sort((a, b) => b.lastUpdate.toMillis() - a.lastUpdate.toMillis());
+      });
       setLoading(false);
     });
 
-    const unsubscribeProviderCases = onSnapshot(providerCasesQuery, (snapshot) => {
-      const cases = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Case));
-      setProviderCases(cases);
-      setLoading(false);
-    }, (error) => {
-      console.error("Error fetching provider cases:", error);
+    const unsubProvider = onSnapshot(providerQuery, providerSnap => {
+      const providerCases = providerSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Case));
+       setAllCases(prevCases => {
+        const combined = [...providerCases, ...prevCases.filter(p => p.clientId === userId)];
+        return Array.from(new Map(combined.map(c => [c.id, c])).values())
+               .sort((a, b) => b.lastUpdate.toMillis() - a.lastUpdate.toMillis());
+      });
       setLoading(false);
     });
-
+    
     return () => {
-      unsubscribeClientCases();
-      unsubscribeProviderCases();
+      unsubClient();
+      unsubProvider();
     };
+
   }, [userId]);
   
-  const allCases = useMemo(() => {
-    const combined = [...clientCases, ...providerCases];
-    const uniqueCases = Array.from(new Map(combined.map(c => [c.id, c])).values());
-    return uniqueCases.sort((a, b) => b.lastUpdate.toMillis() - a.lastUpdate.toMillis());
-  }, [clientCases, providerCases]);
-
 
   const renderSkeleton = () => (
     <div className="space-y-4">
@@ -176,7 +182,7 @@ export function DashboardOverview({ userId }: DashboardOverviewProps) {
       )}
 
 
-       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
+       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {modules.map((module) => (
               <Link href={module.href} key={module.title}>
                 <Card className="h-full transition-transform duration-300 hover:-translate-y-1 hover:shadow-xl bg-card hover:bg-card/80">
