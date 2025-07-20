@@ -45,7 +45,9 @@ export function Sidebar() {
 
   const renderLink = (link: { href: string; label: string; icon: any }) => {
     const { href, label, icon: Icon } = link;
-    const isActive = pathname.startsWith(href) && (href !== '/dashboard' || pathname === '/dashboard');
+    // Corrected logic: The link is active if the pathname is exactly the href.
+    // The dashboard link is a special case, active only when the path is exactly '/dashboard'.
+    const isActive = href === '/dashboard' ? pathname === href : pathname.startsWith(href);
 
 
     return (

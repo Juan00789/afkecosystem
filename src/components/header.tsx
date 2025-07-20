@@ -53,8 +53,11 @@ export function Header({}: HeaderProps) {
     { href: '/dashboard/network', label: 'Brokis', icon: Users },
     { href: '/dashboard/services', label: 'My Services', icon: Briefcase },
     { href: '/dashboard/quotes', label: 'Quotes', icon: Sparkles },
-    { href: '/dashboard/profile', label: 'Settings', icon: Settings },
   ];
+  
+  const bottomLinks = [
+      { href: '/dashboard/profile', label: 'Settings', icon: Settings },
+  ]
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
@@ -65,10 +68,10 @@ export function Header({}: HeaderProps) {
             <span className="sr-only">Toggle Menu</span>
           </Button>
         </SheetTrigger>
-        <SheetContent side="left" className="sm:max-w-xs">
+        <SheetContent side="left" className="sm:max-w-xs flex flex-col">
           <nav className="grid gap-6 text-lg font-medium">
             <Link
-              href="#"
+              href="/dashboard"
               className="group flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:text-base"
             >
               <Rocket className="h-5 w-5 transition-all group-hover:scale-110" />
@@ -84,6 +87,18 @@ export function Header({}: HeaderProps) {
                 {label}
               </Link>
             ))}
+          </nav>
+           <nav className="mt-auto grid gap-6 text-lg font-medium">
+             {bottomLinks.map(({ href, label, icon: Icon }) => (
+                <Link
+                  key={label}
+                  href={href}
+                  className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
+                >
+                  <Icon className="h-5 w-5" />
+                  {label}
+                </Link>
+              ))}
           </nav>
         </SheetContent>
       </Sheet>
