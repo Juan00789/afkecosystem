@@ -2,10 +2,10 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // Allow users to upload their own avatar.
-    // The file name must be the user's UID.
+    // Allow users to upload their own profile picture.
+    // The file name must match their user ID.
     match /avatars/{userId} {
-      allow read;
+      allow read: if request.auth != null;
       allow write: if request.auth != null && request.auth.uid == userId;
     }
   }
