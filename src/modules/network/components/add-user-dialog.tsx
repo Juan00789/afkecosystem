@@ -110,7 +110,7 @@ export function AddUserDialog({ roleToAdd, onUserAdded }: AddUserDialogProps) {
         const fieldForCurrentUser = roleToAdd === 'provider' ? 'network.providers' : 'network.clients';
         const fieldForOtherUser = roleToAdd === 'provider' ? 'network.clients' : 'network.providers';
 
-        const existingNetwork = currentUserData[fieldForCurrentUser.split('.')[0]]?.[fieldForCurrentUser.split('.')[1]] || [];
+        const existingNetwork = network?.[fieldForCurrentUser.split('.')[1]] || [];
         if (existingNetwork.includes(foundUserId)) {
             toast({
               title: 'Already exists',
