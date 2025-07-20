@@ -38,6 +38,14 @@ export function ProfilePage() {
 
   const { control, handleSubmit, reset, formState: { errors, isDirty } } = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
+    defaultValues: {
+        displayName: '',
+        phoneNumber: '',
+        companyName: '',
+        website: '',
+        bankName: '',
+        accountNumber: '',
+    }
   });
 
   useEffect(() => {
