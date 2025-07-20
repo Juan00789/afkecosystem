@@ -14,6 +14,7 @@ import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
+import { useParams } from 'next/navigation';
 
 interface Service {
   id: string;
@@ -22,14 +23,9 @@ interface Service {
   price: number;
 }
 
-interface ProfilePageParams {
-  params: {
-    id: string;
-  };
-}
-
-export default function PublicProfilePage({ params }: ProfilePageParams) {
-  const { id } = params;
+export default function PublicProfilePage() {
+  const params = useParams();
+  const id = params.id as string;
   const { user: currentUser, userProfile: currentUserProfile } = useAuth();
   const { toast } = useToast();
 
