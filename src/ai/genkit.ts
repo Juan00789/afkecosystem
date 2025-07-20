@@ -15,10 +15,9 @@
  * limitations under the License.
  */
 
-import { genkit, type Plugin } from 'genkit';
+import { genkit } from 'genkit';
 import { next } from '@genkit-ai/next';
 import { googleAI } from '@genkit-ai/googleai';
-import { firebase } from '@genkit-ai/firebase';
 
 const REGISTRY = new Map<string, any>();
 
@@ -32,7 +31,6 @@ function register<T>(key: string, value: T): T {
 
 export const ai = register('ai', genkit({
   plugins: [
-    firebase(),
     next({
       devServerPort: 3400,
     }),
