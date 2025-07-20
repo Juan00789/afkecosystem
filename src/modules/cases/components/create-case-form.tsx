@@ -108,7 +108,7 @@ function CreateCaseFormComponent() {
       setValue('providerId', preselectedProviderId);
     }
      if (serviceName) {
-      setValue('title', serviceName);
+      setValue('title', `Servicio: ${serviceName}`);
     }
   }, [preselectedProviderId, serviceName, setValue]);
 
@@ -138,32 +138,32 @@ function CreateCaseFormComponent() {
   return (
     <Card className="max-w-2xl mx-auto">
       <CardHeader>
-        <CardTitle>Create a New Case</CardTitle>
+        <CardTitle>Crear un Nuevo Caso</CardTitle>
         <CardDescription>
-          Describe your project or issue and select a provider from your network to handle it.
+          Describe tu proyecto o problema y selecciona un proveedor (o a ti mismo) para manejarlo.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="title">Title / Service Name</Label>
+            <Label htmlFor="title">Título / Nombre del Servicio</Label>
             <Controller
               name="title"
               control={control}
-              render={({ field }) => <Input id="title" placeholder="e.g., Website Redesign Project" {...field} />}
+              render={({ field }) => <Input id="title" placeholder="Ej: Rediseño de logo para..." {...field} />}
             />
             {errors.title && <p className="text-sm text-destructive">{errors.title.message}</p>}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
+            <Label htmlFor="description">Descripción</Label>
             <Controller
               name="description"
               control={control}
               render={({ field }) => (
                 <Textarea
                   id="description"
-                  placeholder="Provide a detailed description of what you need..."
+                  placeholder="Provee una descripción detallada de lo que necesitas..."
                   className="min-h-[150px]"
                   {...field}
                 />
@@ -173,14 +173,14 @@ function CreateCaseFormComponent() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="providerId">Provider</Label>
+            <Label htmlFor="providerId">Proveedor</Label>
             <Controller
               name="providerId"
               control={control}
               render={({ field }) => (
                 <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
-                  <SelectTrigger id="providerId" disabled={!!preselectedProviderId}>
-                    <SelectValue placeholder="Select a provider..." />
+                  <SelectTrigger id="providerId">
+                    <SelectValue placeholder="Selecciona un proveedor..." />
                   </SelectTrigger>
                   <SelectContent>
                     {providers.length > 0 ? (
@@ -190,7 +190,7 @@ function CreateCaseFormComponent() {
                         </SelectItem>
                       ))
                     ) : (
-                      <div className="p-4 text-sm text-muted-foreground">Loading providers...</div>
+                      <div className="p-4 text-sm text-muted-foreground">Cargando proveedores...</div>
                     )}
                   </SelectContent>
                 </Select>
@@ -200,7 +200,7 @@ function CreateCaseFormComponent() {
           </div>
 
           <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? 'Creating...' : 'Create Case'}
+            {loading ? 'Creando...' : 'Crear Caso'}
           </Button>
         </form>
       </CardContent>

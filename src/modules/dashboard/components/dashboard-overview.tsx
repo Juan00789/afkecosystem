@@ -181,7 +181,7 @@ export function DashboardOverview({ userId }: DashboardOverviewProps) {
             </div>
             <Button asChild>
                 <Link href="/dashboard/cases/create">
-                    <PlusCircle className="mr-2 h-4 w-4" /> New Case
+                    <PlusCircle className="mr-2 h-4 w-4" /> Nuevo Caso
                 </Link>
             </Button>
         </div>
@@ -223,22 +223,31 @@ export function DashboardOverview({ userId }: DashboardOverviewProps) {
 
 
       <div>
-        <h2 className="text-2xl font-semibold mb-4">Recent Activity</h2>
+        <h2 className="text-2xl font-semibold mb-4">Actividad Reciente</h2>
         <div className="space-y-4">
           {allCases.length > 0 ? (
-            allCases.slice(0, 5).map(caseData => (
-              <CaseCard
-                key={caseData.id}
-                caseData={caseData}
-                perspective={userId === caseData.clientId ? 'client' : 'provider'}
-              />
-            ))
+            allCases.slice(0, 5).map(caseData => {
+              let perspective: 'client' | 'provider';
+              // If it's a self-assigned case, view it as the provider.
+              if (caseData.clientId === caseData.providerId) {
+                perspective = 'provider';
+              } else {
+                perspective = userId === caseData.clientId ? 'client' : 'provider';
+              }
+              return (
+                <CaseCard
+                  key={caseData.id}
+                  caseData={caseData}
+                  perspective={perspective}
+                />
+              );
+            })
           ) : (
             <div className="text-center py-10 border-2 border-dashed rounded-lg">
-              <p className="text-muted-foreground">No recent cases.</p>
+              <p className="text-muted-foreground">No hay casos recientes.</p>
               <p className="mt-2">
                 <Button asChild variant="link">
-                  <Link href="/dashboard/cases/create">Create your first case</Link>
+                  <Link href="/dashboard/cases/create">Crea tu primer caso</Link>
                 </Button>
               </p>
             </div>
