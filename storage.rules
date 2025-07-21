@@ -1,28 +1,32 @@
+
 rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // Rules for user avatars
+    // Rules for user profile avatars.
+    // The filename is expected to be the user's UID.
     match /avatars/{userId} {
-      // Allow public read access for profile pictures
+      // Anyone can read profile pictures.
       allow read: if true;
 
-      // Allow authenticated users to write (create, update, delete) their own avatar.
-      // Validate file size and content type.
+      // Only the authenticated user can upload or update their own avatar.
       allow write: if request.auth != null && request.auth.uid == userId
-                   && request.resource.size < 5 * 1024 * 1024 // 5MB limit
+                   && request.resource.size < 5 * 1024 * 1024 // Max 5MB
                    && request.resource.contentType.matches('image/(jpeg|png)');
     }
-    
+
     // Rules for course cover images
     match /course-covers/{fileName} {
-      // Allow public read access for course images
+      // Anyone can read cover images.
       allow read: if true;
       
-      // Allow authenticated users to upload course covers
+      // Allow authenticated users to create new images.
+      // A more specific rule would check if the user is the provider of the course,
+      // but for simplicity, we allow any authenticated user to upload.
+      // The filename convention `userId-timestamp-filename` helps trace uploads.
       allow write: if request.auth != null
-                    && request.resource.size < 5 * 1024 * 1024 // 5MB limit
-                    && request.resource.contentType.matches('image/(jpeg|png)');
+                   && request.resource.size < 5 * 1024 * 1024 // Max 5MB
+                   && request.resource.contentType.matches('image/(jpeg|png)');
     }
   }
 }
