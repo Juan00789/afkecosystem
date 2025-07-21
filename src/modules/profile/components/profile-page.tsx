@@ -1,3 +1,4 @@
+
 // src/modules/profile/components/profile-page.tsx
 'use client';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
@@ -79,6 +80,7 @@ export function ProfilePage() {
 
     try {
         let photoURL = userProfile?.photoURL;
+        let displayName = data.displayName;
 
         if (photo) {
             const fileExtension = photo.name.split('.').pop();
@@ -86,15 +88,17 @@ export function ProfilePage() {
             const storageRef = ref(storage, `avatars/${fileName}`);
             const snapshot = await uploadBytes(storageRef, photo);
             photoURL = await getDownloadURL(snapshot.ref);
-            await updateProfile(user, { photoURL });
         }
+        
+        // Update Firebase Auth profile
+        await updateProfile(user, { displayName: displayName, photoURL: photoURL || user.photoURL });
         
         const userDocRef = doc(db, 'users', user.uid);
         const updatedProfileData = {
             ...userProfile, // Start with existing profile data
             uid: user.uid,
             email: user.email,
-            displayName: data.displayName,
+            displayName: displayName,
             phoneNumber: data.phoneNumber,
             companyName: data.companyName,
             website: data.website,
