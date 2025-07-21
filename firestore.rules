@@ -8,25 +8,13 @@ service cloud.firestore {
       let caseData = get(/databases/$(database)/documents/cases/$(caseId)).data;
       return request.auth.uid == caseData.clientId || request.auth.uid == caseData.providerId;
     }
-    
-    // Credit requests can only be created by the user themselves.
-    // Reading/updating/deleting them would typically be handled by a backend/admin function.
-    match /credit_requests/{requestId} {
-      allow read: if request.auth.uid == resource.data.userId;
-      allow create: if request.auth.uid == request.resource.data.userId;
-      allow update, delete: if false; // Admin only
-    }
 
     // Users can only manage their own profile.
-    // Public profiles are readable by any authenticated user.
+    // Public profiles are readable by anyone.
     match /users/{userId} {
-      allow read, list: if request.auth != null;
+      allow read, list: if true;
       allow create: if request.auth.uid == userId;
-      // Allow update if the user is updating their own profile.
-      // Add a condition for credits: credits can go below zero only if companyName is not set.
-      allow update: if request.auth.uid == userId &&
-                       (request.resource.data.credits >= 0 || 
-                        (request.resource.data.credits < 0 && !('companyName' in resource.data && resource.data.companyName != '')));
+      allow update: if request.auth.uid == userId;
       allow delete: if false; // Deleting users is not allowed via client
     }
 
@@ -62,6 +50,13 @@ service cloud.firestore {
         allow create: if request.auth.uid == request.resource.data.providerId;
         allow update: if request.auth.uid == resource.data.providerId;
         allow delete: if request.auth.uid == resource.data.providerId;
+    }
+    
+    // Credit requests are private to the user who made them.
+    match /credit_requests/{requestId} {
+      allow read, create: if request.auth.uid == request.resource.data.userId;
+      allow list: if request.auth.uid == resource.data.userId;
+      allow update, delete: if false; // To be managed by admins/backend
     }
   }
 }
