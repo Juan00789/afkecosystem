@@ -17,11 +17,11 @@ export const quoteCreationTool = ai.defineTool(
     outputSchema: z.custom<GenerateQuoteOutput>(),
   },
   async (input, {getFlowState}) => {
-    // In a real app, you would get the provider's name and bank details from their session or profile.
-    // For this prototype, we'll use placeholder data.
-    const state = getFlowState();
-    const providerName = state.providerName || "El Emprendedor";
-    const bankDetails = state.bankDetails || "Banco Popular, Cuenta: 123456789";
+    // In a real app, provider info should be securely passed.
+    // Here we get it from the flow's state, passed from the calling context.
+    const state = getFlowState() || {};
+    const providerName = state.providerName || "El Emprendedor Desconocido";
+    const bankDetails = state.bankDetails || "Detalles bancarios no proporcionados.";
 
     console.log(`Generating a quote for client: ${input.clientName}`);
     return await generateQuote({ ...input, providerName, bankDetails });

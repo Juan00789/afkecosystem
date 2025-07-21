@@ -18,6 +18,7 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 
 type Inputs = {
@@ -131,7 +132,7 @@ export function QuotesPage() {
   };
 
   const onSubmit: SubmitHandler<Inputs> = async (data) => {
-    if (!data.message.trim() && !attachedFile) return;
+    if ((!data.message.trim() && !attachedFile) || !userProfile) return;
 
     const userMessage = data.message;
     const userMessageText = userMessage + (attachedFile ? `\n\n(Archivo adjunto: ${attachedFile.name})` : '');
@@ -148,7 +149,14 @@ export function QuotesPage() {
       const fileDataUri = attachedFile?.dataUri;
       setAttachedFile(null); // Clear file after including it in the submission
       
-      const modelResponse = await chatWithOniara(history, userMessage, fileDataUri);
+      const providerInfo = {
+        name: userProfile.displayName || 'El Emprendedor',
+        bankDetails: userProfile.bankInfo?.accountNumber 
+          ? `${userProfile.bankInfo.bankName}, Cuenta: ${userProfile.bankInfo.accountNumber}` 
+          : "No se proporcionaron detalles bancarios.",
+      };
+      
+      const modelResponse = await chatWithOniara(history, userMessage, fileDataUri, providerInfo);
       setHistory([
         ...newHistory,
         { role: 'model', content: modelResponse },

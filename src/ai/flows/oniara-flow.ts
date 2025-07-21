@@ -10,7 +10,7 @@ import { gemini15Flash } from '@genkit-ai/googleai';
 import { courseSearchTool } from '@/ai/tools/course-search-tool';
 import { courseCreationTool } from '@/ai/tools/course-creation-tool';
 import { quoteCreationTool } from '@/ai/tools/quote-generation-tool';
-import type { ChatWithOniaraHistory, ModelResponse } from './oniara-types';
+import type { ChatWithOniaraHistory, ModelResponse, ProviderInfo } from './oniara-types';
 import { z } from 'zod';
 
 const oniaraPrompt = `You are Oniara, an expert business mentor and the friendly AI assistant for AFKEcosystem. Your mission is to guide and support micro-entrepreneurs.
@@ -31,6 +31,7 @@ export async function chatWithOniara(
   history: ChatWithOniaraHistory,
   newMessage: string,
   fileDataUri?: string,
+  providerInfo?: ProviderInfo
 ): Promise<ModelResponse> {
   const promptParts: z.infer<typeof gemini15Flash.schema.prompt> = [];
   
@@ -71,7 +72,9 @@ export async function chatWithOniara(
         return { role: msg.role, content };
     }),
     tools: [courseSearchTool, courseCreationTool, quoteCreationTool],
-    toolChoice: 'auto'
+    toolChoice: 'auto',
+    // Pass provider info to the flow state so tools can access it
+    state: providerInfo,
   });
 
   const courseToolCalls = llmResponse.toolCalls(courseCreationTool);

@@ -25,3 +25,8 @@ export interface Message {
 }
 
 export type ChatWithOniaraHistory = Message[];
+
+export interface ProviderInfo {
+    name: string;
+    bankDetails?: string;
+}
