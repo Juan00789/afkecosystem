@@ -7,15 +7,31 @@ import type { Case } from '../types';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useAuth } from '@/modules/auth/hooks/use-auth';
 
 interface CaseCardProps {
   caseData: Case;
-  perspective: 'client' | 'provider';
+  // Let the component know from which perspective we are viewing the case
+  // This helps determine who the "other party" is.
+  // If not provided, it defaults based on the current user's role in the case.
+  perspective?: 'client' | 'provider';
 }
 
-export function CaseCard({ caseData, perspective }: CaseCardProps) {
+export function CaseCard({ caseData, perspective: forcedPerspective }: CaseCardProps) {
+  const { user } = useAuth();
+  
+  // Determine the perspective if not forced
+  let perspective: 'client' | 'provider';
+  if (forcedPerspective) {
+    perspective = forcedPerspective;
+  } else if (user?.uid === caseData.clientId) {
+    perspective = 'client';
+  } else {
+    perspective = 'provider';
+  }
+
   const otherParty = perspective === 'client' ? caseData.provider : caseData.client;
-  const otherPartyRole = perspective === 'client' ? 'Provider' : 'Client';
+  const otherPartyRole = perspective === 'client' ? 'Proveedor' : 'Cliente';
   
   const getStatusVariant = (status: string) => {
     switch (status) {
@@ -39,7 +55,7 @@ export function CaseCard({ caseData, perspective }: CaseCardProps) {
           <div>
             <CardTitle>{caseData.title}</CardTitle>
             <CardDescription>
-              vs. {otherParty?.displayName || otherParty?.email || 'N/A'} ({otherPartyRole})
+              {otherPartyRole}: {otherParty?.displayName || otherParty?.email || 'N/A'}
             </CardDescription>
           </div>
           <Badge variant={getStatusVariant(caseData.status)}>

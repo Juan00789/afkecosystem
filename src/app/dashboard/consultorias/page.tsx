@@ -1,44 +1,92 @@
 // src/app/dashboard/consultorias/page.tsx
 'use client';
 
-import { Button } from '@/components/ui/button';
-import Link from 'next/link';
-import { ArrowLeft, MessageSquareText } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState, useEffect } from 'react';
+import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import type { Case } from '@/modules/cases/types';
+import { useAuth } from '@/modules/auth/hooks/use-auth';
+import { CaseCard } from '@/modules/cases/components/case-card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { MessageSquareText } from 'lucide-react';
 
 export default function ConsultoriasPage() {
-  return (
-    <div className="container mx-auto max-w-4xl p-4">
-      <div className="mb-6">
-        <Button asChild variant="outline">
-          <Link href="/dashboard">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Regresar al Dashboard
-          </Link>
-        </Button>
-      </div>
+  const { user } = useAuth();
+  const [openCases, setOpenCases] = useState<Case[]>([]);
+  const [loading, setLoading] = useState(true);
 
-      <Card className="text-center">
-        <CardHeader>
-           <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 mb-4">
-            <MessageSquareText className="h-10 w-10 text-primary" />
-          </div>
-          <CardTitle className="text-4xl font-extrabold tracking-tight text-primary">
-            Consultorías y Foros
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="mx-auto max-w-2xl text-lg leading-relaxed text-muted-foreground">
-            Nadie emprende en solitario. La experiencia compartida es el atajo hacia el éxito.
-            <br /><br />
-            Conecta con expertos que ya han recorrido el camino y participa en foros de discusión para resolver dudas, encontrar socios y validar tus ideas.
-            <br /><br />
-            <span className="font-semibold text-foreground">
-              Próximamente: Agenda una consultoría y únete a la conversación.
-            </span>
-          </p>
-        </CardContent>
-      </Card>
+  useEffect(() => {
+    if (!user) return;
+
+    const casesRef = collection(db, 'cases');
+    // Query for cases that are 'new' or 'in-progress' and not created by the current user
+    const q = query(
+      casesRef,
+      where('status', 'in', ['new', 'in-progress']),
+      where('clientId', '!=', user.uid),
+      orderBy('clientId'), // Firestore requires an orderBy when using a inequality filter
+      orderBy('lastUpdate', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
+      const casesPromises = snapshot.docs.map(async (docSnap) => {
+        const data = docSnap.data() as Omit<Case, 'id' | 'client' | 'provider'>;
+        
+        // Fetch client and provider profiles for each case
+        const clientSnap = await getDoc(doc(db, 'users', data.clientId));
+        const providerSnap = await getDoc(doc(db, 'users', data.providerId));
+        
+        return { 
+          id: docSnap.id, 
+          ...data,
+          client: clientSnap.exists() ? clientSnap.data() : null,
+          provider: providerSnap.exists() ? providerSnap.data() : null,
+        } as Case;
+      });
+
+      const casesList = await Promise.all(casesPromises);
+      setOpenCases(casesList);
+      setLoading(false);
+    }, (error) => {
+      console.error("Error fetching open cases: ", error);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+  const renderSkeleton = () => (
+    <div className="space-y-4">
+       <Skeleton className="h-24 w-full" />
+       <Skeleton className="h-24 w-full" />
+       <Skeleton className="h-24 w-full" />
+    </div>
+  );
+
+  return (
+    <div className="space-y-6">
+       <div>
+        <h1 className="text-3xl font-bold">Consultorías y Foros</h1>
+        <p className="text-muted-foreground">Encuentra proyectos donde puedas ayudar o busca inspiración.</p>
+      </div>
+      
+      {loading ? (
+        renderSkeleton()
+      ) : openCases.length > 0 ? (
+        <div className="space-y-4">
+          {openCases.map((caseData) => (
+            <CaseCard key={caseData.id} caseData={caseData} perspective="provider" />
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-20 border-2 border-dashed rounded-lg">
+            <MessageSquareText className="mx-auto h-12 w-12 text-muted-foreground" />
+            <h2 className="mt-4 text-xl font-semibold">No hay casos abiertos</h2>
+            <p className="text-muted-foreground mt-2">
+                Parece que todos los proyectos están al día. ¡Vuelve pronto!
+            </p>
+        </div>
+      )}
     </div>
   );
 }
