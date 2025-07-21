@@ -177,7 +177,7 @@ export function Marketplace() {
                 <CardHeader>
                     <div className="flex justify-between items-start">
                         <CardTitle className="text-lg">{service.name}</CardTitle>
-                        <Badge variant="secondary">${service.price ? service.price.toFixed(2) : '0.00'}</Badge>
+                        <Badge variant="secondary">${service.price ? service.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</Badge>
                     </div>
                   <CardDescription className="pt-2">
                     <Link href={`/profile/${service.providerId}`} className="flex items-center gap-2 group">

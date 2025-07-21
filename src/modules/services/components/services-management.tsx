@@ -170,7 +170,7 @@ export function ServicesManagement() {
                         <TableRow key={service.id}>
                             <TableCell className="font-medium">{service.name}</TableCell>
                             <TableCell className="max-w-xs truncate">{service.description}</TableCell>
-                            <TableCell>${service.price.toFixed(2)}</TableCell>
+                            <TableCell>${service.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                             <TableCell className="text-right">
                                 <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(service)}>
                                     <Edit className="h-4 w-4" />

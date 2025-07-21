@@ -218,7 +218,7 @@ export default function PublicProfilePage() {
                                             <h4 className="font-semibold">{service.name}</h4>
                                             <p className="text-sm text-muted-foreground">{service.description}</p>
                                         </div>
-                                        <Badge className="mt-2 sm:mt-0" variant="secondary">${service.price.toFixed(2)}</Badge>
+                                        <Badge className="mt-2 sm:mt-0" variant="secondary">${service.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Badge>
                                    </div>
                                ))}
                            </div>

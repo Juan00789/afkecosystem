@@ -98,8 +98,8 @@ export function QuotesPage() {
         const itemData = [
             item.description,
             item.quantity,
-            `$${item.unitPrice.toFixed(2)}`,
-            `$${item.total.toFixed(2)}`
+            `$${item.unitPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+            `$${item.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
         ];
         tableRows.push(itemData);
     });
@@ -115,11 +115,11 @@ export function QuotesPage() {
     const finalY = (doc as any).lastAutoTable.finalY;
     
     doc.setFontSize(12);
-    doc.text(`Subtotal: $${quote.subtotal.toFixed(2)}`, 148, finalY + 10);
-    doc.text(`Impuestos (18%): $${quote.tax.toFixed(2)}`, 148, finalY + 17);
+    doc.text(`Subtotal: $${quote.subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 148, finalY + 10);
+    doc.text(`Impuestos (18%): $${quote.tax.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 148, finalY + 17);
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.text(`Total General: $${quote.grandTotal.toFixed(2)}`, 148, finalY + 24);
+    doc.text(`Total General: $${quote.grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 148, finalY + 24);
     
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
@@ -236,14 +236,14 @@ export function QuotesPage() {
                             {quote.items.map((item, index) => (
                                 <li key={index} className="flex justify-between text-sm">
                                     <span>{item.description} ({item.quantity})</span>
-                                    <span className="font-mono">${item.total.toFixed(2)}</span>
+                                    <span className="font-mono">${item.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                 </li>
                             ))}
                         </ul>
                          <div className="border-t mt-2 pt-2 space-y-1 text-right">
-                             <p className="text-sm">Subtotal: <span className="font-mono">${quote.subtotal.toFixed(2)}</span></p>
-                             <p className="text-sm">Impuestos (18%): <span className="font-mono">${quote.tax.toFixed(2)}</span></p>
-                             <p className="font-bold">Total: <span className="font-mono">${quote.grandTotal.toFixed(2)}</span></p>
+                             <p className="text-sm">Subtotal: <span className="font-mono">${quote.subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></p>
+                             <p className="text-sm">Impuestos (18%): <span className="font-mono">${quote.tax.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></p>
+                             <p className="font-bold">Total: <span className="font-mono">${quote.grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></p>
                          </div>
                     </div>
                 </CardContent>
