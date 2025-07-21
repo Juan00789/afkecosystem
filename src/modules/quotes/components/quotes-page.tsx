@@ -1,295 +1,277 @@
 // src/modules/quotes/components/quotes-page.tsx
 'use client';
-import { useState, useEffect } from 'react';
-import { useForm, Controller } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { generateQuote, type GenerateQuoteOutput } from '@/ai/flows/quote-flow';
+import { useState, useRef } from 'react';
+import { useForm, type SubmitHandler } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Bot, Send, Paperclip, X, Sparkles, Trash2, GraduationCap } from 'lucide-react';
+import { chatWithOniara } from '@/ai/flows/oniara-flow';
+import type { ChatWithOniaraHistory, GeneratedCourse, Message } from '@/ai/flows/oniara-types';
+import { cn } from '@/lib/utils';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
+import { useToast } from '@/hooks/use-toast';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { collection, query, where, onSnapshot, doc, getDoc } from 'firebase/firestore';
-import type { User } from 'firebase/auth';
-import * as XLSX from 'xlsx';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableFooter,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { Download, Bot } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
-interface Client {
-  id: string;
-  displayName: string;
+type Inputs = {
+  message: string;
+};
+
+interface AttachedFile {
+  name: string;
+  dataUri: string;
 }
 
-const quoteSchema = z.object({
-  clientId: z.string().min(1, 'Please select a client'),
-  projectDetails: z.string().min(10, 'Details must be at least 10 characters'),
-});
-type QuoteFormData = z.infer<typeof quoteSchema>;
-
 export function QuotesPage() {
+  const [history, setHistory] = useState<ChatWithOniaraHistory>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [attachedFile, setAttachedFile] = useState<AttachedFile | null>(null);
   const { user, userProfile } = useAuth();
-  const [clients, setClients] = useState<Client[]>([]);
-  const [generatedQuote, setGeneratedQuote] = useState<GenerateQuoteOutput | null>(null);
-  const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
+  const router = useRouter();
+  const { register, handleSubmit, reset, watch } = useForm<Inputs>();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (!user || !userProfile) return;
-
-    // Start with the user themselves as an option
-    const selfClient: Client = {
-      id: user.uid,
-      displayName: `${userProfile.displayName || 'Me'} (Yo mismo)`,
-    };
-
-    // A user's clients are users who have the current user in their "providers" network list.
-    const usersRef = collection(db, 'users');
-    const q = query(usersRef, where('network.providers', 'array-contains', user.uid));
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedClients = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        displayName: doc.data().displayName || doc.data().email || 'Unnamed Client',
-      }));
-      setClients([selfClient, ...fetchedClients]);
-    });
-
-    return () => unsubscribe();
-  }, [user, userProfile]);
-
-  const {
-    control,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<QuoteFormData>({
-    resolver: zodResolver(quoteSchema),
-    defaultValues: { clientId: '', projectDetails: '' },
-  });
-
-  const onSubmit = async (data: QuoteFormData) => {
-    if (!user || !userProfile) return;
-    setLoading(true);
-    setGeneratedQuote(null);
-    try {
-      const clientDoc = await getDoc(doc(db, 'users', data.clientId));
-      const clientName = clientDoc.data()?.displayName || 'Valued Client';
-
-      let bankDetails;
-      if (userProfile.bankInfo?.bankName && userProfile.bankInfo?.accountNumber) {
-        bankDetails = `Payment Information:\nBank: ${userProfile.bankInfo.bankName}\nAccount: ${userProfile.bankInfo.accountNumber}`;
-      }
-
-      const quote = await generateQuote({
-        clientName: clientName,
-        providerName: userProfile.displayName || 'Me',
-        projectDetails: data.projectDetails,
-        bankDetails: bankDetails,
-      });
-      
-      setGeneratedQuote(quote);
-    } catch (error) {
-      console.error('Error generating quote:', error);
-    } finally {
-      setLoading(false);
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (loadEvent) => {
+        const dataUri = loadEvent.target?.result as string;
+        setAttachedFile({ name: file.name, dataUri });
+      };
+      reader.readAsDataURL(file);
     }
   };
 
-   const handleDownloadExcel = () => {
-    if (!generatedQuote) return;
-    
-    const { items, subtotal, tax, grandTotal, notes, clientInfo, providerInfo } = generatedQuote;
-    
-    // Create worksheet data
-    const wsData = [
-      ["Quote"],
-      [],
-      ["From:", providerInfo.name],
-      ["To:", clientInfo.name],
-      [],
-      ["Description", "Quantity", "Unit Price", "Total"],
-      ...items.map(item => [item.description, item.quantity, item.unitPrice, item.total]),
-      [],
-      ["", "", "Subtotal", subtotal],
-      ["", "", "Tax (18%)", tax],
-      ["", "", "Grand Total", grandTotal],
-      [],
-      ["Notes:"],
-      [notes || ''],
-    ];
+  const handleSaveCourse = async (course: GeneratedCourse) => {
+    if (!user) {
+      toast({ title: 'Error', description: 'You must be logged in to save a course.', variant: 'destructive' });
+      return;
+    }
 
-    const ws = XLSX.utils.aoa_to_sheet(wsData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Quote");
-
-    XLSX.writeFile(wb, "Quote.xlsx");
+    try {
+      await addDoc(collection(db, 'courses'), {
+        ...course,
+        providerId: user.uid,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+      toast({
+        title: '¡Curso guardado!',
+        description: 'Tu nuevo curso ha sido añadido a "Mis Cursos".',
+        action: (
+            <Button variant="outline" size="sm" onClick={() => router.push('/dashboard/my-courses')}>
+                Ver mis cursos
+            </Button>
+        )
+      });
+      // Remove the course from the history to clean up the chat
+      setHistory(prev => prev.filter(msg => msg.content.type !== 'course'));
+    } catch (error) {
+      console.error('Error saving course:', error);
+      toast({ title: 'Error', description: 'No se pudo guardar el curso.', variant: 'destructive' });
+    }
   };
 
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-      <Card>
-        <CardHeader>
-          <CardTitle>Generate a New Quote</CardTitle>
-          <CardDescription>
-            Fill in the details below and let AI create a professional quote for you.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="clientId">Client</Label>
-              <Controller
-                name="clientId"
-                control={control}
-                render={({ field }) => (
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a client" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {clients.map((client) => (
-                        <SelectItem key={client.id} value={client.id}>
-                          {client.displayName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-              {errors.clientId && <p className="text-sm text-destructive">{errors.clientId.message}</p>}
-            </div>
+  const onSubmit: SubmitHandler<Inputs> = async (data) => {
+    if (!data.message.trim() && !attachedFile) return;
 
-            <div className="space-y-2">
-              <Label htmlFor="projectDetails">Project Details</Label>
-              <Controller
-                name="projectDetails"
-                control={control}
-                render={({ field }) => (
-                  <Textarea
-                    {...field}
-                    placeholder="Describe the work to be done..."
-                    className="min-h-[150px]"
-                  />
-                )}
-              />
-              {errors.projectDetails && <p className="text-sm text-destructive">{errors.projectDetails.message}</p>}
-            </div>
+    const userMessage = data.message;
+    const userMessageText = userMessage + (attachedFile ? `\n\n(Archivo adjunto: ${attachedFile.name})` : '');
+    
+    const newHistory: ChatWithOniaraHistory = [
+      ...history,
+      { role: 'user', content: { type: 'text', text: userMessageText } },
+    ];
+    setHistory(newHistory);
+    reset();
+    setIsLoading(true);
 
-            <Button type="submit" disabled={loading} className="w-full">
-               {loading ? (
-                <>
-                  <Bot className="mr-2 h-4 w-4 animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                'Generate Quote with AI'
-              )}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-           <div className="flex justify-between items-center">
-             <div>
-              <CardTitle>Generated Quote</CardTitle>
-              <CardDescription>Review the AI-generated quote below.</CardDescription>
-            </div>
-             {generatedQuote && (
-                <Button variant="outline" size="sm" onClick={handleDownloadExcel}>
-                    <Download className="mr-2 h-4 w-4" />
-                    Download Excel
-                </Button>
+    try {
+      const fileDataUri = attachedFile?.dataUri;
+      setAttachedFile(null); // Clear file after including it in the submission
+      
+      const modelResponse = await chatWithOniara(history, userMessage, fileDataUri);
+      setHistory([
+        ...newHistory,
+        { role: 'model', content: modelResponse },
+      ]);
+    } catch (error) {
+      console.error('Error chatting with Oniara:', error);
+      setHistory([
+        ...newHistory,
+        {
+          role: 'model',
+          content: { type: 'text', text: 'Lo siento, tuve un problema para conectarme. ¿Podrías intentarlo de nuevo?' },
+        },
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+   const renderMessageContent = (message: Message) => {
+    if (message.content.type === 'course') {
+        const course = message.content.course;
+        return (
+            <Card className="bg-primary/5">
+                <CardHeader>
+                    <div className="flex items-start gap-3">
+                        <Sparkles className="h-6 w-6 text-primary mt-1"/>
+                        <div>
+                            <CardTitle>¡He generado un borrador de curso para ti!</CardTitle>
+                            <CardDescription>Revisa el contenido y decide si quieres guardarlo.</CardDescription>
+                        </div>
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    <h3 className="font-bold text-lg mb-2">{course.title}</h3>
+                    <p className="text-sm text-muted-foreground mb-4">{course.description}</p>
+                    <ul className="space-y-2">
+                        {course.steps.map((step, index) => (
+                            <li key={index} className="text-sm font-medium">
+                                <span className="text-primary">Paso {index + 1}:</span> {step.title}
+                            </li>
+                        ))}
+                    </ul>
+                </CardContent>
+                <CardFooter className="flex justify-end gap-2">
+                     <Button variant="ghost" onClick={() => setHistory(prev => prev.filter(m => m !== message))}>
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Descartar
+                    </Button>
+                    <Button onClick={() => handleSaveCourse(course)}>
+                        <GraduationCap className="mr-2 h-4 w-4" />
+                        Añadir a mis cursos
+                    </Button>
+                </CardFooter>
+            </Card>
+        )
+    }
+    // It's a text message
+    return (
+         <div
+            className={cn(
+              'max-w-md rounded-lg p-3',
+              message.role === 'user'
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-muted'
             )}
+          >
+            <p className="whitespace-pre-wrap text-sm">{message.content.text}</p>
           </div>
-        </CardHeader>
-        <CardContent>
-          {loading && (
-             <div className="flex flex-col items-center justify-center h-full text-center">
-                <Bot className="h-12 w-12 mb-4 animate-pulse" />
-                <p className="text-muted-foreground">AI is crafting your quote...</p>
-             </div>
-          )}
-          {!loading && !generatedQuote && (
-             <div className="flex flex-col items-center justify-center h-full text-center border-2 border-dashed rounded-lg p-12">
-                <p className="text-muted-foreground">Your quote will appear here once generated.</p>
-             </div>
-          )}
-          {generatedQuote && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div><strong>From:</strong> {generatedQuote.providerInfo.name}</div>
-                <div><strong>To:</strong> {generatedQuote.clientInfo.name}</div>
-              </div>
-              
-              <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead>Description</TableHead>
-                        <TableHead className="text-center">Qty</TableHead>
-                        <TableHead className="text-right">Unit Price</TableHead>
-                        <TableHead className="text-right">Total</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {generatedQuote.items.map((item, index) => (
-                        <TableRow key={index}>
-                            <TableCell className="font-medium">{item.description}</TableCell>
-                            <TableCell className="text-center">{item.quantity}</TableCell>
-                            <TableCell className="text-right">${item.unitPrice.toFixed(2)}</TableCell>
-                            <TableCell className="text-right">${item.total.toFixed(2)}</TableCell>
-                        </TableRow>
-                    ))}
-                </TableBody>
-                <TableFooter>
-                    <TableRow>
-                        <TableCell colSpan={3} className="text-right font-bold">Subtotal</TableCell>
-                        <TableCell className="text-right">${generatedQuote.subtotal.toFixed(2)}</TableCell>
-                    </TableRow>
-                     <TableRow>
-                        <TableCell colSpan={3} className="text-right font-bold">Tax (18%)</TableCell>
-                        <TableCell className="text-right">${generatedQuote.tax.toFixed(2)}</TableCell>
-                    </TableRow>
-                     <TableRow>
-                        <TableCell colSpan={3} className="text-right font-bold text-lg">Grand Total</TableCell>
-                        <TableCell className="text-right font-bold text-lg">${generatedQuote.grandTotal.toFixed(2)}</TableCell>
-                    </TableRow>
-                </TableFooter>
-              </Table>
-              
-              {generatedQuote.notes && (
-                <div>
-                  <h4 className="font-semibold">Notes:</h4>
-                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">{generatedQuote.notes}</p>
-                </div>
+    );
+  };
+
+
+  return (
+    <div className="flex h-[calc(100vh-8rem)] flex-col">
+       <header className="mb-4">
+        <h1 className="text-3xl font-bold">Habla con Oniara 🤖</h1>
+        <p className="text-muted-foreground">Tu asistente de IA para ayudarte a crecer. Pídele que genere una cotización, cree un curso o analice un archivo.</p>
+      </header>
+      <ScrollArea className="flex-grow rounded-md border p-4">
+        <div className="space-y-6">
+          {history.map((msg, index) => (
+            <div
+              key={index}
+              className={cn(
+                'flex items-start gap-3',
+                msg.role === 'user' ? 'justify-end' : 'justify-start'
+              )}
+            >
+              {msg.role === 'model' && (
+                <Avatar>
+                   <AvatarImage src="/oniara-avatar.png" alt="Oniara" />
+                   <AvatarFallback>🤖</AvatarFallback>
+                </Avatar>
+              )}
+              {renderMessageContent(msg)}
+              {msg.role === 'user' && (
+                  <Avatar>
+                      <AvatarImage src={userProfile?.photoURL} />
+                      <AvatarFallback>{userProfile?.displayName?.[0] || 'U'}</AvatarFallback>
+                  </Avatar>
               )}
             </div>
+          ))}
+            {history.length === 0 && (
+                <div className="text-center text-muted-foreground">
+                    <p>¡Hola! Soy Oniara. ¿En qué puedo ayudarte hoy?</p>
+                    <p className="text-xs">Puedes pedirme que cree un curso para ti, que genere una cotización, o adjuntar un archivo para que lo analice.</p>
+                </div>
+            )}
+           {isLoading && (
+            <div className="flex items-start gap-3 justify-start">
+               <Avatar>
+                  <AvatarImage src="/oniara-avatar.png" alt="Oniara" />
+                  <AvatarFallback>🤖</AvatarFallback>
+                </Avatar>
+                <div className="max-w-md rounded-lg p-3 bg-muted">
+                    <div className="flex items-center space-x-1">
+                        <span className="h-2 w-2 animate-pulse rounded-full bg-foreground/50 [animation-delay:-0.3s]"></span>
+                        <span className="h-2 w-2 animate-pulse rounded-full bg-foreground/50 [animation-delay:-0.15s]"></span>
+                        <span className="h-2 w-2 animate-pulse rounded-full bg-foreground/50"></span>
+                    </div>
+                </div>
+            </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </ScrollArea>
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        className="mt-4 flex flex-col gap-2"
+      >
+        {attachedFile && (
+          <div className="flex items-center justify-between rounded-md border bg-muted/50 px-3 py-2 text-sm">
+            <span className="truncate pr-2">Adjunto: {attachedFile.name}</span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={() => {
+                setAttachedFile(null);
+                if(fileInputRef.current) fileInputRef.current.value = "";
+              }}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+        <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isLoading}
+            >
+              <Paperclip className="h-5 w-5" />
+            </Button>
+            <Input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                className="hidden"
+                disabled={isLoading}
+            />
+            <Input
+            {...register('message')}
+            placeholder="Escribe tu pregunta o pide que te cree un curso..."
+            autoComplete="off"
+            disabled={isLoading}
+            />
+            <Button type="submit" size="icon" disabled={isLoading || (!watch('message') && !attachedFile)}>
+            <Send className="h-5 w-5" />
+            </Button>
+        </div>
+      </form>
     </div>
   );
 }

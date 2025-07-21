@@ -47,14 +47,13 @@ export function Header({}: HeaderProps) {
   const navLinks = [
     { href: '/dashboard', label: 'Dashboard', icon: Home },
     { href: '/dashboard/marketplace', label: 'Marketplace', icon: ShoppingBag },
-    { href: '/dashboard/oniara', label: 'Oniara AI', icon: Bot },
     { href: '/dashboard/cursos', label: 'Cursos', icon: BookOpen },
     { href: '/dashboard/my-courses', label: 'My Courses', icon: GraduationCap },
     { href: '/dashboard/creditos', label: 'Créditos', icon: HandCoins },
     { href: '/dashboard/consultorias', label: 'Consultorías', icon: MessageSquareText },
     { href: '/dashboard/network', label: 'Brokis', icon: Users },
     { href: '/dashboard/services', label: 'My Services', icon: Briefcase },
-    { href: '/dashboard/quotes', label: 'Quotes', icon: Sparkles },
+    { href: '/dashboard/quotes', label: 'Quotes & AI', icon: Sparkles },
   ];
   
   const bottomLinks = [
