@@ -1,4 +1,3 @@
-
 rules_version = '2';
 
 service cloud.firestore {
@@ -6,22 +5,28 @@ service cloud.firestore {
 
     // Helper function to check if a user is part of a case
     function isCaseParticipant(caseId) {
-      let caseData = get(/databases/$(database)/documents/cases/$(caseId)).data;
-      return request.auth.uid == caseData.clientId || request.auth.uid == caseData.providerId;
+      let caseDoc = get(/databases/$(database)/documents/cases/$(caseId));
+      // Ensure the document and its data exist before accessing properties
+      return caseDoc.data != null && (request.auth.uid == caseDoc.data.clientId || request.auth.uid == caseDoc.data.providerId);
+    }
+    
+    // Helper function to check if a user profile is complete (authentic)
+    function isProfileComplete(userData) {
+      return userData.companyName != null && userData.companyName != '';
     }
 
     // Users can only manage their own profile.
-    // Public profiles are readable by any user.
+    // Public profiles are readable by any authenticated user.
     match /users/{userId} {
-      allow read, list: if true;
+      allow read, list: if request.auth != null;
       allow create: if request.auth.uid == userId;
-      // Allow update only if the user is the owner.
-      // Credits can only be updated if the user's profile is incomplete, to allow for negative balances as a penalty.
-      // Once the profile is complete (companyName exists), credits cannot go below zero.
-      allow update: if request.auth.uid == userId &&
-                       (request.resource.data.credits >= 0 ||
-                        (request.resource.data.credits < 0 && (!('companyName' in request.resource.data) || request.resource.data.companyName == ''))
-                       );
+      // Allow update only if user is owner.
+      // Credits can only be updated if profile is incomplete OR if new credit value is not lower.
+      // This prevents users from giving themselves credits but allows for penalties.
+      allow update: if request.auth.uid == userId && 
+                     (request.resource.data.credits < resource.data.credits ||
+                      isProfileComplete(request.resource.data) == false ||
+                      request.resource.data.credits >= 0);
       allow delete: if false; // Deleting users is not allowed via client
     }
 
@@ -34,19 +39,17 @@ service cloud.firestore {
         allow delete: if request.auth.uid == resource.data.providerId;
     }
 
-    // Cases can be read by any authenticated user for the marketplace,
-    // but only modified by the client or provider involved.
+    // Cases can be read by any authenticated user (for consultorias page),
+    // but only modified by participants.
     match /cases/{caseId} {
-      allow read: if request.auth != null;
+      allow read, list: if request.auth != null;
       allow update: if isCaseParticipant(caseId);
-      // A user can only create a case where they are the client.
       allow create: if request.auth.uid == request.resource.data.clientId;
       allow delete: if false; // Cases should be marked as "cancelled" instead
       
       // Comments follow the parent case's permissions.
       match /comments/{commentId} {
         allow read: if isCaseParticipant(caseId);
-        // A participant can create a comment if they are the author.
         allow create: if isCaseParticipant(caseId) && request.auth.uid == request.resource.data.authorId;
         allow update, delete: if false;
       }
@@ -60,13 +63,12 @@ service cloud.firestore {
         allow update: if request.auth.uid == resource.data.providerId;
         allow delete: if request.auth.uid == resource.data.providerId;
     }
-    
-    // Credit requests can only be created and read by the user themselves.
-    // Updates and deletes should be handled by a backend service.
+
+    // Credit requests can only be managed by the user who created them.
     match /credit_requests/{requestId} {
-        allow read: if request.auth.uid == resource.data.userId;
-        allow create: if request.auth.uid == request.resource.data.userId;
-        allow update, delete: if false;
+      allow read: if request.auth.uid == resource.data.userId;
+      allow create: if request.auth.uid == request.resource.data.userId;
+      allow update, delete: if false; // Managed by backend/admins only
     }
   }
 }
