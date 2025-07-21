@@ -57,25 +57,20 @@ export function AddUserDialog({ roleToAdd, onUserAdded }: AddUserDialogProps) {
 
     try {
       const trimmedIdentifier = identifier.trim();
-      let q;
-      let fieldToQuery: string;
-
-      // Create queries for different identifier types
       const queries = [
-          query(collection(db, 'users'), where('email', '==', trimmedIdentifier)),
-          query(collection(db, 'users'), where('phoneNumber', '==', trimmedIdentifier)),
-          query(collection(db, 'users'), where(documentId(), '==', trimmedIdentifier)),
+        query(collection(db, 'users'), where('email', '==', trimmedIdentifier)),
+        query(collection(db, 'users'), where('phoneNumber', '==', trimmedIdentifier)),
+        query(collection(db, 'users'), where(documentId(), '==', trimmedIdentifier)),
       ];
 
       let foundUserDoc = null;
       for (const q of queries) {
-          const querySnapshot = await getDocs(q);
-          if (!querySnapshot.empty) {
-              foundUserDoc = querySnapshot.docs[0];
-              break;
-          }
+        const querySnapshot = await getDocs(q);
+        if (!querySnapshot.empty) {
+          foundUserDoc = querySnapshot.docs[0];
+          break;
+        }
       }
-
 
       if (!foundUserDoc) {
         toast({
@@ -92,13 +87,13 @@ export function AddUserDialog({ roleToAdd, onUserAdded }: AddUserDialogProps) {
       if (foundUserId === user.uid) {
         toast({
           title: 'Error',
-          description: "You cannot add yourself to your network.",
+          description: 'You cannot add yourself to your network.',
           variant: 'destructive',
         });
         setLoading(false);
         return;
       }
-      
+
       await runTransaction(db, async (transaction) => {
         const currentUserRef = doc(db, 'users', user.uid);
         const otherUserRef = doc(db, 'users', foundUserId);
@@ -107,57 +102,41 @@ export function AddUserDialog({ roleToAdd, onUserAdded }: AddUserDialogProps) {
         const otherUserSnap = await transaction.get(otherUserRef);
 
         if (!currentUserSnap.exists() || !otherUserSnap.exists()) {
-             throw new Error("One or both users could not be found.");
+          throw new Error('One or both users could not be found.');
         }
-        
-        const currentUserData = currentUserSnap.data();
-        const network = currentUserData.network || {}; // Ensure network object exists
-        const clients = network.clients || [];
-        const providers = network.providers || [];
 
+        const currentUserData = currentUserSnap.data();
+        const network = currentUserData.network || {};
         const isProvider = roleToAdd === 'provider';
-        const listToCheck = isProvider ? providers : clients;
+        const listToCheck = isProvider ? (network.providers || []) : (network.clients || []);
 
         if (listToCheck.includes(foundUserId)) {
-             toast({
-              title: 'Already exists',
-              description: `This user is already in your ${roleToAdd}s list.`,
-            });
-            // Stop the transaction by returning early.
-            return;
-        }
-
-        const isFirstConnection = listToCheck.length === 0;
-
-        if (isProvider) {
-          transaction.update(currentUserRef, { 'network.providers': arrayUnion(foundUserId) });
-          transaction.update(otherUserRef, { 'network.clients': arrayUnion(user.uid) });
-        } else {
-          transaction.update(currentUserRef, { 'network.clients': arrayUnion(foundUserId) });
-          transaction.update(otherUserRef, { 'network.providers': arrayUnion(user.uid) });
+          throw new Error(`This user is already in your ${roleToAdd}s list.`);
         }
         
-        // Award credits only if this is the first time adding a user of this type
-        const hasProviders = providers.length > 0;
-        const hasClients = clients.length > 0;
+        const hasExistingConnections = isProvider ? listToCheck.length > 0 : listToCheck.length > 0;
 
-        if ((isProvider && !hasProviders) || (!isProvider && !hasClients)) {
-             transaction.update(currentUserRef, { credits: increment(5) });
-             toast({
-                 title: '¡Créditos Ganados!',
-                 description: `Has ganado 5 créditos por añadir tu primer ${roleToAdd}.`,
-             });
+        // Perform updates
+        const fieldForCurrentUser = isProvider ? 'network.providers' : 'network.clients';
+        const fieldForOtherUser = isProvider ? 'network.clients' : 'network.providers';
+        
+        transaction.update(currentUserRef, { [fieldForCurrentUser]: arrayUnion(foundUserId) });
+        transaction.update(otherUserRef, { [fieldForOtherUser]: arrayUnion(user.uid) });
+
+        // Award credits only if this is the first time adding a user of this type
+        if (!hasExistingConnections) {
+          transaction.update(currentUserRef, { credits: increment(5) });
+          toast({
+            title: '¡Créditos Ganados!',
+            description: `Has ganado 5 créditos por añadir tu primer ${roleToAdd}.`,
+          });
         }
       });
-
-      // Check if a specific toast was already shown (like 'Already exists') before showing the generic success one
-      const wasSpecificErrorToastShown = toast.toasts.some(t => t.title === 'Already exists');
-      if (!wasSpecificErrorToastShown) {
-         toast({
-            title: 'Success!',
-            description: `User has been added as a ${roleToAdd}.`,
-          });
-      }
+      
+      toast({
+        title: 'Success!',
+        description: `User has been added as a ${roleToAdd}.`,
+      });
 
       onUserAdded();
       setIsOpen(false);
@@ -165,16 +144,11 @@ export function AddUserDialog({ roleToAdd, onUserAdded }: AddUserDialogProps) {
 
     } catch (error: any) {
       console.error(`Error adding ${roleToAdd}:`, error);
-      const wasSpecificErrorToastShown = toast.toasts.some(t => 
-        t.title === 'Already exists' || t.title === '¡Créditos Ganados!'
-      );
-      if (!wasSpecificErrorToastShown) {
-         toast({
-          title: 'Error',
-          description: error.message || `Failed to add ${roleToAdd}.`,
-          variant: 'destructive',
-        });
-      }
+      toast({
+        title: 'Error',
+        description: error.message || `Failed to add ${roleToAdd}.`,
+        variant: 'destructive',
+      });
     } finally {
       setLoading(false);
     }
