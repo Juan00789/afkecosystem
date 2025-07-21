@@ -56,6 +56,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import Image from 'next/image';
+import { validateCourse } from '@/ai/flows/course-validation-flow';
 
 const courseStepSchema = z.object({
   title: z.string().min(3, 'Step title is too short'),
@@ -137,8 +138,24 @@ export function MyCoursesManagement() {
     setLoading(true);
 
     try {
-      let coverImageUrl = editingCourse?.coverImageUrl || '';
+      // Step 1: Validate course content before proceeding
+      const validationResult = await validateCourse({
+        title: data.title,
+        description: data.description,
+      });
 
+      if (!validationResult.isValid) {
+        toast({
+          title: 'Validation Failed',
+          description: validationResult.reason,
+          variant: 'destructive',
+        });
+        setLoading(false);
+        return;
+      }
+
+      // Step 2: Handle image upload if a new file is provided
+      let coverImageUrl = editingCourse?.coverImageUrl || '';
       if (coverImageFile) {
         const imageRef = ref(storage, `course-covers/${user.uid}-${Date.now()}-${coverImageFile.name}`);
         const snapshot = await uploadBytes(imageRef, coverImageFile);
@@ -147,6 +164,7 @@ export function MyCoursesManagement() {
 
       const courseData = { ...data, coverImageUrl };
 
+      // Step 3: Save to Firestore
       if (editingCourse) {
         const courseRef = doc(db, 'courses', editingCourse.id);
         await updateDoc(courseRef, { ...courseData, updatedAt: serverTimestamp() });
@@ -162,6 +180,8 @@ export function MyCoursesManagement() {
         await updateDoc(userRef, { credits: increment(25) });
         toast({ title: 'Success', description: 'New course created. You earned 25 credits!' });
       }
+
+      // Step 4: Clean up
       setIsDialogOpen(false);
       reset();
     } catch (error) {
@@ -277,7 +297,7 @@ export function MyCoursesManagement() {
                 <div className="flex items-center gap-4">
                     <div className="w-32 h-20 rounded border flex items-center justify-center bg-muted/50 overflow-hidden">
                         {coverImagePreview ? (
-                            <Image src={coverImagePreview} alt="Cover preview" width={128} height={80} className="object-cover w-full h-full" />
+                            <Image src={coverImagePreview} alt="Cover preview" width={128} height={80} className="object-cover w-full h-full" data-ai-hint="course business"/>
                         ) : (
                             <span className="text-xs text-muted-foreground">Preview</span>
                         )}
