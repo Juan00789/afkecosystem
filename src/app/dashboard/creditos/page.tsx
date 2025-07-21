@@ -1,12 +1,42 @@
 // src/app/dashboard/creditos/page.tsx
 'use client';
-
+import { useState, useEffect } from 'react';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { ArrowLeft, HandCoins, Award, CheckCircle, BookOpen, UserPlus, Star } from 'lucide-react';
+import { ArrowLeft, HandCoins, CheckCircle, BookOpen, UserPlus, FileText, Landmark } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
+import { collection, addDoc, serverTimestamp, query, where, onSnapshot } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { format } from 'date-fns';
+import { Badge } from '@/components/ui/badge';
+
+const creditRequestSchema = z.object({
+  amount: z.coerce.number().positive('El monto debe ser mayor que cero.'),
+  purpose: z.string().min(20, 'Describe el propósito con más detalle (mínimo 20 caracteres).'),
+  repaymentTerm: z.string().min(1, 'Debes seleccionar un plazo.'),
+});
+
+type CreditRequestFormData = z.infer<typeof creditRequestSchema>;
+
+interface CreditRequest {
+  id: string;
+  amount: number;
+  purpose: string;
+  repaymentTerm: string;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: { toDate: () => Date };
+}
+
 
 const waysToEarn = [
   {
@@ -27,10 +57,59 @@ const waysToEarn = [
 ];
 
 export default function CreditosPage() {
-  const { userProfile, loading } = useAuth();
+  const { user, userProfile, loading } = useAuth();
+  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [creditRequests, setCreditRequests] = useState<CreditRequest[]>([]);
+  
+  const { control, handleSubmit, reset } = useForm<CreditRequestFormData>({
+    resolver: zodResolver(creditRequestSchema),
+    defaultValues: {
+      amount: 1000,
+      purpose: '',
+      repaymentTerm: '30',
+    },
+  });
+
+  useEffect(() => {
+    if (!user) return;
+    const q = query(collection(db, 'credit_requests'), where('userId', '==', user.uid));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+        const requests = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        } as CreditRequest));
+        setCreditRequests(requests);
+    });
+    return () => unsubscribe();
+  }, [user]);
+
+  const onSubmit = async (data: CreditRequestFormData) => {
+    if (!user) {
+        toast({ title: 'Error', description: 'Debes iniciar sesión.', variant: 'destructive' });
+        return;
+    }
+    setIsSubmitting(true);
+    try {
+        await addDoc(collection(db, 'credit_requests'), {
+            userId: user.uid,
+            ...data,
+            status: 'pending',
+            createdAt: serverTimestamp(),
+        });
+        toast({ title: '¡Éxito!', description: 'Tu solicitud ha sido enviada para revisión.' });
+        reset();
+    } catch (error) {
+        console.error('Error submitting credit request:', error);
+        toast({ title: 'Error', description: 'No se pudo enviar tu solicitud.', variant: 'destructive' });
+    } finally {
+        setIsSubmitting(false);
+    }
+  };
+
 
   return (
-    <div className="container mx-auto max-w-5xl p-4">
+    <div className="container mx-auto max-w-6xl p-4 space-y-8">
       <div className="mb-6">
         <Button asChild variant="outline">
           <Link href="/dashboard">
@@ -40,9 +119,9 @@ export default function CreditosPage() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-8">
-            <Card>
+       <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+        <div className="lg:col-span-3 space-y-8">
+             <Card>
                 <CardHeader>
                 <div className="flex items-center gap-4">
                     <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
@@ -53,44 +132,61 @@ export default function CreditosPage() {
                         Sistema de Microcréditos
                         </CardTitle>
                         <CardDescription className="text-lg">
-                        Participa, aporta valor y gana créditos para invertir en la comunidad.
+                        Invierte en tu crecimiento con el apoyo de la comunidad.
                         </CardDescription>
                     </div>
                 </div>
                 </CardHeader>
                 <CardContent>
                 <p className="text-muted-foreground">
-                    Los créditos son la moneda de la confianza y colaboración en AFKEcosystem. Acumúlalos participando activamente y úsalos para acceder a oportunidades únicas dentro de la plataforma.
+                    Los créditos son la moneda de confianza y colaboración en AFKEcosystem. Solicita un microcrédito para comprar equipo, invertir en marketing o lo que necesites para crecer. Tu actividad en la plataforma construye tu historial crediticio.
                 </p>
                 </CardContent>
             </Card>
 
-             <Card>
+            <Card>
                 <CardHeader>
-                    <CardTitle>Cómo Ganar Créditos</CardTitle>
-                    <CardDescription>Completa estas acciones para aumentar tu balance.</CardDescription>
+                    <CardTitle>Solicitar un Microcrédito</CardTitle>
+                    <CardDescription>Completa el formulario para enviar tu solicitud.</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                    {waysToEarn.map(way => (
-                        <div key={way.title} className="flex items-start gap-4 p-3 rounded-lg bg-card-foreground/5">
-                            <div className="flex-shrink-0">{way.icon}</div>
-                            <div>
-                                <h3 className="font-semibold">{way.title}</h3>
-                                <p className="text-sm text-muted-foreground">{way.description}</p>
-                            </div>
+                <CardContent>
+                    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="amount">Monto Solicitado (DOP)</Label>
+                            <Controller name="amount" control={control} render={({ field }) => <Input id="amount" type="number" {...field} />} />
                         </div>
-                    ))}
+                         <div className="space-y-2">
+                            <Label htmlFor="purpose">Propósito del Crédito</Label>
+                            <Controller name="purpose" control={control} render={({ field }) => <Textarea id="purpose" placeholder="Ej: Comprar materiales para mi nuevo producto..." {...field} />} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="repaymentTerm">Plazo de Devolución</Label>
+                            <Controller name="repaymentTerm" control={control} render={({ field }) => (
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <SelectTrigger><SelectValue placeholder="Selecciona un plazo..." /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="30">30 días</SelectItem>
+                                        <SelectItem value="60">60 días</SelectItem>
+                                        <SelectItem value="90">90 días</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            )} />
+                        </div>
+                        <Button type="submit" disabled={isSubmitting} className="w-full">
+                            {isSubmitting ? 'Enviando...' : 'Enviar Solicitud'}
+                        </Button>
+                    </form>
                 </CardContent>
             </Card>
         </div>
         
-        <div className="lg:col-span-1">
+        <div className="lg:col-span-2 space-y-8">
              <Card className="text-center sticky top-24">
                 <CardHeader>
                     <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-secondary/20 mb-4">
-                        <Award className="h-10 w-10 text-secondary" />
+                        <Landmark className="h-10 w-10 text-secondary" />
                     </div>
-                    <CardTitle className="text-xl font-bold">Tu Balance de Créditos</CardTitle>
+                    <CardTitle className="text-xl font-bold">Tu Estado Económico</CardTitle>
                 </CardHeader>
                 <CardContent>
                     {loading ? (
@@ -100,16 +196,47 @@ export default function CreditosPage() {
                             {userProfile?.credits || 0}
                         </p>
                     )}
-                    <p className="text-muted-foreground mt-2">créditos</p>
-                     <p className="text-xs text-muted-foreground mt-8">
-                        Próximamente: Podrás usar tus créditos para destacar servicios, acceder a mentorías exclusivas y mucho más.
-                    </p>
+                    <p className="text-muted-foreground mt-2">créditos disponibles</p>
+
+                    <div className="mt-6 text-left">
+                        <h4 className="font-semibold mb-2">Historial de Solicitudes</h4>
+                         <div className="max-h-48 overflow-y-auto space-y-2 pr-2">
+                         {creditRequests.length > 0 ? (
+                            creditRequests.map(req => (
+                                <div key={req.id} className="flex justify-between items-center text-sm p-2 rounded-md bg-muted/50">
+                                    <div>
+                                        <p className="font-medium">DOP {req.amount.toFixed(2)}</p>
+                                        <p className="text-xs text-muted-foreground">{format(req.createdAt.toDate(), 'PP')}</p>
+                                    </div>
+                                    <Badge variant={req.status === 'approved' ? 'default' : req.status === 'rejected' ? 'destructive' : 'secondary'}>
+                                        {req.status}
+                                    </Badge>
+                                </div>
+                            ))
+                         ) : <p className="text-xs text-muted-foreground text-center py-4">No tienes solicitudes.</p>}
+                         </div>
+                    </div>
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>Cómo Ganar Créditos</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                    {waysToEarn.map(way => (
+                        <div key={way.title} className="flex items-start gap-3">
+                            <div className="flex-shrink-0 mt-1">{way.icon}</div>
+                            <div>
+                                <h3 className="font-semibold text-sm">{way.title}</h3>
+                                <p className="text-xs text-muted-foreground">{way.description}</p>
+                            </div>
+                        </div>
+                    ))}
                 </CardContent>
             </Card>
         </div>
-
       </div>
-
     </div>
   );
 }
