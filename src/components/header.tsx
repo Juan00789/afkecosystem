@@ -153,7 +153,9 @@ export function Header({}: HeaderProps) {
             <DropdownMenuItem asChild>
               <Link href="/dashboard/profile">Settings</Link>
             </DropdownMenuItem>
-            <DropdownMenuItem>Support</DropdownMenuItem>
+            <DropdownMenuItem asChild>
+                <a href="https://wa.me/18299226556" target="_blank" rel="noopener noreferrer">Support</a>
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleSignOut}>
               Logout
