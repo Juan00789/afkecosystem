@@ -1,6 +1,6 @@
 // src/modules/marketplace/components/marketplace.tsx
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { collection, getDocs, query, where, documentId } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { UserProfile } from '@/modules/auth/types';
@@ -10,7 +10,11 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
-import { MessageSquare } from 'lucide-react';
+import { MessageSquare, Search, LayoutGrid, Megaphone, PencilRuler, Code } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
+
 
 interface Service {
   id: string;
@@ -18,8 +22,16 @@ interface Service {
   description: string;
   price: number;
   providerId: string;
+  category?: string; // Assuming services might have categories
   provider?: UserProfile;
 }
+
+const CATEGORIES = [
+    { name: 'Todos', icon: <LayoutGrid className="h-4 w-4 mr-2" /> },
+    { name: 'Diseño', icon: <PencilRuler className="h-4 w-4 mr-2" /> },
+    { name: 'Marketing', icon: <Megaphone className="h-4 w-4 mr-2" /> },
+    { name: 'Tecnología', icon: <Code className="h-4 w-4 mr-2" /> },
+];
 
 const WhatsAppIcon = () => (
     <svg
@@ -38,11 +50,14 @@ export function Marketplace() {
   const { user } = useAuth();
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('Todos');
 
   useEffect(() => {
     const fetchServicesAndProviders = async () => {
       setLoading(true);
       try {
+        // A better approach for a large app would be a dedicated search service like Algolia
         const servicesSnapshot = await getDocs(collection(db, 'services'));
         const servicesData = servicesSnapshot.docs.map(doc => ({
           id: doc.id,
@@ -53,11 +68,12 @@ export function Marketplace() {
           const providerIds = [...new Set(servicesData.map(s => s.providerId))].filter(Boolean);
           
           if (providerIds.length === 0) {
-            setServices(servicesData); // Set services without providers if no IDs found
+            setServices(servicesData);
             setLoading(false);
             return;
           }
-
+          
+          // Batch fetch providers
           const usersSnapshot = await getDocs(query(collection(db, 'users'), where(documentId(), 'in', providerIds)));
           const providersMap = new Map(usersSnapshot.docs.map(doc => [doc.id, doc.data() as UserProfile]));
 
@@ -79,6 +95,17 @@ export function Marketplace() {
 
     fetchServicesAndProviders();
   }, []);
+
+  const filteredServices = useMemo(() => {
+    return services.filter(service => {
+        const matchesCategory = selectedCategory === 'Todos' || (service.category && service.category.toLowerCase() === selectedCategory.toLowerCase());
+        const matchesSearch = searchTerm === '' || 
+                              service.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                              service.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                              service.provider?.displayName?.toLowerCase().includes(searchTerm.toLowerCase());
+        return matchesCategory && matchesSearch;
+    });
+  }, [services, searchTerm, selectedCategory]);
 
   const renderSkeleton = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -105,43 +132,69 @@ export function Marketplace() {
     </div>
   );
   
-  const displayedServices = services;
-
   return (
     <div className="space-y-6">
-       <div>
+       <header>
         <h1 className="text-3xl font-bold">Marketplace</h1>
         <p className="text-muted-foreground">Explora servicios ofrecidos por otros emprendedores en la red.</p>
+      </header>
+
+      <div className="space-y-4">
+        <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <Input 
+                placeholder="Buscar por servicio, descripción o proveedor..."
+                className="pl-10"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+            />
+        </div>
+         <div className="flex items-center gap-2">
+            {CATEGORIES.map(category => (
+                <Button 
+                    key={category.name}
+                    variant={selectedCategory === category.name ? "default" : "outline"}
+                    onClick={() => setSelectedCategory(category.name)}
+                    className="flex items-center"
+                >
+                    {category.icon}
+                    {category.name}
+                </Button>
+            ))}
+        </div>
       </div>
 
       {loading ? (
         renderSkeleton()
-      ) : displayedServices.length > 0 ? (
+      ) : filteredServices.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {displayedServices.map(service => {
+          {filteredServices.map(service => {
             const phoneNumber = service.provider?.phoneNumber?.replace(/\D/g, '');
             const message = encodeURIComponent(`Hola, te contacto desde AFKEcosystem. Estoy interesado/a en tu servicio de '${service.name}'.`);
             
             return (
-              <Card key={service.id} className="flex flex-col">
+              <Card key={service.id} className="flex flex-col transition-shadow duration-300 hover:shadow-lg">
                 <CardHeader>
-                  <CardTitle>{service.name}</CardTitle>
-                  <CardDescription>${service.price ? service.price.toFixed(2) : '0.00'}</CardDescription>
-                </CardHeader>
-                <CardContent className="flex-grow">
-                  <p className="text-sm text-muted-foreground line-clamp-3">{service.description}</p>
-                </CardContent>
-                <CardFooter className="flex flex-col items-stretch gap-2">
-                   <div className="flex items-center gap-2 mb-2">
+                    <div className="flex justify-between items-start">
+                        <CardTitle className="text-lg">{service.name}</CardTitle>
+                        <Badge variant="secondary">${service.price ? service.price.toFixed(2) : '0.00'}</Badge>
+                    </div>
+                  <CardDescription className="pt-2">
+                    <Link href={`/profile/${service.providerId}`} className="flex items-center gap-2 group">
                       <Avatar className="h-8 w-8">
                           <AvatarImage src={service.provider?.photoURL} />
                           <AvatarFallback>{service.provider?.displayName?.[0] || 'P'}</AvatarFallback>
                       </Avatar>
-                       <Link href={`/profile/${service.providerId}`} className="text-sm font-medium hover:underline">
+                       <span className="text-sm font-medium group-hover:underline text-foreground">
                           {service.provider?.displayName || 'Ver Proveedor'}
-                       </Link>
-                  </div>
-                  <div className="flex justify-end gap-2">
+                       </span>
+                    </Link>
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="flex-grow">
+                  <p className="text-sm text-muted-foreground line-clamp-3">{service.description}</p>
+                </CardContent>
+                <CardFooter className="flex justify-end gap-2">
                       <Button asChild variant="outline" size="sm">
                           <Link href={`/dashboard/cases/create?providerId=${service.providerId}&serviceName=${encodeURIComponent(service.name)}`}>
                               <MessageSquare className="h-4 w-4 mr-2" />
@@ -152,11 +205,10 @@ export function Marketplace() {
                         <Button asChild size="sm">
                             <a href={`https://wa.me/${phoneNumber}?text=${message}`} target="_blank" rel="noopener noreferrer">
                                 <WhatsAppIcon />
-                                WhatsApp
+                                Contactar
                             </a>
                         </Button>
                     )}
-                  </div>
                 </CardFooter>
               </Card>
             )
@@ -164,8 +216,8 @@ export function Marketplace() {
         </div>
       ) : (
          <div className="text-center py-20 border-2 border-dashed rounded-lg">
-            <h2 className="text-xl font-semibold">El mercado está tranquilo</h2>
-            <p className="text-muted-foreground mt-2">No hay servicios de otros proveedores publicados en este momento. ¡Vuelve pronto!</p>
+            <h2 className="text-xl font-semibold">No se encontraron servicios</h2>
+            <p className="text-muted-foreground mt-2">Prueba con otra búsqueda o filtro. ¡O anima a más proveedores a unirse!</p>
         </div>
       )}
     </div>
