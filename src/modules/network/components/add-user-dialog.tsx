@@ -114,7 +114,10 @@ export function AddUserDialog({ roleToAdd, onUserAdded }: AddUserDialogProps) {
           throw new Error(`This user is already in your ${roleToAdd}s list.`);
         }
         
-        const hasExistingConnections = isProvider ? listToCheck.length > 0 : listToCheck.length > 0;
+        const hasExistingProviders = network.providers && network.providers.length > 0;
+        const hasExistingClients = network.clients && network.clients.length > 0;
+        const isFirstConnectionOfType = isProvider ? !hasExistingProviders : !hasExistingClients;
+
 
         // Perform updates
         const fieldForCurrentUser = isProvider ? 'network.providers' : 'network.clients';
@@ -124,7 +127,7 @@ export function AddUserDialog({ roleToAdd, onUserAdded }: AddUserDialogProps) {
         transaction.update(otherUserRef, { [fieldForOtherUser]: arrayUnion(user.uid) });
 
         // Award credits only if this is the first time adding a user of this type
-        if (!hasExistingConnections) {
+        if (isFirstConnectionOfType) {
           transaction.update(currentUserRef, { credits: increment(5) });
           toast({
             title: '¡Créditos Ganados!',
