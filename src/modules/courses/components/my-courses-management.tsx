@@ -5,7 +5,7 @@ import { useForm, Controller, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
-import { db } from '@/lib/firebase';
+import { db, storage } from '@/lib/firebase';
 import {
   collection,
   addDoc,
@@ -18,13 +18,14 @@ import {
   serverTimestamp,
   increment,
 } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, Trash2, Edit, GripVertical, ArrowUp, ArrowDown } from 'lucide-react';
+import { PlusCircle, Trash2, Edit, ArrowUp, ArrowDown, Upload } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -54,6 +55,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import Image from 'next/image';
 
 const courseStepSchema = z.object({
   title: z.string().min(3, 'Step title is too short'),
@@ -63,14 +65,15 @@ const courseStepSchema = z.object({
 const courseSchema = z.object({
   title: z.string().min(3, 'Course title must be at least 3 characters'),
   description: z.string().min(10, 'Description is too short'),
-  coverImageUrl: z.string().url('Please enter a valid URL').optional().or(z.literal('')),
   steps: z.array(courseStepSchema).min(1, 'A course must have at least one step'),
 });
 
+// We handle coverImageUrl separately, so it's not in the main schema
 type CourseFormData = z.infer<typeof courseSchema>;
 
 interface Course extends CourseFormData {
   id: string;
+  coverImageUrl?: string;
 }
 
 export function MyCoursesManagement() {
@@ -80,10 +83,13 @@ export function MyCoursesManagement() {
   const [loading, setLoading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
+  
+  const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
+  const [coverImagePreview, setCoverImagePreview] = useState<string | null>(null);
 
-  const { control, handleSubmit, reset, watch } = useForm<CourseFormData>({
+  const { control, handleSubmit, reset } = useForm<CourseFormData>({
     resolver: zodResolver(courseSchema),
-    defaultValues: { title: '', description: '', coverImageUrl: '', steps: [{ title: '', content: '' }] },
+    defaultValues: { title: '', description: '', steps: [{ title: '', content: '' }] },
   });
   
   const { fields, append, remove, move } = useFieldArray({
@@ -101,17 +107,27 @@ export function MyCoursesManagement() {
     return () => unsubscribe();
   }, [user]);
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setCoverImageFile(file);
+      setCoverImagePreview(URL.createObjectURL(file));
+    }
+  };
+
   const handleOpenDialog = (course: Course | null = null) => {
     setEditingCourse(course);
+    setCoverImageFile(null);
     if (course) {
         reset({
             title: course.title,
             description: course.description,
-            coverImageUrl: course.coverImageUrl,
             steps: course.steps
         });
+        setCoverImagePreview(course.coverImageUrl || null);
     } else {
-      reset({ title: '', description: '', coverImageUrl: '', steps: [{ title: 'Step 1: Introduction', content: '' }] });
+      reset({ title: '', description: '', steps: [{ title: 'Step 1: Introduction', content: '' }] });
+      setCoverImagePreview(null);
     }
     setIsDialogOpen(true);
   };
@@ -121,18 +137,28 @@ export function MyCoursesManagement() {
     setLoading(true);
 
     try {
-      const userRef = doc(db, 'users', user.uid);
+      let coverImageUrl = editingCourse?.coverImageUrl || '';
+
+      if (coverImageFile) {
+        const imageRef = ref(storage, `course-covers/${user.uid}-${Date.now()}-${coverImageFile.name}`);
+        const snapshot = await uploadBytes(imageRef, coverImageFile);
+        coverImageUrl = await getDownloadURL(snapshot.ref);
+      }
+
+      const courseData = { ...data, coverImageUrl };
+
       if (editingCourse) {
         const courseRef = doc(db, 'courses', editingCourse.id);
-        await updateDoc(courseRef, { ...data, updatedAt: serverTimestamp() });
+        await updateDoc(courseRef, { ...courseData, updatedAt: serverTimestamp() });
         toast({ title: 'Success', description: 'Course updated successfully.' });
       } else {
         await addDoc(collection(db, 'courses'), {
-          ...data,
+          ...courseData,
           providerId: user.uid,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         });
+        const userRef = doc(db, 'users', user.uid);
         await updateDoc(userRef, { credits: increment(25) });
         toast({ title: 'Success', description: 'New course created. You earned 25 credits!' });
       }
@@ -246,9 +272,22 @@ export function MyCoursesManagement() {
               <Label htmlFor="description">Course Description</Label>
               <Controller name="description" control={control} render={({ field }) => <Textarea id="description" {...field} />} />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="coverImageUrl">Cover Image URL (Optional)</Label>
-              <Controller name="coverImageUrl" control={control} render={({ field }) => <Input id="coverImageUrl" {...field} placeholder="https://placehold.co/800x300.png" />} />
+             <div className="space-y-2">
+                <Label>Cover Image (Optional)</Label>
+                <div className="flex items-center gap-4">
+                    <div className="w-32 h-20 rounded border flex items-center justify-center bg-muted/50 overflow-hidden">
+                        {coverImagePreview ? (
+                            <Image src={coverImagePreview} alt="Cover preview" width={128} height={80} className="object-cover w-full h-full" />
+                        ) : (
+                            <span className="text-xs text-muted-foreground">Preview</span>
+                        )}
+                    </div>
+                    <Input id="cover-image-upload" type="file" accept="image/png, image/jpeg" onChange={handleFileChange} className="hidden" />
+                    <Button type="button" variant="outline" onClick={() => document.getElementById('cover-image-upload')?.click()}>
+                        <Upload className="w-4 h-4 mr-2" />
+                        {coverImagePreview ? 'Change Image' : 'Upload Image'}
+                    </Button>
+                </div>
             </div>
 
             <div className="space-y-4">
