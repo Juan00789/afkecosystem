@@ -8,7 +8,7 @@ import type { UserProfile } from '@/modules/auth/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Briefcase, Mail, Globe, Phone, UserPlus, Check } from 'lucide-react';
+import { Briefcase, Mail, Globe, Phone, UserPlus, Check, Landmark } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
@@ -224,6 +224,21 @@ export default function PublicProfilePage() {
                            </div>
                        ) : (
                            <p className="text-center text-muted-foreground">No services listed.</p>
+                       )}
+                       {profile.bankInfo && (profile.bankInfo.bankName || profile.bankInfo.accountNumber) && (
+                            <>
+                                <Separator className="my-6" />
+                                <div className="space-y-2">
+                                    <h4 className="font-semibold flex items-center">
+                                        <Landmark className="mr-2 h-4 w-4 text-muted-foreground" />
+                                        Información de Pago
+                                    </h4>
+                                    <div className="text-sm text-muted-foreground space-y-1 pl-6">
+                                        {profile.bankInfo.bankName && <p><strong>Banco:</strong> {profile.bankInfo.bankName}</p>}
+                                        {profile.bankInfo.accountNumber && <p><strong>Cuenta:</strong> {profile.bankInfo.accountNumber}</p>}
+                                    </div>
+                                </div>
+                            </>
                        )}
                     </CardContent>
                 </Card>
