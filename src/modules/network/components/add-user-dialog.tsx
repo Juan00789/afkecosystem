@@ -60,30 +60,33 @@ export function AddUserDialog({ roleToAdd, onUserAdded }: AddUserDialogProps) {
       let q;
       let fieldToQuery: string;
 
-      if (trimmedIdentifier.includes('@')) {
-        fieldToQuery = 'email';
-        q = query(collection(db, 'users'), where(fieldToQuery, '==', trimmedIdentifier));
-      } else if (trimmedIdentifier.match(/^\+?[0-9\s-()]+$/)) {
-        fieldToQuery = 'phoneNumber';
-         q = query(collection(db, 'users'), where(fieldToQuery, '==', trimmedIdentifier));
-      } else {
-        fieldToQuery = 'User ID';
-        q = query(collection(db, 'users'), where(documentId(), '==', trimmedIdentifier));
+      // Create queries for different identifier types
+      const queries = [
+          query(collection(db, 'users'), where('email', '==', trimmedIdentifier)),
+          query(collection(db, 'users'), where('phoneNumber', '==', trimmedIdentifier)),
+          query(collection(db, 'users'), where(documentId(), '==', trimmedIdentifier)),
+      ];
+
+      let foundUserDoc = null;
+      for (const q of queries) {
+          const querySnapshot = await getDocs(q);
+          if (!querySnapshot.empty) {
+              foundUserDoc = querySnapshot.docs[0];
+              break;
+          }
       }
 
-      const querySnapshot = await getDocs(q);
 
-      if (querySnapshot.empty) {
+      if (!foundUserDoc) {
         toast({
           title: 'Not Found',
-          description: `No user found with this ${fieldToQuery}.`,
+          description: `No user found with the provided identifier.`,
           variant: 'destructive',
         });
         setLoading(false);
         return;
       }
 
-      const foundUserDoc = querySnapshot.docs[0];
       const foundUserId = foundUserDoc.id;
 
       if (foundUserId === user.uid) {
@@ -120,6 +123,7 @@ export function AddUserDialog({ roleToAdd, onUserAdded }: AddUserDialogProps) {
               title: 'Already exists',
               description: `This user is already in your ${roleToAdd}s list.`,
             });
+            // Stop the transaction by returning early.
             return;
         }
 
@@ -132,27 +136,35 @@ export function AddUserDialog({ roleToAdd, onUserAdded }: AddUserDialogProps) {
           transaction.update(currentUserRef, { 'network.clients': arrayUnion(foundUserId) });
           transaction.update(otherUserRef, { 'network.providers': arrayUnion(user.uid) });
         }
+        
+        // Award credits only if this is the first time adding a user of this type
+        const hasProviders = providers.length > 0;
+        const hasClients = clients.length > 0;
 
-        if (isFirstConnection) {
-            transaction.update(currentUserRef, { credits: increment(5) });
-            toast({
-                title: '¡Créditos Ganados!',
-                description: `Has ganado 5 créditos por añadir tu primer ${roleToAdd}.`,
-            });
+        if ((isProvider && !hasProviders) || (!isProvider && !hasClients)) {
+             transaction.update(currentUserRef, { credits: increment(5) });
+             toast({
+                 title: '¡Créditos Ganados!',
+                 description: `Has ganado 5 créditos por añadir tu primer ${roleToAdd}.`,
+             });
         }
       });
 
-      toast({
-        title: 'Success!',
-        description: `User has been added as a ${roleToAdd}.`,
-      });
+      // Check if a specific toast was already shown (like 'Already exists') before showing the generic success one
+      const wasSpecificErrorToastShown = toast.toasts.some(t => t.title === 'Already exists');
+      if (!wasSpecificErrorToastShown) {
+         toast({
+            title: 'Success!',
+            description: `User has been added as a ${roleToAdd}.`,
+          });
+      }
+
       onUserAdded();
       setIsOpen(false);
       setIdentifier('');
 
     } catch (error: any) {
       console.error(`Error adding ${roleToAdd}:`, error);
-      // Avoid showing a generic error if a specific toast was already shown (like "Already exists")
       const wasSpecificErrorToastShown = toast.toasts.some(t => 
         t.title === 'Already exists' || t.title === '¡Créditos Ganados!'
       );
