@@ -9,20 +9,20 @@ service cloud.firestore {
       return request.auth.uid == caseData.clientId || request.auth.uid == caseData.providerId;
     }
 
-    // Users can read public profiles. They can only create and manage their own profile.
-    // The 'credits' field is protected and cannot be modified directly by the user.
+    // Users can only manage their own profile.
+    // Public profiles are readable by any authenticated user.
     match /users/{userId} {
       allow read, list: if true;
       allow create: if request.auth.uid == userId;
-      // Users can update their own profile, but cannot change their own credits.
-      // Credits are only changed by server-side logic (e.g. completing a case).
-      // The credit balance can go below zero only if the user profile is incomplete.
-      allow update: if request.auth.uid == userId && 
-                       !('credits' in request.resource.data) &&
-                       (request.resource.data.credits >= 0 || (request.resource.data.credits < 0 && resource.data.companyName == null));
+      // Allow update only if it's the user's own profile.
+      // Credits can only go below zero if the profile is incomplete (lacks a companyName).
+      // A user cannot give themselves credits.
+      allow update: if request.auth.uid == userId &&
+                       (request.resource.data.credits >= 0 || (request.resource.data.companyName == null || request.resource.data.companyName == "")) &&
+                       request.resource.data.credits <= resource.data.credits;
       allow delete: if false; // Deleting users is not allowed via client
     }
-    
+
     // Services are public to authenticated users (for the marketplace),
     // but only the provider can manage them.
     match /services/{serviceId} {
@@ -48,6 +48,14 @@ service cloud.firestore {
       }
     }
 
+    // Credit requests can only be created and read by the user themselves.
+    // Status updates should be handled by a backend process.
+    match /credit_requests/{requestId} {
+      allow read: if request.auth.uid == resource.data.userId;
+      allow create: if request.auth.uid == request.resource.data.userId;
+      allow update, delete: if false;
+    }
+
     // Courses are public to authenticated users,
     // but only the provider can manage them.
      match /courses/{courseId} {
@@ -55,14 +63,6 @@ service cloud.firestore {
         allow create: if request.auth.uid == request.resource.data.providerId;
         allow update: if request.auth.uid == resource.data.providerId;
         allow delete: if request.auth.uid == resource.data.providerId;
-    }
-
-    // Credit requests can only be created and read by the user who owns them.
-    // Status updates should be handled by a secure backend.
-    match /credit_requests/{requestId} {
-      allow read: if request.auth.uid == resource.data.userId;
-      allow create: if request.auth.uid == request.resource.data.userId;
-      allow update, delete: if false;
     }
   }
 }
