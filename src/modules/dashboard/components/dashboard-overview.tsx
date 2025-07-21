@@ -1,9 +1,9 @@
 // src/modules/dashboard/components/dashboard-overview.tsx
 'use client';
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, orderBy, onSnapshot, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Case } from '@/modules/cases/types';
+import type { Case, UserProfile } from '@/modules/cases/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CaseCard } from '@/modules/cases/components/case-card';
@@ -100,6 +100,20 @@ const StatsCard = ({ title, description, icon, children }: { title: string; desc
     </Card>
 );
 
+async function fetchCaseWithProfiles(docSnap: any): Promise<Case> {
+    const data = docSnap.data() as Omit<Case, 'id' | 'client' | 'provider'>;
+    const clientSnap = await getDoc(doc(db, 'users', data.clientId));
+    const providerSnap = await getDoc(doc(db, 'users', data.providerId));
+
+    return {
+        id: docSnap.id,
+        ...data,
+        client: clientSnap.exists() ? (clientSnap.data() as UserProfile) : null,
+        provider: providerSnap.exists() ? (providerSnap.data() as UserProfile) : null,
+    };
+}
+
+
 export function DashboardOverview({ userId }: DashboardOverviewProps) {
   const { userProfile } = useAuth();
   const [clientCases, setClientCases] = useState<Case[]>([]);
@@ -174,8 +188,10 @@ export function DashboardOverview({ userId }: DashboardOverviewProps) {
       orderBy('lastUpdate', 'desc')
     );
 
-    const unsubClient = onSnapshot(clientQuery, (snapshot) => {
-        setClientCases(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Case)));
+    const unsubClient = onSnapshot(clientQuery, async (snapshot) => {
+        const casesPromises = snapshot.docs.map(fetchCaseWithProfiles);
+        const fetchedCases = await Promise.all(casesPromises);
+        setClientCases(fetchedCases);
         clientLoaded = true;
         checkLoadingDone();
     }, (error) => {
@@ -184,8 +200,10 @@ export function DashboardOverview({ userId }: DashboardOverviewProps) {
         checkLoadingDone();
     });
 
-    const unsubProvider = onSnapshot(providerQuery, (snapshot) => {
-        setProviderCases(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Case)));
+    const unsubProvider = onSnapshot(providerQuery, async (snapshot) => {
+        const casesPromises = snapshot.docs.map(fetchCaseWithProfiles);
+        const fetchedCases = await Promise.all(casesPromises);
+        setProviderCases(fetchedCases);
         providerLoaded = true;
         checkLoadingDone();
     }, (error) => {

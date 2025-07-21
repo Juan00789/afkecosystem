@@ -1,6 +1,25 @@
 // src/modules/cases/types/index.ts
 import type { Timestamp } from 'firebase/firestore';
-import type { UserProfile } from '@/modules/auth/types';
+
+export interface UserProfile {
+  uid: string;
+  email: string;
+  displayName?: string;
+  photoURL?: string;
+  phoneNumber?: string;
+  companyName?: string;
+  website?: string;
+  credits?: number;
+  bankInfo?: {
+    bankName?: string;
+    accountNumber?: string;
+  };
+  network?: {
+    clients?: string[];
+    providers?: string[];
+  };
+}
+
 
 export interface Case {
   id: string;
