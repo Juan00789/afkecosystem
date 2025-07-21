@@ -24,24 +24,20 @@ export function AuthSignIn() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState({ type: '', text: '' });
 
   const handleAuthAction = async (action: 'login' | 'register' | 'recover' | 'google' | 'github') => {
     setLoading(true);
-    setMessage({ type: '', text: '' });
     try {
       switch (action) {
         case 'login':
           if (!email || !password) throw new Error('Email and password are required.');
           await signInWithEmailAndPassword(auth, email, password);
           toast({ title: 'Success!', description: 'Welcome back!' });
-          // AuthProvider will handle redirect
           break;
         case 'register':
           if (!email || !password) throw new Error('Email and password are required.');
           await createUserWithEmailAndPassword(auth, email, password);
           toast({ title: 'Account Created!', description: 'Welcome to AFKEcosystem.' });
-          // AuthProvider will handle redirect
           break;
         case 'recover':
           if (!email) throw new Error('Email is required to send a recovery link.');
@@ -105,10 +101,15 @@ export function AuthSignIn() {
                 disabled={loading}
               />
             </div>
-
-            <Button className="w-full" onClick={() => handleAuthAction('login')} disabled={loading}>
-              {loading ? 'Accediendo...' : 'Entrar'}
-            </Button>
+            
+            <div className="grid grid-cols-2 gap-4">
+                <Button onClick={() => handleAuthAction('login')} disabled={loading}>
+                  {loading ? 'Accediendo...' : 'Iniciar Sesión'}
+                </Button>
+                <Button variant="secondary" onClick={() => handleAuthAction('register')} disabled={loading}>
+                  {loading ? 'Creando...' : 'Registrarse'}
+                </Button>
+            </div>
             
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
@@ -130,12 +131,11 @@ export function AuthSignIn() {
                 </Button>
             </div>
 
-             <div className="text-sm text-center">
-                <Button variant="link" onClick={() => handleAuthAction('register')} disabled={loading}>Crear cuenta nueva</Button>
-                <span className="text-muted-foreground">|</span>
-                <Button variant="link" onClick={() => handleAuthAction('recover')} disabled={loading}>¿Olvidaste tu contraseña?</Button>
+            <div className="text-sm text-center">
+                <Button variant="link" size="sm" onClick={() => handleAuthAction('recover')} disabled={loading}>
+                    ¿Olvidaste tu contraseña?
+                </Button>
             </div>
-
           </div>
           <div className="mt-6 text-xs text-muted-foreground">
             &copy; {new Date().getFullYear()} AFKEcosystem
