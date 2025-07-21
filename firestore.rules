@@ -9,15 +9,20 @@ service cloud.firestore {
       return request.auth.uid == caseData.clientId || request.auth.uid == caseData.providerId;
     }
 
-    // Users can only manage their own profile.
-    // Public profiles are readable by anyone.
+    // Users can read public profiles. They can only create and manage their own profile.
+    // The 'credits' field is protected and cannot be modified directly by the user.
     match /users/{userId} {
       allow read, list: if true;
       allow create: if request.auth.uid == userId;
-      allow update: if request.auth.uid == userId;
+      // Users can update their own profile, but cannot change their own credits.
+      // Credits are only changed by server-side logic (e.g. completing a case).
+      // The credit balance can go below zero only if the user profile is incomplete.
+      allow update: if request.auth.uid == userId && 
+                       !('credits' in request.resource.data) &&
+                       (request.resource.data.credits >= 0 || (request.resource.data.credits < 0 && resource.data.companyName == null));
       allow delete: if false; // Deleting users is not allowed via client
     }
-
+    
     // Services are public to authenticated users (for the marketplace),
     // but only the provider can manage them.
     match /services/{serviceId} {
@@ -51,12 +56,13 @@ service cloud.firestore {
         allow update: if request.auth.uid == resource.data.providerId;
         allow delete: if request.auth.uid == resource.data.providerId;
     }
-    
-    // Credit requests are private to the user who made them.
+
+    // Credit requests can only be created and read by the user who owns them.
+    // Status updates should be handled by a secure backend.
     match /credit_requests/{requestId} {
-      allow read, create: if request.auth.uid == request.resource.data.userId;
-      allow list: if request.auth.uid == resource.data.userId;
-      allow update, delete: if false; // To be managed by admins/backend
+      allow read: if request.auth.uid == resource.data.userId;
+      allow create: if request.auth.uid == request.resource.data.userId;
+      allow update, delete: if false;
     }
   }
 }
