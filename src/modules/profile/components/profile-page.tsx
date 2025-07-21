@@ -219,7 +219,7 @@ export function ProfilePage() {
                   <TabsContent value="banking" className="space-y-6">
                       <div>
                           <h3 className="text-lg font-medium">Bank Information</h3>
-                          <p className="text-sm text-muted-foreground">Optional. This will be added to the notes of quotes you generate.</p>
+                          <p className="text-sm text-muted-foreground">Opcional. Esta información se usará para facilitar el depósito de pagos de posibles proveedores o clientes y se puede añadir a las cotizaciones que generes.</p>
                       </div>
                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                            <div className="space-y-2">
