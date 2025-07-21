@@ -17,6 +17,7 @@ import {
   deleteDoc,
   serverTimestamp,
   increment,
+  runTransaction,
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -78,7 +79,7 @@ interface Course extends CourseFormData {
 }
 
 export function MyCoursesManagement() {
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const { toast } = useToast();
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(false);
@@ -134,22 +135,43 @@ export function MyCoursesManagement() {
   };
 
   const onSubmit = async (data: CourseFormData) => {
-    if (!user) return;
+    if (!user || !userProfile) return;
     setLoading(true);
 
     try {
-      // Step 1: Validate course content before proceeding
+      // Step 1: Validate course content and knowledge before proceeding
       const validationResult = await validateCourse({
         title: data.title,
         description: data.description,
+        providerProfile: userProfile,
       });
 
-      if (!validationResult.isValid) {
-        toast({
-          title: 'Validation Failed',
+      if (!validationResult.isKnowledgeable) {
+         toast({
+          title: 'Knowledge Validation Failed',
           description: validationResult.reason,
           variant: 'destructive',
         });
+        setLoading(false);
+        return;
+      }
+
+      if (!validationResult.isValid) {
+        toast({
+          title: 'Content Validation Failed',
+          description: validationResult.reason,
+          variant: 'destructive',
+        });
+        
+        // Penalize user with 10 credits
+        const userRef = doc(db, 'users', user.uid);
+        await updateDoc(userRef, { credits: increment(-10) });
+        toast({
+            title: 'Penalización Aplicada',
+            description: 'Se han deducido 10 créditos por contenido de baja calidad.',
+            variant: 'destructive',
+        });
+
         setLoading(false);
         return;
       }
@@ -164,20 +186,25 @@ export function MyCoursesManagement() {
 
       const courseData = { ...data, coverImageUrl };
 
-      // Step 3: Save to Firestore
+      // Step 3: Save to Firestore and award credits
       if (editingCourse) {
         const courseRef = doc(db, 'courses', editingCourse.id);
         await updateDoc(courseRef, { ...courseData, updatedAt: serverTimestamp() });
         toast({ title: 'Success', description: 'Course updated successfully.' });
       } else {
-        await addDoc(collection(db, 'courses'), {
-          ...courseData,
-          providerId: user.uid,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
+         await runTransaction(db, async (transaction) => {
+            const courseRef = doc(collection(db, 'courses'));
+            transaction.set(courseRef, {
+                ...courseData,
+                providerId: user.uid,
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+            });
+
+            const userRef = doc(db, 'users', user.uid);
+            transaction.update(userRef, { credits: increment(25) });
         });
-        const userRef = doc(db, 'users', user.uid);
-        await updateDoc(userRef, { credits: increment(25) });
+        
         toast({ title: 'Success', description: 'New course created. You earned 25 credits!' });
       }
 
