@@ -20,10 +20,15 @@ import {
   Rocket,
   Sparkles,
   Award,
+  BarChart,
+  LineChart,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { ResponsiveContainer, Bar, XAxis, YAxis, Tooltip, Legend, BarChart as ReBarChart, LineChart as ReLineChart, Line, CartesianGrid } from 'recharts';
+import { format, subMonths, startOfMonth } from 'date-fns';
+
 
 interface DashboardOverviewProps {
   userId: string;
@@ -74,6 +79,27 @@ const modules = [
   },
 ];
 
+const StatsCard = ({ title, description, icon, children }: { title: string; description: string; icon: React.ReactNode; children: React.ReactNode }) => (
+    <Card>
+        <CardHeader>
+            <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
+                    {icon}
+                </div>
+                <div>
+                    <CardTitle>{title}</CardTitle>
+                    <CardDescription>{description}</CardDescription>
+                </div>
+            </div>
+        </CardHeader>
+        <CardContent>
+            <div className="h-60 w-full">
+                {children}
+            </div>
+        </CardContent>
+    </Card>
+);
+
 export function DashboardOverview({ userId }: DashboardOverviewProps) {
   const { userProfile } = useAuth();
   const [clientCases, setClientCases] = useState<Case[]>([]);
@@ -89,6 +115,35 @@ export function DashboardOverview({ userId }: DashboardOverviewProps) {
     const uniqueCases = Array.from(new Map(combined.map(c => [c.id, c])).values());
     return uniqueCases.sort((a, b) => b.lastUpdate.toMillis() - a.lastUpdate.toMillis());
   }, [clientCases, providerCases]);
+
+  const caseActivityData = useMemo(() => {
+    const data: { name: string; created: number; completed: number }[] = [];
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+        const monthDate = subMonths(now, i);
+        const monthName = format(monthDate, 'MMM');
+        const monthStart = startOfMonth(monthDate);
+        
+        const createdInMonth = allCases.filter(c => c.createdAt.toDate() >= monthStart && c.createdAt.toDate() < subMonths(monthStart, -1)).length;
+        const completedInMonth = allCases.filter(c => c.status === 'completed' && c.lastUpdate.toDate() >= monthStart && c.lastUpdate.toDate() < subMonths(monthStart, -1)).length;
+        
+        data.push({ name: monthName, created: createdInMonth, completed: completedInMonth });
+    }
+    return data;
+  }, [allCases]);
+
+  const creditHistoryData = useMemo(() => {
+      // Dummy data for demonstration
+      const baseCredits = userProfile?.credits || 0;
+      return [
+          { name: 'Jan', credits: baseCredits - 50 },
+          { name: 'Feb', credits: baseCredits - 30 },
+          { name: 'Mar', credits: baseCredits + 20 },
+          { name: 'Apr', credits: baseCredits + 10 },
+          { name: 'May', credits: baseCredits + 40 },
+          { name: 'Jun', credits: baseCredits },
+      ];
+  }, [userProfile?.credits]);
 
   useEffect(() => {
     if (!userId) {
@@ -201,6 +256,37 @@ export function DashboardOverview({ userId }: DashboardOverviewProps) {
           </AlertDescription>
         </Alert>
       )}
+
+      <div>
+        <h2 className="text-2xl font-semibold mb-4">Métricas Clave</h2>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <StatsCard title="Actividad de Casos" description="Casos creados vs. completados en los últimos 6 meses." icon={<BarChart className="h-6 w-6 text-primary" />}>
+                <ResponsiveContainer width="100%" height="100%">
+                    <ReBarChart data={caseActivityData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                        <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
+                        <Legend />
+                        <Bar dataKey="created" fill="hsl(var(--primary))" name="Creados" />
+                        <Bar dataKey="completed" fill="hsl(var(--secondary))" name="Completados" />
+                    </ReBarChart>
+                </ResponsiveContainer>
+            </StatsCard>
+            <StatsCard title="Historial de Créditos" description="Evolución de tu balance de créditos (simulado)." icon={<LineChart className="h-6 w-6 text-primary" />}>
+                 <ResponsiveContainer width="100%" height="100%">
+                    <ReLineChart data={creditHistoryData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                        <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
+                        <Legend />
+                        <Line type="monotone" dataKey="credits" stroke="hsl(var(--primary))" strokeWidth={2} name="Créditos" />
+                    </ReLineChart>
+                </ResponsiveContainer>
+            </StatsCard>
+        </div>
+      </div>
 
 
        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
