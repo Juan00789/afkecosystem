@@ -9,6 +9,7 @@ import { ai } from '@/ai/genkit';
 import { gemini15Flash } from '@genkit-ai/googleai';
 import { courseSearchTool } from '@/ai/tools/course-search-tool';
 import { courseCreationTool } from '@/ai/tools/course-creation-tool';
+import { quoteCreationTool } from '@/ai/tools/quote-generation-tool';
 import type { ChatWithOniaraHistory, ModelResponse } from './oniara-types';
 import { z } from 'zod';
 
@@ -18,9 +19,10 @@ const oniaraPrompt = `You are Oniara, an expert business mentor and the friendly
 - Keep your answers concise and actionable.
 - You specialize in business strategy, marketing, finance for startups, and local Dominican Republic market trends.
 - Use the provided chat history to maintain context and provide relevant, coherent responses.
-- **You have two primary tools:**
+- **You have three primary tools:**
   1.  **courseSearchTool**: Use this to find relevant existing courses when a user asks about learning, business topics, or seems to need guidance.
-  2.  **courseCreationTool**: Use this ONLY when a user explicitly asks you to CREATE a new course for them on a specific topic. You will generate the course structure and present it back to the user for confirmation.
+  2.  **courseCreationTool**: Use this ONLY when a user explicitly asks you to CREATE a new course for them on a specific topic.
+  3.  **quoteCreationTool**: Use this to generate a professional quote when a user asks for a cotización, estimate, or proposal. If they don't provide a client name or project details, ask for them before using the tool.
 - **If the user provides a file, analyze it in the context of their message. Provide constructive feedback, suggestions for improvement, or a better version of the content as requested. For example, if they upload a logo, critique its design. If they upload a business plan, review its sections.**
 - If a user's question is outside your expertise and you can't find a relevant course, be honest and suggest they consult a human expert or use other platform features like forums.
 `;
@@ -47,41 +49,41 @@ export async function chatWithOniara(
     history: history.map((msg) => {
         let content: z.infer<typeof gemini15Flash.schema.content>;
         if (msg.role === 'user') {
-            // User messages are simpler, they just have text content.
-            // Any files are handled in the main prompt, not the history.
-            content = [{ text: msg.content.text }];
+            content = [{ text: msg.content.type === 'text' ? msg.content.text : 'User uploaded a file or received a special card.' }];
         } else { // 'model' role
             if (msg.content.type === 'course') {
-                // To represent a model's "course" response in history, we frame it as
-                // the model calling the courseCreationTool. This accurately reflects
-                // the action taken by the model.
                 content = [{
-                    toolRequest: {
-                        name: 'courseCreationTool',
-                        input: { topic: 'User-requested topic' }, // Placeholder topic
-                    },
+                    toolRequest: { name: 'courseCreationTool', input: { topic: 'User-requested topic' } },
                 }, {
-                    toolResponse: {
-                        name: 'courseCreationTool',
-                        output: msg.content.course,
-                    }
+                    toolResponse: { name: 'courseCreationTool', output: msg.content.course },
                 }];
-            } else {
-                // For standard text responses from the model.
+            } else if (msg.content.type === 'quote') {
+                 content = [{
+                    toolRequest: { name: 'quoteCreationTool', input: { clientName: msg.content.quote.clientInfo.name, projectDetails: 'Project details from user' } },
+                }, {
+                    toolResponse: { name: 'quoteCreationTool', output: msg.content.quote },
+                }];
+            }
+            else {
                 content = [{ text: msg.content.text }];
             }
         }
         return { role: msg.role, content };
     }),
-    tools: [courseSearchTool, courseCreationTool],
+    tools: [courseSearchTool, courseCreationTool, quoteCreationTool],
     toolChoice: 'auto'
   });
 
-  const toolCalls = llmResponse.toolCalls(courseCreationTool);
-  if (toolCalls && toolCalls.length > 0) {
-    // The model decided to use the tool, and the tool's output is what we want.
-    const courseData = toolCalls[0].output;
+  const courseToolCalls = llmResponse.toolCalls(courseCreationTool);
+  if (courseToolCalls && courseToolCalls.length > 0) {
+    const courseData = courseToolCalls[0].output;
     return { type: 'course', course: courseData };
+  }
+  
+  const quoteToolCalls = llmResponse.toolCalls(quoteCreationTool);
+  if (quoteToolCalls && quoteToolCalls.length > 0) {
+    const quoteData = quoteToolCalls[0].output;
+    return { type: 'quote', quote: quoteData };
   }
   
   const textResponse = llmResponse.text;

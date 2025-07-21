@@ -5,9 +5,10 @@ import { useForm, type SubmitHandler } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Bot, Send, Paperclip, X, Sparkles, Trash2, GraduationCap } from 'lucide-react';
+import { Bot, Send, Paperclip, X, Sparkles, Trash2, GraduationCap, FileText, Download } from 'lucide-react';
 import { chatWithOniara } from '@/ai/flows/oniara-flow';
-import type { ChatWithOniaraHistory, GeneratedCourse, Message } from '@/ai/flows/oniara-types';
+import type { ChatWithOniaraHistory, GeneratedCourse, Message, ModelResponse } from '@/ai/flows/oniara-types';
+import type { GenerateQuoteOutput } from '@/ai/flows/quote-flow';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
@@ -16,6 +17,8 @@ import { useToast } from '@/hooks/use-toast';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
+import jsPDF from 'jspdf';
+
 
 type Inputs = {
   message: string;
@@ -76,6 +79,55 @@ export function QuotesPage() {
       console.error('Error saving course:', error);
       toast({ title: 'Error', description: 'No se pudo guardar el curso.', variant: 'destructive' });
     }
+  };
+  
+   const handleDownloadQuote = (quote: GenerateQuoteOutput) => {
+    const doc = new jsPDF();
+    doc.setFontSize(22);
+    doc.text("Cotización", 105, 20, { align: 'center' });
+
+    doc.setFontSize(12);
+    doc.text(`Para: ${quote.clientInfo.name}`, 14, 40);
+    doc.text(`De: ${quote.providerInfo.name}`, 14, 46);
+    doc.text(`Fecha: ${new Date().toLocaleDateString()}`, 148, 40);
+
+    const tableColumn = ["Descripción", "Cant.", "Precio Unit.", "Total"];
+    const tableRows: (string|number)[][] = [];
+    quote.items.forEach(item => {
+        const itemData = [
+            item.description,
+            item.quantity,
+            `$${item.unitPrice.toFixed(2)}`,
+            `$${item.total.toFixed(2)}`
+        ];
+        tableRows.push(itemData);
+    });
+
+    (doc as any).autoTable({
+        head: [tableColumn],
+        body: tableRows,
+        startY: 60,
+        theme: 'striped',
+        headStyles: { fillColor: [41, 128, 185] }
+    });
+    
+    const finalY = (doc as any).lastAutoTable.finalY;
+    
+    doc.setFontSize(12);
+    doc.text(`Subtotal: $${quote.subtotal.toFixed(2)}`, 148, finalY + 10);
+    doc.text(`Impuestos (18%): $${quote.tax.toFixed(2)}`, 148, finalY + 17);
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Total General: $${quote.grandTotal.toFixed(2)}`, 148, finalY + 24);
+    
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    if(quote.notes) {
+      doc.text("Notas:", 14, finalY + 35);
+      doc.text(quote.notes, 14, finalY + 40, { maxWidth: 180 });
+    }
+
+    doc.save(`cotizacion-${quote.clientInfo.name.replace(/\s/g, '_')}.pdf`);
   };
 
   const onSubmit: SubmitHandler<Inputs> = async (data) => {
@@ -153,6 +205,54 @@ export function QuotesPage() {
             </Card>
         )
     }
+    if (message.content.type === 'quote') {
+        const quote = message.content.quote;
+        return (
+            <Card className="bg-secondary/5 w-full">
+                <CardHeader>
+                    <div className="flex items-start gap-3">
+                        <FileText className="h-6 w-6 text-secondary mt-1"/>
+                        <div>
+                            <CardTitle>Aquí tienes tu cotización</CardTitle>
+                            <CardDescription>Revisa los detalles y descárgala en PDF.</CardDescription>
+                        </div>
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    <div className="text-sm space-y-2">
+                       <p><strong>Para:</strong> {quote.clientInfo.name}</p>
+                       <p><strong>De:</strong> {quote.providerInfo.name}</p>
+                    </div>
+                    <div className="mt-4 border-t pt-4">
+                        <ul className="space-y-1">
+                            {quote.items.map((item, index) => (
+                                <li key={index} className="flex justify-between text-sm">
+                                    <span>{item.description} ({item.quantity})</span>
+                                    <span className="font-mono">${item.total.toFixed(2)}</span>
+                                </li>
+                            ))}
+                        </ul>
+                         <div className="border-t mt-2 pt-2 space-y-1 text-right">
+                             <p className="text-sm">Subtotal: <span className="font-mono">${quote.subtotal.toFixed(2)}</span></p>
+                             <p className="text-sm">Impuestos (18%): <span className="font-mono">${quote.tax.toFixed(2)}</span></p>
+                             <p className="font-bold">Total: <span className="font-mono">${quote.grandTotal.toFixed(2)}</span></p>
+                         </div>
+                    </div>
+                </CardContent>
+                <CardFooter className="flex justify-end gap-2">
+                    <Button variant="ghost" onClick={() => setHistory(prev => prev.filter(m => m !== message))}>
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Descartar
+                    </Button>
+                    <Button onClick={() => handleDownloadQuote(quote)}>
+                        <Download className="mr-2 h-4 w-4" />
+                        Descargar PDF
+                    </Button>
+                </CardFooter>
+            </Card>
+        )
+    }
+
     // It's a text message
     return (
          <div
