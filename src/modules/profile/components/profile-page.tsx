@@ -32,7 +32,7 @@ const profileSchema = z.object({
 type ProfileFormData = z.infer<typeof profileSchema>;
 
 export function ProfilePage() {
-  const { user, userProfile, loading } = useAuth();
+  const { user, userProfile, loading, refreshUserProfile } = useAuth();
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
   const [photo, setPhoto] = useState<File | null>(null);
@@ -111,6 +111,8 @@ export function ProfilePage() {
         };
 
         await setDoc(userDocRef, updatedProfileData, { merge: true });
+        
+        await refreshUserProfile(); // Refresh the user profile context
 
         toast({ title: 'Success', description: 'Your profile has been updated.' });
         

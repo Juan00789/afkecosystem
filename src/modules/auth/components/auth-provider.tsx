@@ -19,6 +19,7 @@ interface AuthContextType {
   userProfile: UserProfile | null;
   loading: boolean;
   signOutUser: () => Promise<void>;
+  refreshUserProfile: () => Promise<void>; // Add refresh function
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(
@@ -34,20 +35,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchUserProfile = useCallback(async (firebaseUser: User) => {
     const userDocRef = doc(db, 'users', firebaseUser.uid);
-    const userDocSnap = await getDoc(userDocRef);
-    if (userDocSnap.exists()) {
-      setUserProfile(userDocSnap.data() as UserProfile);
-    } else {
-      // Create a default profile if it doesn't exist
-      const newProfile: UserProfile = {
-        uid: firebaseUser.uid,
-        email: firebaseUser.email || '',
-        displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'New User',
-        photoURL: firebaseUser.photoURL || '',
-        phoneNumber: firebaseUser.phoneNumber || '',
-      };
-      await setDoc(userDocRef, newProfile);
-      setUserProfile(newProfile);
+    try {
+      const userDocSnap = await getDoc(userDocRef);
+      if (userDocSnap.exists()) {
+        setUserProfile(userDocSnap.data() as UserProfile);
+      } else {
+        // Create a default profile if it doesn't exist
+        const newProfile: UserProfile = {
+          uid: firebaseUser.uid,
+          email: firebaseUser.email || '',
+          displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'New User',
+          photoURL: firebaseUser.photoURL || '',
+          phoneNumber: firebaseUser.phoneNumber || '',
+          credits: 0,
+        };
+        await setDoc(userDocRef, newProfile);
+        setUserProfile(newProfile);
+      }
+    } catch (error) {
+        console.error("Error fetching user profile:", error);
+        setUserProfile(null);
     }
   }, []);
 
@@ -68,32 +75,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [fetchUserProfile]);
 
   useEffect(() => {
-    // Do not run redirection logic until initial auth check is complete
     if (loading) return;
 
     const isAuthPage = pathname.startsWith('/auth');
     const isDashboardPage = pathname.startsWith('/dashboard');
 
-    // If user is not logged in and tries to access a dashboard page, redirect to sign-in
     if (!user && isDashboardPage) {
-      router.push('/auth/sign-in');
-    }
-    // If user is logged in and is on an auth page, redirect to dashboard
-    else if (user && isAuthPage) {
+      router.push('/auth');
+    } else if (user && isAuthPage) {
       router.push('/dashboard');
     }
   }, [user, pathname, loading, router]);
+  
+  const refreshUserProfile = useCallback(async () => {
+    if (user) {
+      await fetchUserProfile(user);
+    }
+  }, [user, fetchUserProfile]);
+
 
   const signOutUser = async () => {
     try {
       await signOut(auth);
-      // The onAuthStateChanged listener and useEffect will handle routing
+      // onAuthStateChanged will handle the rest
     } catch (error) {
       console.error('Error signing out:', error);
     }
   };
 
-  const value = { user, userProfile, loading, signOutUser };
+  const value = { user, userProfile, loading, signOutUser, refreshUserProfile };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
