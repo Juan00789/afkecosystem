@@ -1,44 +1,41 @@
-
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Users can read public profiles, but only write to their own.
+
+    // Users: Can read public profiles, but only write to their own.
     match /users/{userId} {
-      allow read: if request.auth != null;
+      allow read: if true;
       allow write: if request.auth != null && request.auth.uid == userId;
     }
-    
-    // Services are public to read, but only the provider can manage them.
-    match /services/{serviceId} {
-      allow read: if request.auth != null;
-      allow create, update, delete: if request.auth != null && request.resource.data.providerId == request.auth.uid;
-    }
 
-    // Courses are public to read, but only the provider can manage them.
-    match /courses/{courseId} {
-      allow read: if request.auth != null;
-      allow create, update, delete: if request.auth != null && request.resource.data.providerId == request.auth.uid;
-    }
-
-    // Credit requests are private. Only the user can create and read their own.
-    match /credit_requests/{requestId} {
-      allow read, create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      // No updates or deletes allowed by users for now.
-      allow update, delete: if false;
-    }
-
-    // Cases can only be accessed by the client or provider.
+    // Cases: Only the client or provider can read/write.
     match /cases/{caseId} {
-      allow create: if request.auth != null && request.resource.data.clientId == request.auth.uid;
       allow read, update: if request.auth != null && (request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId);
+      allow create: if request.auth != null;
       
-      // Comments can be created by client or provider.
+      // Comments within a case
       match /comments/{commentId} {
-        allow read: if request.auth != null && (request.auth.uid == get(/databases/$(database)/documents/cases/$(caseId)).data.clientId || request.auth.uid == get(/databases/$(database)/documents/cases/$(caseId)).data.providerId);
-        allow create: if request.auth != null && (request.auth.uid == request.resource.data.authorId);
+        allow read, create: if request.auth != null && (request.auth.uid == get(/databases/$(database)/documents/cases/$(caseId)).data.clientId || request.auth.uid == get(/databases/$(database)/documents/cases/$(caseId)).data.providerId);
       }
+    }
+    
+    // Services: Everyone can read, only the provider can write.
+    match /services/{serviceId} {
+      allow read: if true;
+      allow create, update, delete: if request.auth != null && request.auth.uid == request.resource.data.providerId;
+    }
+
+    // Courses: Everyone can read, only the provider can write.
+    match /courses/{courseId} {
+        allow read: if true;
+        allow create: if request.auth != null && request.auth.uid == request.resource.data.providerId;
+        allow update, delete: if request.auth != null && request.auth.uid == resource.data.providerId;
+    }
+    
+    // Credit Requests: Only the user who created it can access it.
+    match /credit_requests/{requestId} {
+      allow read, create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      // No updates allowed from client side for security.
     }
   }
 }
