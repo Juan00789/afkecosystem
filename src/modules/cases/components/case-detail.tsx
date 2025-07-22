@@ -16,6 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
 import { CheckCircle, Circle, CircleDot } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import Link from 'next/link';
 
 
 const WhatsAppIcon = () => (
@@ -235,12 +236,16 @@ export function CaseDetail({ caseId }: CaseDetailProps) {
             <div className="space-y-3">
                 <h4 className="font-semibold">Client</h4>
                 <div className="flex items-center gap-3">
-                    <Avatar>
-                        <AvatarImage src={caseData.client?.photoURL} />
-                        <AvatarFallback>{caseData.client?.displayName?.[0] || 'C'}</AvatarFallback>
-                    </Avatar>
+                    <Link href={`/profile/${caseData.client?.uid}`} className="group">
+                        <Avatar>
+                            <AvatarImage src={caseData.client?.photoURL} />
+                            <AvatarFallback>{caseData.client?.displayName?.[0] || 'C'}</AvatarFallback>
+                        </Avatar>
+                    </Link>
                     <div>
-                        <p className="font-medium">{caseData.client?.displayName}</p>
+                        <Link href={`/profile/${caseData.client?.uid}`}>
+                            <p className="font-medium hover:underline">{caseData.client?.displayName}</p>
+                        </Link>
                         <p className="text-sm text-muted-foreground">{caseData.client?.email}</p>
                     </div>
                 </div>
@@ -256,12 +261,16 @@ export function CaseDetail({ caseId }: CaseDetailProps) {
              <div className="space-y-3">
                 <h4 className="font-semibold">Provider</h4>
                 <div className="flex items-center gap-3">
-                    <Avatar>
-                        <AvatarImage src={caseData.provider?.photoURL} />
-                        <AvatarFallback>{caseData.provider?.displayName?.[0] || 'P'}</AvatarFallback>
-                    </Avatar>
+                    <Link href={`/profile/${caseData.provider?.uid}`} className="group">
+                        <Avatar>
+                            <AvatarImage src={caseData.provider?.photoURL} />
+                            <AvatarFallback>{caseData.provider?.displayName?.[0] || 'P'}</AvatarFallback>
+                        </Avatar>
+                    </Link>
                     <div>
-                        <p className="font-medium">{caseData.provider?.displayName}</p>
+                        <Link href={`/profile/${caseData.provider?.uid}`}>
+                            <p className="font-medium hover:underline">{caseData.provider?.displayName}</p>
+                        </Link>
                         <p className="text-sm text-muted-foreground">{caseData.provider?.email}</p>
                     </div>
                 </div>
