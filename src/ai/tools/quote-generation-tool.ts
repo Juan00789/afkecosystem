@@ -4,7 +4,7 @@
  */
 import { ai } from '@/ai/genkit';
 import { generateQuote, type GenerateQuoteOutput } from '@/ai/flows/quote-flow';
-import { z } from 'zod';
+import { z } from 'genkit';
 
 export const quoteCreationTool = ai.defineTool(
   {

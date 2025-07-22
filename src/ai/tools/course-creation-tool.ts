@@ -4,7 +4,7 @@
  */
 import { ai } from '@/ai/genkit';
 import { generateCourse } from '@/ai/flows/course-generation-flow';
-import { z } from 'zod';
+import { z } from 'genkit';
 
 export const courseCreationTool = ai.defineTool(
   {

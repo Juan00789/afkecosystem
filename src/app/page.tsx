@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ShoppingBag, BookOpen, HandCoins, MessageSquareText, Rocket } from 'lucide-react';
+import { ShoppingBag, BookOpen, HandCoins, MessageSquareText, Rocket, Bot } from 'lucide-react';
 
 const modules = [
   {
@@ -105,6 +105,9 @@ export default function HomePage() {
             </Link>
             <Link href="#" className="text-sm text-primary hover:underline">
               Privacidad
+            </Link>
+             <Link href="/dashboard/quotes" className="flex items-center text-sm text-primary hover:underline">
+              <Bot className="mr-1 h-4 w-4" /> Habla con Oniara (IA)
             </Link>
           </div>
         </div>

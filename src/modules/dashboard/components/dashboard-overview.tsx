@@ -23,6 +23,7 @@ import {
   BarChart,
   LineChart,
   Landmark,
+  Bot
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
@@ -59,6 +60,12 @@ const modules = [
     title: 'Consultorías',
     description: 'Conecta con expertos y comparte.',
     href: '/dashboard/consultorias',
+  },
+    {
+    icon: <Bot className="h-8 w-8 text-primary" />,
+    title: 'Habla con Oniara',
+    description: 'Tu asistente de IA personal.',
+    href: '/dashboard/quotes',
   },
   {
     icon: <Users className="h-8 w-8 text-primary" />,

@@ -3,7 +3,7 @@
  * @fileOverview A Genkit tool for enhancing case descriptions.
  */
 import { ai } from '@/ai/genkit';
-import { z } from 'zod';
+import { z } from 'genkit';
 
 const CaseEnhancementInputSchema = z.object({
   title: z.string().describe('The title of the case or project.'),

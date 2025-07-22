@@ -33,6 +33,7 @@ const navLinks = [
   { href: '/dashboard/my-courses', label: 'My Courses', icon: GraduationCap },
   { href: '/dashboard/creditos', label: 'Créditos', icon: HandCoins },
   { href: '/dashboard/consultorias', label: 'Consultorías', icon: MessageSquareText },
+   { href: '/dashboard/quotes', label: 'Habla con Oniara', icon: Bot },
   { href: '/dashboard/network', label: 'Brokis', icon: Users },
   { href: '/dashboard/services', label: 'My Services', icon: Briefcase },
   { href: '/dashboard/contabilidad', label: 'Contabilidad', icon: Landmark },
