@@ -33,7 +33,7 @@ export function NetworkManagement() {
                 <div>
                     <CardTitle>Clientes</CardTitle>
                     <CardDescription>
-                    Usuarios que han solicitado tus servicios.
+                    Usuarios que han solicitado tus servicios o has añadido a tu red.
                     </CardDescription>
                 </div>
                  <AddUserDialog roleToAdd="client" onUserAdded={handleUserAddedOrRemoved} />
