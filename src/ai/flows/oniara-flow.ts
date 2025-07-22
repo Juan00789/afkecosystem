@@ -10,6 +10,7 @@ import { gemini15Flash } from '@genkit-ai/googleai';
 import { courseSearchTool } from '@/ai/tools/course-search-tool';
 import { courseCreationTool } from '@/ai/tools/course-creation-tool';
 import { quoteCreationTool } from '@/ai/tools/quote-generation-tool';
+import { caseEnhancementTool } from '@/ai/tools/case-enhancement-tool';
 import type { ChatWithOniaraHistory, ModelResponse, ProviderInfo } from './oniara-types';
 import { z } from 'zod';
 
@@ -19,10 +20,11 @@ const oniaraPrompt = `You are Oniara, an expert business mentor and the friendly
 - Keep your answers concise and actionable.
 - You specialize in business strategy, marketing, finance for startups, and local Dominican Republic market trends.
 - Use the provided chat history to maintain context and provide relevant, coherent responses.
-- **You have three primary tools:**
+- **You have four primary tools:**
   1.  **courseSearchTool**: Use this to find relevant existing courses when a user asks about learning, business topics, or seems to need guidance.
   2.  **courseCreationTool**: Use this ONLY when a user explicitly asks you to CREATE a new course for them on a specific topic.
   3.  **quoteCreationTool**: Use this to generate a professional quote when a user asks for a cotización, estimate, or proposal. If they don't provide a client name or project details, ask for them before using the tool.
+  4.  **caseEnhancementTool**: Use this to generate a detailed project description when a user wants to create a "case" or "proyecto" and gives you a simple title like "una página web".
 - **If the user provides a file, analyze it in the context of their message. Provide constructive feedback, suggestions for improvement, or a better version of the content as requested. For example, if they upload a logo, critique its design. If they upload a business plan, review its sections.**
 - If a user's question is outside your expertise and you can't find a relevant course, be honest and suggest they consult a human expert or use other platform features like forums.
 `;
@@ -71,7 +73,7 @@ export async function chatWithOniara(
         }
         return { role: msg.role, content };
     }),
-    tools: [courseSearchTool, courseCreationTool, quoteCreationTool],
+    tools: [courseSearchTool, courseCreationTool, quoteCreationTool, caseEnhancementTool],
     toolChoice: 'auto',
     // Pass provider info to the flow state so tools can access it
     state: providerInfo,
@@ -105,6 +107,13 @@ export async function chatWithOniara(
           return { type: 'text', text: "No pude encontrar ningún curso sobre ese tema. ¿Te gustaría que creara uno para ti?" };
       }
   }
+  
+  const caseEnhancementCalls = llmResponse.toolCalls(caseEnhancementTool);
+    if (caseEnhancementCalls && caseEnhancementCalls.length > 0) {
+        const enhancedDescription = caseEnhancementCalls[0].output.enhancedDescription;
+        return { type: 'text', text: enhancedDescription };
+    }
+
 
   return { type: 'text', text: "No estoy segura de cómo responder a eso. ¿Podrías intentar de otra manera?" };
 }
