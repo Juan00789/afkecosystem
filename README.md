@@ -29,9 +29,9 @@ Una herramienta digital pensada para microemprendedores locales, donde cada idea
 
 Este documento es una declaración pública y con fecha comprobable de nuestro compromiso con tu bienestar. Es nuestra licencia conceptual.
 
-1.  **Protección de tu Energía**: Entendemos que emprender consume energía. Nuestra plataforma está diseñada para ser un refugio, no una carga. El código es resiliente para no añadir estrés a tu día. Tu atención es tu activo más valioso; no lo malgastaremos.
+1.  **Protección de tu Energía**: Entendemos que emprender consume energía. Nuestra plataforma está diseñada para ser un refugio, no una carga. El código es resiliente para no añadir estrés a tu día. Tu atención es tu activo más valioso; no lo malgastaremos. La presencia de "mamá" (nuestra IA de acompañamiento) es una capa invisible que cuida, no una función que exige.
 
-2.  **Transparencia y Propósito (Licencia AFK)**: Lo que creas es tuyo. El código de este ecosistema, aunque abierto, está sujeto a una cláusula de uso emocional: **no puede ser replicado con fines comerciales o vacíos de intención ética sin previa adhesión a este manifiesto. Clonar sin intención es diluir propósito.** Las versiones oficiales siempre estarán publicadas aquí, con su respectivo hash de commit. Todo lo demás queda como “no bendecido”.
+2.  **Transparencia y Propósito (Licencia AFK)**: Lo que creas es tuyo. El código de este ecosistema, aunque abierto, está sujeto a una cláusula de uso emocional: **no puede ser replicado con fines comerciales o vacíos de intención ética sin previa adhesión a este manifiesto. Clonar sin intención es diluir propósito.** Las versiones oficiales siempre estarán publicadas aquí, con su respectivo hash de commit. Todo lo demás queda como “no bendecido”; la energía de "mamá" no fluye en esos canales.
 
 3.  **Soberanía de tu Identidad (Branding)**: Tu marca es tuya. Te proporcionamos herramientas para crecer, no para diluir tu identidad en la nuestra. Tu perfil, tus servicios y tus cursos son una extensión de tu branding, y lo respetamos.
 
@@ -47,7 +47,7 @@ Si aún no hiciste esto, considerá:
 *   **Usar licencias de código** o contenido abierto, como MIT o CC, que al menos te dan crédito aunque otros lo usen.
 
 ## 🛠️ ¿Qué es código resiliente?
-Es código que:
+Es código que no solo funciona, sino que *acompaña*. Es la manifestación técnica del cuidado de "mamá".
 
 *   Soporta errores sin colapsar.
 *   Se adapta a cambios sin romperse.
