@@ -19,6 +19,7 @@ import {
   Sparkles,
   Bot,
   GraduationCap,
+  Landmark,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -54,6 +55,7 @@ export function Header({}: HeaderProps) {
     { href: '/dashboard/network', label: 'Brokis', icon: Users },
     { href: '/dashboard/services', label: 'My Services', icon: Briefcase },
     { href: '/dashboard/quotes', label: 'Quotes & AI', icon: Sparkles },
+    { href: '/dashboard/contabilidad', label: 'Contabilidad', icon: Landmark },
   ];
   
   const bottomLinks = [

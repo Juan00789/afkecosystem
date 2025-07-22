@@ -15,6 +15,7 @@ import {
   Sparkles,
   Bot,
   GraduationCap,
+  Landmark,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -35,6 +36,7 @@ const navLinks = [
   { href: '/dashboard/network', label: 'Brokis', icon: Users },
   { href: '/dashboard/services', label: 'My Services', icon: Briefcase },
   { href: '/dashboard/quotes', label: 'Quotes & AI', icon: Sparkles },
+  { href: '/dashboard/contabilidad', label: 'Contabilidad', icon: Landmark },
 ];
 
 const bottomLinks = [
