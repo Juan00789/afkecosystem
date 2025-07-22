@@ -4,16 +4,15 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 
 // Your web app's Firebase configuration
-// These variables are exposed to the browser and are not secrets.
-// They are prefixed with NEXT_PUBLIC_ by Next.js convention.
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  apiKey: "AIzaSyA7gkBqO4LfBCiKLD3kXQ29J4JUJg9vuas",
+  authDomain: "afkecosystem.firebaseapp.com",
+  projectId: "afkecosystem",
+  storageBucket: "afkecosystem.appspot.com",
+  messagingSenderId: "943759593",
+  appId: "1:943759593:web:3933b7a70c9ac91c285078"
 };
+
 
 // Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
