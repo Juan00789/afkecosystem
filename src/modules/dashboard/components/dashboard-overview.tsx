@@ -22,6 +22,7 @@ import {
   Award,
   BarChart,
   LineChart,
+  Landmark,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
@@ -72,10 +73,10 @@ const modules = [
     href: '/dashboard/services',
   },
   {
-    icon: <Sparkles className="h-8 w-8 text-primary" />,
-    title: 'Quotes',
-    description: 'Genera cotizaciones con IA.',
-    href: '/dashboard/quotes',
+    icon: <Landmark className="h-8 w-8 text-primary" />,
+    title: 'Contabilidad',
+    description: 'Gestiona tus finanzas.',
+    href: '/dashboard/contabilidad',
   },
 ];
 

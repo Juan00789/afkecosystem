@@ -35,7 +35,6 @@ const navLinks = [
   { href: '/dashboard/consultorias', label: 'Consultorías', icon: MessageSquareText },
   { href: '/dashboard/network', label: 'Brokis', icon: Users },
   { href: '/dashboard/services', label: 'My Services', icon: Briefcase },
-  { href: '/dashboard/quotes', label: 'Quotes & AI', icon: Sparkles },
   { href: '/dashboard/contabilidad', label: 'Contabilidad', icon: Landmark },
 ];
 

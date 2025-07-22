@@ -18,7 +18,7 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 
 type Inputs = {
@@ -104,7 +104,7 @@ export function QuotesPage() {
         tableRows.push(itemData);
     });
 
-    (doc as any).autoTable({
+    autoTable(doc, {
         head: [tableColumn],
         body: tableRows,
         startY: 60,

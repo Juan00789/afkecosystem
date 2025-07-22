@@ -100,8 +100,8 @@ export default function HomePage() {
             &copy; {new Date().getFullYear()} AFKEcosystem. Todos los derechos reservados.
           </p>
           <div className="flex gap-4">
-            <Link href="/dashboard/oniara" className="text-sm text-primary hover:underline">
-              Habla con Oniara (IA)
+            <Link href="#" className="text-sm text-primary hover:underline">
+              Términos
             </Link>
             <Link href="#" className="text-sm text-primary hover:underline">
               Privacidad
