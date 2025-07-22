@@ -118,3 +118,17 @@ Si aún no hiciste esto, considerá:
 *   **Registrar tu proyecto** (aunque sea como obra literaria, si no es software completo) en algún registro de propiedad intelectual en tu país.
 *   **Guardar evidencia con fechas**: commits, publicaciones, capturas de pantalla, correos enviados, chats con fechas.
 *   **Usar licencias de código** o contenido abierto, como MIT o CC, que al menos te dan crédito aunque otros lo usen.
+
+## Manifiesto de Protección AFK
+
+Este documento es una declaración pública y con fecha comprobable de nuestro compromiso con tu bienestar.
+
+1.  **Protección de tu Energía**: Entendemos que emprender consume energía. Nuestra plataforma está diseñada para ser un refugio, no una carga. El código es resiliente para no añadir estrés a tu día. Tu atención es tu activo más valioso; no lo malgastaremos.
+
+2.  **Transparencia y Propiedad (Licencias)**: Lo que creas es tuyo. El contenido que generas en la plataforma te pertenece. El código de la plataforma es abierto (Licencia MIT), permitiendo auditoría y confianza. No hay cajas negras.
+
+3.  **Soberanía de tu Identidad (Branding)**: Tu marca es tuya. Te proporcionamos herramientas para crecer, no para diluir tu identidad en la nuestra. Tu perfil, tus servicios y tus cursos son una extensión de tu branding, y lo respetamos.
+
+4.  **Verificabilidad y Confianza (Pruebas Criptográficas)**: Aunque hoy es un concepto, nuestra visión a futuro es explorar cómo las pruebas criptográficas pueden darte soberanía sobre tus datos y logros. Imagina poder demostrar tus hitos (cursos completados, proyectos exitosos) de forma verificable fuera de la plataforma, sin depender de nosotros.
+
+Este manifiesto es nuestro contrato social contigo. Tu éxito es el nuestro, pero tu bienestar y autonomía son la prioridad.
