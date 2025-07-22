@@ -59,7 +59,7 @@ interface Service extends ServiceFormData {
   id: string;
 }
 
-const serviceCategories = ['Diseño', 'Marketing', 'Tecnología', 'Consultoría', 'Contenido'];
+const serviceCategories = ['Diseño', 'Marketing', 'Tecnología', 'Consultoría', 'Contenido', 'Hotelería'];
 
 export function ServicesManagement() {
   const { user } = useAuth();
