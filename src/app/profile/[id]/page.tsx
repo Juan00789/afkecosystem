@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { doc, getDoc, collection, query, where, getDocs, updateDoc, arrayUnion } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, updateDoc, arrayUnion, runTransaction, increment } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { UserProfile } from '@/modules/auth/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -26,7 +26,7 @@ interface Service {
 export default function PublicProfilePage() {
   const params = useParams();
   const id = params.id as string;
-  const { user: currentUser, userProfile: currentUserProfile } = useAuth();
+  const { user: currentUser, userProfile: currentUserProfile, refreshUserProfile } = useAuth();
   const { toast } = useToast();
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -84,29 +84,53 @@ export default function PublicProfilePage() {
     setIsConnecting(true);
     
     try {
-        const currentUserRef = doc(db, 'users', currentUser.uid);
-        const otherUserRef = doc(db, 'users', profile.uid);
+        await runTransaction(db, async (transaction) => {
+            const currentUserRef = doc(db, 'users', currentUser.uid);
+            const otherUserRef = doc(db, 'users', profile.uid);
 
-        // Add provider to current user's network
-        await updateDoc(currentUserRef, {
-            'network.providers': arrayUnion(profile.uid)
-        });
+            const currentUserSnap = await transaction.get(currentUserRef);
+            if (!currentUserSnap.exists()) {
+              throw new Error("Your user profile does not exist.");
+            }
+            
+            const currentUserData = currentUserSnap.data();
+            const network = currentUserData.network || {};
+            const providers = network.providers || [];
 
-        // Add current user to provider's client list
-        await updateDoc(otherUserRef, {
-            'network.clients': arrayUnion(currentUser.uid)
+            if (providers.includes(profile.uid)) {
+              // This case is handled by UI disabling the button, but good to have server-side check
+              toast({ title: 'Already Connected', description: 'This provider is already in your network.'});
+              return;
+            }
+
+            const isFirstProvider = providers.length === 0;
+
+            // Add provider to current user's network
+            transaction.update(currentUserRef, { 'network.providers': arrayUnion(profile.uid) });
+            // Add current user to provider's client list
+            transaction.update(otherUserRef, { 'network.clients': arrayUnion(currentUser.uid) });
+            
+            if (isFirstProvider) {
+                transaction.update(currentUserRef, { credits: increment(5) });
+                toast({
+                    title: '¡Créditos Ganados!',
+                    description: 'Has ganado 5 créditos por añadir tu primer proveedor.',
+                });
+            }
         });
 
         toast({
-            title: "Success!",
-            description: `${profile.displayName} has been added to your providers.`,
+            title: "¡Éxito!",
+            description: `${profile.displayName} ha sido añadido a tus proveedores.`,
         });
         setIsConnected(true);
-    } catch (err) {
+        await refreshUserProfile(); // Refresh profile to get updated credits
+
+    } catch (err: any) {
         console.error("Error adding to network:", err);
         toast({
             title: "Error",
-            description: "Failed to add user to your network.",
+            description: err.message || "Failed to add user to your network.",
             variant: "destructive",
         });
     } finally {
@@ -156,7 +180,7 @@ export default function PublicProfilePage() {
                             ) : (
                                  <>
                                     <UserPlus className="mr-2 h-4 w-4" /> 
-                                    {isConnecting ? 'Adding...' : 'Añadir a Proveedores'}
+                                    {isConnecting ? 'Añadiendo...' : 'Añadir a Proveedores'}
                                  </>
                             )}
                         </Button>
