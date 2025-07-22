@@ -135,48 +135,14 @@ export function MyCoursesManagement() {
   };
 
   const onSubmit = async (data: CourseFormData) => {
-    if (!user || !userProfile) return;
+    if (!user || !userProfile) {
+      toast({ title: 'Error', description: 'You must be logged in.', variant: 'destructive' });
+      return;
+    }
     setLoading(true);
   
     try {
-      // Step 1: AI Validation outside the transaction
-      const validationResult = await validateCourse({
-        title: data.title,
-        description: data.description,
-        providerProfile: userProfile,
-      });
-  
-      if (!validationResult.isKnowledgeable) {
-        toast({
-          title: 'Knowledge Validation Failed',
-          description: validationResult.reason,
-          variant: 'destructive',
-        });
-        setLoading(false);
-        return;
-      }
-  
-      if (!validationResult.isValid) {
-        toast({
-          title: 'Content Validation Failed',
-          description: validationResult.reason,
-          variant: 'destructive',
-        });
-  
-        // Penalize user with 10 credits (this can be a separate operation)
-        const userRef = doc(db, 'users', user.uid);
-        await updateDoc(userRef, { credits: increment(-10) });
-        toast({
-          title: 'Penalización Aplicada',
-          description: 'Se han deducido 10 créditos por contenido de baja calidad.',
-          variant: 'destructive',
-        });
-  
-        setLoading(false);
-        return;
-      }
-  
-      // Step 2: Image Upload outside the transaction
+      // Step 1: Upload the image first if it exists.
       let coverImageUrl = editingCourse?.coverImageUrl || '';
       if (coverImageFile) {
         const imageRef = ref(storage, `course-covers/${user.uid}-${Date.now()}-${coverImageFile.name}`);
@@ -184,37 +150,70 @@ export function MyCoursesManagement() {
         coverImageUrl = await getDownloadURL(snapshot.ref);
       }
   
-      const courseData = { ...data, coverImageUrl };
+      // Step 2: Perform AI validation with all data ready.
+      const validationResult = await validateCourse({
+        title: data.title,
+        description: data.description,
+        providerProfile: userProfile,
+      });
   
-      // Step 3: Firestore transaction for creating/updating and awarding credits
+      if (!validationResult.isKnowledgeable || !validationResult.isValid) {
+        if (!validationResult.isKnowledgeable) {
+          toast({
+            title: 'Knowledge Validation Failed',
+            description: validationResult.reason,
+            variant: 'destructive',
+          });
+        }
+        if (!validationResult.isValid) {
+          toast({
+            title: 'Content Validation Failed',
+            description: validationResult.reason,
+            variant: 'destructive',
+          });
+          // Penalize only for content validation failure, not for lack of knowledge.
+          const userRef = doc(db, 'users', user.uid);
+          await updateDoc(userRef, { credits: increment(-10) });
+          toast({
+            title: 'Penalización Aplicada',
+            description: 'Se han deducido 10 créditos por contenido de baja calidad.',
+            variant: 'destructive',
+          });
+        }
+        setLoading(false);
+        return;
+      }
+  
+      // Step 3: Firestore transaction for saving data and awarding credits.
+      const courseDataWithImage = { ...data, coverImageUrl };
+  
       await runTransaction(db, async (transaction) => {
+        const userRef = doc(db, 'users', user.uid);
         if (editingCourse) {
           // Update existing course
           const courseRef = doc(db, 'courses', editingCourse.id);
-          transaction.update(courseRef, { ...courseData, updatedAt: serverTimestamp() });
+          transaction.update(courseRef, { ...courseDataWithImage, updatedAt: serverTimestamp() });
         } else {
           // Add new course and award credits
           const courseRef = doc(collection(db, 'courses'));
           transaction.set(courseRef, {
-            ...courseData,
+            ...courseDataWithImage,
             providerId: user.uid,
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
           });
-  
-          const userRef = doc(db, 'users', user.uid);
           transaction.update(userRef, { credits: increment(25) });
         }
       });
   
-      // Step 4: User feedback
+      // Step 4: User feedback.
       if (editingCourse) {
         toast({ title: 'Success', description: 'Course updated successfully.' });
       } else {
         toast({ title: 'Success', description: 'New course created. You earned 25 credits!' });
       }
   
-      // Step 5: Clean up
+      // Step 5: Clean up.
       setIsDialogOpen(false);
       reset();
     } catch (error) {
