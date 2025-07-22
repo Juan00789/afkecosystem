@@ -12,6 +12,9 @@ import { MessageSquareText, ArrowLeft } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { subDays } from 'date-fns';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 
 
 type CaseStatus = 'new' | 'in-progress' | 'completed' | 'cancelled';
@@ -21,6 +24,7 @@ export default function ConsultoriasPage() {
   const [allCases, setAllCases] = useState<Case[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('new');
+  const [timeFilter, setTimeFilter] = useState('all'); // State for time filter
 
   useEffect(() => {
     if (!user) return;
@@ -59,11 +63,19 @@ export default function ConsultoriasPage() {
   }, [user]);
 
   const filteredCases = useMemo(() => {
-    if (activeTab === 'all') {
-      return allCases;
+    let cases = allCases;
+    if (activeTab !== 'all') {
+      cases = cases.filter(c => c.status === activeTab);
     }
-    return allCases.filter(c => c.status === activeTab);
-  }, [allCases, activeTab]);
+  
+    if (activeTab === 'completed' && timeFilter !== 'all') {
+      const days = parseInt(timeFilter, 10);
+      const cutOffDate = subDays(new Date(), days);
+      cases = cases.filter(c => c.lastUpdate.toDate() > cutOffDate);
+    }
+  
+    return cases;
+  }, [allCases, activeTab, timeFilter]);
 
   const renderSkeleton = () => (
     <div className="space-y-4">
@@ -124,7 +136,25 @@ export default function ConsultoriasPage() {
                 {renderCasesList(filteredCases)}
             </TabsContent>
              <TabsContent value="completed">
-                {renderCasesList(filteredCases)}
+                <div className="space-y-4">
+                    <div className="flex justify-end">
+                        <div className="flex items-center gap-2">
+                            <Label htmlFor="time-filter">Mostrar:</Label>
+                            <Select value={timeFilter} onValueChange={setTimeFilter}>
+                                <SelectTrigger className="w-[180px]" id="time-filter">
+                                    <SelectValue placeholder="Seleccionar rango" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">Todos</SelectItem>
+                                    <SelectItem value="30">Últimos 30 días</SelectItem>
+                                    <SelectItem value="90">Últimos 90 días</SelectItem>
+                                    <SelectItem value="365">Último año</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                    {renderCasesList(filteredCases)}
+                </div>
             </TabsContent>
             <TabsContent value="all">
                 {renderCasesList(filteredCases)}
