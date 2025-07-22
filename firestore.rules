@@ -1,74 +1,44 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check if a user is part of a case
-    function isCaseParticipant(caseId) {
-      let caseDoc = get(/databases/$(database)/documents/cases/$(caseId));
-      // Ensure the document and its data exist before accessing properties
-      return caseDoc.data != null && (request.auth.uid == caseDoc.data.clientId || request.auth.uid == caseDoc.data.providerId);
-    }
-    
-    // Helper function to check if a user profile is complete (authentic)
-    function isProfileComplete(userData) {
-      return userData.companyName != null && userData.companyName != '';
-    }
-
-    // Users can only manage their own profile.
-    // Public profiles are readable by any authenticated user.
+    // Users can read public profiles, but only update their own.
     match /users/{userId} {
-      allow read, list: if request.auth != null;
-      allow create: if request.auth.uid == userId;
-      // Allow update only if user is owner.
-      // Credits can only be updated if profile is incomplete OR if new credit value is not lower.
-      // This prevents users from giving themselves credits but allows for penalties.
-      allow update: if request.auth.uid == userId && 
-                     (request.resource.data.credits < resource.data.credits ||
-                      isProfileComplete(request.resource.data) == false ||
-                      request.resource.data.credits >= 0);
-      allow delete: if false; // Deleting users is not allowed via client
+      allow read;
+      allow write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Services are public to authenticated users (for the marketplace),
-    // but only the provider can manage them.
-    match /services/{serviceId} {
-        allow read: if request.auth != null;
-        allow create: if request.auth.uid == request.resource.data.providerId;
-        allow update: if request.auth.uid == resource.data.providerId;
-        allow delete: if request.auth.uid == resource.data.providerId;
-    }
-
-    // Cases can be read by any authenticated user (for consultorias page),
-    // but only modified by participants.
+    // Cases are visible only to the client and provider involved.
     match /cases/{caseId} {
-      allow read, list: if request.auth != null;
-      allow update: if isCaseParticipant(caseId);
-      allow create: if request.auth.uid == request.resource.data.clientId;
-      allow delete: if false; // Cases should be marked as "cancelled" instead
+      allow read, update: if request.auth != null && (request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId);
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.clientId;
       
-      // Comments follow the parent case's permissions.
+      // Comments are visible to client and provider, but can only be created by them.
       match /comments/{commentId} {
-        allow read: if isCaseParticipant(caseId);
-        allow create: if isCaseParticipant(caseId) && request.auth.uid == request.resource.data.authorId;
-        allow update, delete: if false;
+        allow read: if request.auth != null && (exists(/databases/$(database)/documents/cases/$(caseId)) && (request.auth.uid == get(/databases/$(database)/documents/cases/$(caseId)).data.clientId || request.auth.uid == get(/databases/$(database)/documents/cases/$(caseId)).data.providerId));
+        allow create: if request.auth != null && request.auth.uid == request.resource.data.authorId;
       }
     }
 
-    // Courses are public to authenticated users,
-    // but only the provider can manage them.
-     match /courses/{courseId} {
-        allow read: if request.auth != null;
-        allow create: if request.auth.uid == request.resource.data.providerId;
-        allow update: if request.auth.uid == resource.data.providerId;
-        allow delete: if request.auth.uid == resource.data.providerId;
+    // Services can be read by anyone, but only created/updated/deleted by the provider.
+    match /services/{serviceId} {
+      allow read;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.providerId;
+      allow update, delete: if request.auth != null && request.auth.uid == resource.data.providerId;
     }
 
-    // Credit requests can only be managed by the user who created them.
+    // Courses can be read by anyone, but only managed by the creator.
+    match /courses/{courseId} {
+      allow read;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.providerId;
+      allow update, delete: if request.auth != null && request.auth.uid == resource.data.providerId;
+    }
+
+    // Credit requests are private to the user who created them.
     match /credit_requests/{requestId} {
-      allow read: if request.auth.uid == resource.data.userId;
-      allow create: if request.auth.uid == request.resource.data.userId;
-      allow update, delete: if false; // Managed by backend/admins only
+      allow read, create: if request.auth != null && request.auth.uid == request.resource.data.userId;
     }
   }
 }
