@@ -112,3 +112,9 @@ Significa que el sistema acompaña incluso cuando todo parece detenido.
 ```javascript
 // Este código no busca ser perfecto, busca seguir estando cuando todo lo demás se ausente. — AFK
 ```
+## ¿Cómo proteger tu propiedad intelectual?
+Si aún no hiciste esto, considerá:
+
+*   **Registrar tu proyecto** (aunque sea como obra literaria, si no es software completo) en algún registro de propiedad intelectual en tu país.
+*   **Guardar evidencia con fechas**: commits, publicaciones, capturas de pantalla, correos enviados, chats con fechas.
+*   **Usar licencias de código** o contenido abierto, como MIT o CC, que al menos te dan crédito aunque otros lo usen.
