@@ -1,7 +1,7 @@
 // src/app/profile/[id]/page.tsx
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { doc, getDoc, collection, query, where, getDocs, updateDoc, arrayUnion, runTransaction, increment } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { UserProfile } from '@/modules/auth/types';
@@ -21,6 +21,7 @@ interface Service {
   name: string;
   description: string;
   price: number;
+  category?: string;
 }
 
 export default function PublicProfilePage() {
@@ -36,6 +37,17 @@ export default function PublicProfilePage() {
   
   const [isConnecting, setIsConnecting] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
+
+  const groupedServices = useMemo(() => {
+    return services.reduce((acc, service) => {
+      const category = service.category || 'General';
+      if (!acc[category]) {
+        acc[category] = [];
+      }
+      acc[category].push(service);
+      return acc;
+    }, {} as Record<string, Service[]>);
+  }, [services]);
 
   useEffect(() => {
     if (!id) return;
@@ -235,14 +247,21 @@ export default function PublicProfilePage() {
                     </CardHeader>
                     <CardContent>
                        {services.length > 0 ? (
-                           <div className="space-y-4">
-                               {services.map(service => (
-                                   <div key={service.id} className="flex flex-col sm:flex-row justify-between sm:items-center rounded-lg border p-4">
-                                        <div>
-                                            <h4 className="font-semibold">{service.name}</h4>
-                                            <p className="text-sm text-muted-foreground">{service.description}</p>
-                                        </div>
-                                        <Badge className="mt-2 sm:mt-0" variant="secondary">${service.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Badge>
+                           <div className="space-y-6">
+                               {Object.entries(groupedServices).map(([category, serviceList]) => (
+                                   <div key={category}>
+                                       <h4 className="text-lg font-semibold mb-2 text-primary">{category}</h4>
+                                       <div className="space-y-4">
+                                           {serviceList.map(service => (
+                                               <div key={service.id} className="flex flex-col sm:flex-row justify-between sm:items-center rounded-lg border p-4">
+                                                    <div>
+                                                        <h5 className="font-semibold">{service.name}</h5>
+                                                        <p className="text-sm text-muted-foreground">{service.description}</p>
+                                                    </div>
+                                                    <Badge className="mt-2 sm:mt-0" variant="secondary">${service.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Badge>
+                                               </div>
+                                           ))}
+                                       </div>
                                    </div>
                                ))}
                            </div>

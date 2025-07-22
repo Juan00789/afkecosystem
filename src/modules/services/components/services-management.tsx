@@ -43,12 +43,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 
 const serviceSchema = z.object({
   name: z.string().min(3, 'Service name must be at least 3 characters'),
   description: z.string().min(10, 'Description is too short'),
   price: z.coerce.number().min(0, 'Price cannot be negative'),
+  category: z.string().min(1, 'You must select a category'),
 });
 
 type ServiceFormData = z.infer<typeof serviceSchema>;
@@ -56,6 +58,8 @@ type ServiceFormData = z.infer<typeof serviceSchema>;
 interface Service extends ServiceFormData {
   id: string;
 }
+
+const serviceCategories = ['Diseño', 'Marketing', 'Tecnología', 'Consultoría', 'Contenido'];
 
 export function ServicesManagement() {
   const { user } = useAuth();
@@ -67,7 +71,7 @@ export function ServicesManagement() {
 
   const { control, handleSubmit, reset, setValue, formState: { errors } } = useForm<ServiceFormData>({
     resolver: zodResolver(serviceSchema),
-    defaultValues: { name: '', description: '', price: 0 },
+    defaultValues: { name: '', description: '', price: 0, category: '' },
   });
 
   useEffect(() => {
@@ -86,8 +90,9 @@ export function ServicesManagement() {
       setValue('name', service.name);
       setValue('description', service.description);
       setValue('price', service.price);
+      setValue('category', service.category);
     } else {
-      reset({ name: '', description: '', price: 0 });
+      reset({ name: '', description: '', price: 0, category: '' });
     }
     setIsDialogOpen(true);
   };
@@ -162,6 +167,7 @@ export function ServicesManagement() {
                         <TableHead>Name</TableHead>
                         <TableHead>Description</TableHead>
                         <TableHead>Price</TableHead>
+                        <TableHead>Category</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -171,6 +177,7 @@ export function ServicesManagement() {
                             <TableCell className="font-medium">{service.name}</TableCell>
                             <TableCell className="max-w-xs truncate">{service.description}</TableCell>
                             <TableCell>${service.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                            <TableCell>{service.category}</TableCell>
                             <TableCell className="text-right">
                                 <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(service)}>
                                     <Edit className="h-4 w-4" />
@@ -226,10 +233,28 @@ export function ServicesManagement() {
                 <Controller name="description" control={control} render={({ field }) => <Textarea id="description" {...field} />} />
                 {errors.description && <p className="text-sm text-destructive">{errors.description.message}</p>}
             </div>
-             <div className="space-y-2">
-                <Label htmlFor="price">Price ($)</Label>
-                <Controller name="price" control={control} render={({ field }) => <Input id="price" type="number" step="0.01" {...field} />} />
-                {errors.price && <p className="text-sm text-destructive">{errors.price.message}</p>}
+             <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <Label htmlFor="price">Price ($)</Label>
+                    <Controller name="price" control={control} render={({ field }) => <Input id="price" type="number" step="0.01" {...field} />} />
+                    {errors.price && <p className="text-sm text-destructive">{errors.price.message}</p>}
+                </div>
+                 <div className="space-y-2">
+                    <Label htmlFor="category">Category</Label>
+                    <Controller name="category" control={control} render={({ field }) => (
+                        <Select onValueChange={field.onChange} value={field.value}>
+                            <SelectTrigger id="category">
+                                <SelectValue placeholder="Select a category" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {serviceCategories.map(cat => (
+                                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    )} />
+                    {errors.category && <p className="text-sm text-destructive">{errors.category.message}</p>}
+                </div>
             </div>
             <DialogFooter>
                  <DialogClose asChild>
