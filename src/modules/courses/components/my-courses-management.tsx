@@ -137,17 +137,17 @@ export function MyCoursesManagement() {
   const onSubmit = async (data: CourseFormData) => {
     if (!user || !userProfile) return;
     setLoading(true);
-
+  
     try {
-      // Step 1: Validate course content and knowledge before proceeding
+      // Step 1: AI Validation outside the transaction
       const validationResult = await validateCourse({
         title: data.title,
         description: data.description,
         providerProfile: userProfile,
       });
-
+  
       if (!validationResult.isKnowledgeable) {
-         toast({
+        toast({
           title: 'Knowledge Validation Failed',
           description: validationResult.reason,
           variant: 'destructive',
@@ -155,60 +155,66 @@ export function MyCoursesManagement() {
         setLoading(false);
         return;
       }
-
+  
       if (!validationResult.isValid) {
         toast({
           title: 'Content Validation Failed',
           description: validationResult.reason,
           variant: 'destructive',
         });
-        
-        // Penalize user with 10 credits
+  
+        // Penalize user with 10 credits (this can be a separate operation)
         const userRef = doc(db, 'users', user.uid);
         await updateDoc(userRef, { credits: increment(-10) });
         toast({
-            title: 'Penalización Aplicada',
-            description: 'Se han deducido 10 créditos por contenido de baja calidad.',
-            variant: 'destructive',
+          title: 'Penalización Aplicada',
+          description: 'Se han deducido 10 créditos por contenido de baja calidad.',
+          variant: 'destructive',
         });
-
+  
         setLoading(false);
         return;
       }
-
-      // Step 2: Handle image upload if a new file is provided
+  
+      // Step 2: Image Upload outside the transaction
       let coverImageUrl = editingCourse?.coverImageUrl || '';
       if (coverImageFile) {
         const imageRef = ref(storage, `course-covers/${user.uid}-${Date.now()}-${coverImageFile.name}`);
         const snapshot = await uploadBytes(imageRef, coverImageFile);
         coverImageUrl = await getDownloadURL(snapshot.ref);
       }
-
+  
       const courseData = { ...data, coverImageUrl };
-
-      // Step 3: Save to Firestore and award credits
+  
+      // Step 3: Firestore transaction for creating/updating and awarding credits
+      await runTransaction(db, async (transaction) => {
+        if (editingCourse) {
+          // Update existing course
+          const courseRef = doc(db, 'courses', editingCourse.id);
+          transaction.update(courseRef, { ...courseData, updatedAt: serverTimestamp() });
+        } else {
+          // Add new course and award credits
+          const courseRef = doc(collection(db, 'courses'));
+          transaction.set(courseRef, {
+            ...courseData,
+            providerId: user.uid,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          });
+  
+          const userRef = doc(db, 'users', user.uid);
+          transaction.update(userRef, { credits: increment(25) });
+        }
+      });
+  
+      // Step 4: User feedback
       if (editingCourse) {
-        const courseRef = doc(db, 'courses', editingCourse.id);
-        await updateDoc(courseRef, { ...courseData, updatedAt: serverTimestamp() });
         toast({ title: 'Success', description: 'Course updated successfully.' });
       } else {
-         await runTransaction(db, async (transaction) => {
-            const courseRef = doc(collection(db, 'courses'));
-            transaction.set(courseRef, {
-                ...courseData,
-                providerId: user.uid,
-                createdAt: serverTimestamp(),
-                updatedAt: serverTimestamp(),
-            });
-
-            const userRef = doc(db, 'users', user.uid);
-            transaction.update(userRef, { credits: increment(25) });
-        });
-        
         toast({ title: 'Success', description: 'New course created. You earned 25 credits!' });
       }
-
-      // Step 4: Clean up
+  
+      // Step 5: Clean up
       setIsDialogOpen(false);
       reset();
     } catch (error) {
