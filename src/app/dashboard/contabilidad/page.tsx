@@ -10,7 +10,7 @@ const features = [
   {
     icon: <BarChart2 className="h-8 w-8 text-primary" />,
     title: 'Análisis de Gastos con IA',
-    description: 'Conecta tus cuentas y deja que nuestra IA categorice tus gastos y encuentre oportunidades de ahorro.',
+    description: 'Sube tus estados de cuenta o ingresa tus gastos y deja que nuestra IA los analice por ti. Ideal para gestionar tus finanzas personales.',
   },
   {
     icon: <FileText className="h-8 w-8 text-primary" />,
