@@ -8,8 +8,11 @@ import type { Case } from '@/modules/cases/types';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
 import { CaseCard } from '@/modules/cases/components/case-card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { MessageSquareText } from 'lucide-react';
+import { MessageSquareText, ArrowLeft } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
+
 
 type CaseStatus = 'new' | 'in-progress' | 'completed' | 'cancelled';
 
@@ -94,6 +97,14 @@ export default function ConsultoriasPage() {
 
   return (
     <div className="space-y-6">
+       <div className="mb-6">
+        <Button asChild variant="outline">
+          <Link href="/dashboard">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Regresar al Dashboard
+          </Link>
+        </Button>
+      </div>
        <div>
         <h1 className="text-3xl font-bold">Consultorías y Foros</h1>
         <p className="text-muted-foreground">Encuentra proyectos donde puedas ayudar o busca inspiración en el historial de la comunidad.</p>
