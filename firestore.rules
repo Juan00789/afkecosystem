@@ -14,12 +14,10 @@ service cloud.firestore {
     }
 
     // Users can read any profile, but only write to their own.
-    // Reading is necessary to allow users to search for and add others to their network.
+    // Allow reading all user profiles for network search.
     match /users/{userId} {
       allow read: if isAuthenticated();
-      allow update: if isOwner(userId);
-      // Create is open to allow for initial profile setup during sign-up.
-      allow create: if isAuthenticated();
+      allow create, update: if isOwner(userId);
     }
     
     // Services are public to read for the marketplace, but only the provider can manage them.
@@ -51,6 +49,14 @@ service cloud.firestore {
        allow read: if true;
        allow create: if isAuthenticated() && isOwner(request.resource.data.providerId);
        allow update, delete: if isAuthenticated() && isOwner(resource.data.providerId);
+    }
+
+    // Network connections can be created by either party involved.
+    // Deletion could be restricted to just the creator or both parties.
+    match /network_connections/{connectionId} {
+      allow read: if isAuthenticated() && (isOwner(resource.data.client_id) || isOwner(resource.data.provider_id));
+      allow create: if isAuthenticated() && (isOwner(request.resource.data.client_id) || isOwner(request.resource.data.provider_id));
+      allow delete: if isAuthenticated() && (isOwner(resource.data.client_id) || isOwner(resource.data.provider_id));
     }
   }
 }

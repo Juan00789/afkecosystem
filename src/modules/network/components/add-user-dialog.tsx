@@ -20,12 +20,10 @@ import {
   where,
   getDocs,
   doc,
-  updateDoc,
-  arrayUnion,
-  getDoc,
-  documentId,
+  writeBatch,
+  serverTimestamp,
   increment,
-  runTransaction,
+  documentId,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
@@ -38,14 +36,14 @@ interface AddUserDialogProps {
 }
 
 export function AddUserDialog({ roleToAdd, onUserAdded }: AddUserDialogProps) {
-  const { user } = useAuth();
+  const { user, userProfile, refreshUserProfile } = useAuth();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const [identifier, setIdentifier] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleAddUser = async () => {
-    if (!identifier.trim() || !user) {
+    if (!identifier.trim() || !user || !userProfile) {
       toast({
         title: 'Error',
         description: 'Please enter a valid User ID, email, or phone number.',
@@ -61,11 +59,9 @@ export function AddUserDialog({ roleToAdd, onUserAdded }: AddUserDialogProps) {
         query(collection(db, 'users'), where('email', '==', trimmedIdentifier)),
         query(collection(db, 'users'), where('phoneNumber', '==', trimmedIdentifier)),
       ];
-      // Only check by ID if it looks like an ID
       if (trimmedIdentifier.length > 10 && !trimmedIdentifier.includes('@')) {
-         queries.push(query(collection(db, 'users'), where(documentId(), '==', trimmedIdentifier)))
+        queries.push(query(collection(db, 'users'), where(documentId(), '==', trimmedIdentifier)));
       }
-
 
       let foundUserDoc = null;
       for (const q of queries) {
@@ -77,71 +73,60 @@ export function AddUserDialog({ roleToAdd, onUserAdded }: AddUserDialogProps) {
       }
 
       if (!foundUserDoc) {
-        toast({
-          title: 'Not Found',
-          description: `No user found with the provided identifier.`,
-          variant: 'destructive',
-        });
-        setLoading(false);
-        return;
+        throw new Error('No user found with the provided identifier.');
       }
 
       const foundUserId = foundUserDoc.id;
-
       if (foundUserId === user.uid) {
-        toast({
-          title: 'Error',
-          description: 'You cannot add yourself to your network.',
-          variant: 'destructive',
-        });
-        setLoading(false);
-        return;
+        throw new Error('You cannot add yourself to your network.');
+      }
+      
+      const clientId = roleToAdd === 'provider' ? user.uid : foundUserId;
+      const providerId = roleToAdd === 'provider' ? foundUserId : user.uid;
+
+      // Check if this connection already exists
+      const connectionQuery = query(
+        collection(db, 'network_connections'),
+        where('client_id', '==', clientId),
+        where('provider_id', '==', providerId)
+      );
+      const existingConnection = await getDocs(connectionQuery);
+      if (!existingConnection.empty) {
+        throw new Error(`This user is already in your ${roleToAdd}s list.`);
       }
 
-      await runTransaction(db, async (transaction) => {
+      // Check if this is the first connection of this type for the current user
+       const firstOfTypeQuery = query(
+         collection(db, 'network_connections'),
+         where(roleToAdd === 'provider' ? 'client_id' : 'provider_id', '==', user.uid)
+       );
+       const firstOfTypeSnapshot = await getDocs(firstOfTypeQuery);
+       const isFirstConnectionOfType = firstOfTypeSnapshot.empty;
+
+      // Use a batch write
+      const batch = writeBatch(db);
+
+      // Create the new connection document
+      const newConnectionRef = doc(collection(db, 'network_connections'));
+      batch.set(newConnectionRef, {
+        client_id: clientId,
+        provider_id: providerId,
+        created_at: serverTimestamp(),
+      });
+
+      // Award credits if it's the first connection of this type
+      if (isFirstConnectionOfType) {
         const currentUserRef = doc(db, 'users', user.uid);
-        const otherUserRef = doc(db, 'users', foundUserId);
-        
-        const currentUserSnap = await transaction.get(currentUserRef);
-        const otherUserSnap = await transaction.get(otherUserRef);
+        batch.update(currentUserRef, { credits: increment(5) });
+      }
 
-        if (!currentUserSnap.exists() || !otherUserSnap.exists()) {
-          throw new Error('One or both users could not be found.');
-        }
-
-        const currentUserData = currentUserSnap.data();
-        const network = currentUserData.network || {};
-        const isProvider = roleToAdd === 'provider';
-        const listToCheck = isProvider ? (network.providers || []) : (network.clients || []);
-
-        if (listToCheck.includes(foundUserId)) {
-          throw new Error(`This user is already in your ${roleToAdd}s list.`);
-        }
-        
-        // Correctly determine if this is the first connection of its type
-        const isFirstConnectionOfType = listToCheck.length === 0;
-
-        // Perform updates
-        const fieldForCurrentUser = isProvider ? 'network.providers' : 'network.clients';
-        const fieldForOtherUser = isProvider ? 'network.clients' : 'network.providers';
-        
-        transaction.update(currentUserRef, { [fieldForCurrentUser]: arrayUnion(foundUserId) });
-        transaction.update(otherUserRef, { [fieldForOtherUser]: arrayUnion(user.uid) });
-
-        // Award credits only if this is the first time adding a user of this type
-        if (isFirstConnectionOfType) {
-          transaction.update(currentUserRef, { credits: increment(5) });
-          toast({
-            title: '¡Créditos Ganados!',
-            description: `Has ganado 5 créditos por añadir tu primer ${roleToAdd}.`,
-          });
-        }
-      });
+      await batch.commit();
       
-      toast({
-        title: 'Success!',
-        description: `User has been added as a ${roleToAdd}.`,
-      });
+      toast({ title: '¡Éxito!', description: `User has been added as a ${roleToAdd}.` });
+      if (isFirstConnectionOfType) {
+        toast({ title: '¡Créditos Ganados!', description: `Has ganado 5 créditos por añadir tu primer ${roleToAdd}.` });
+        await refreshUserProfile();
+      }
 
       onUserAdded();
       setIsOpen(false);

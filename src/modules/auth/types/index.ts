@@ -18,8 +18,4 @@ export interface UserProfile {
     bankName?: string;
     accountNumber?: string;
   };
-  network?: {
-    clients?: string[];
-    providers?: string[];
-  };
 }

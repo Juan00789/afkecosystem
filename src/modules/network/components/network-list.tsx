@@ -1,7 +1,7 @@
 // src/modules/network/components/network-list.tsx
 'use client';
 import { useState, useEffect } from 'react';
-import { collection, doc, getDoc, query, where, getDocs, updateDoc, arrayRemove, documentId } from 'firebase/firestore';
+import { collection, doc, query, where, getDocs, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
 import type { UserProfile } from '@/modules/auth/types';
@@ -30,7 +30,6 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 
-
 interface NetworkListProps {
   roleToList: 'client' | 'provider';
   refreshTrigger: number;
@@ -48,28 +47,26 @@ export function NetworkList({ roleToList, refreshTrigger, onUserRemoved }: Netwo
       if (!user) {
         setLoading(false);
         return;
-      };
+      }
       setLoading(true);
 
       try {
-        const userDocRef = doc(db, 'users', user.uid);
-        const userDocSnap = await getDoc(userDocRef);
+        const fieldToQuery = roleToList === 'provider' ? 'client_id' : 'provider_id';
+        const connectionsQuery = query(collection(db, 'network_connections'), where(fieldToQuery, '==', user.uid));
+        const connectionsSnapshot = await getDocs(connectionsQuery);
 
-        if (userDocSnap.exists()) {
-          const userData = userDocSnap.data();
-          const userIds = roleToList === 'provider' 
-            ? userData.network?.providers || [] 
-            : userData.network?.clients || [];
+        const userIds = connectionsSnapshot.docs.map(doc => {
+            const data = doc.data();
+            return roleToList === 'provider' ? data.provider_id : data.client_id;
+        });
 
-          if (userIds.length > 0) {
-            const usersQuery = query(collection(db, 'users'), where(documentId(), 'in', userIds));
-            const usersSnapshot = await getDocs(usersQuery);
-            const usersList = usersSnapshot.docs
-              .map(docSnap => ({ ...docSnap.data(), uid: docSnap.id } as UserProfile));
-            setUsers(usersList);
-          } else {
-            setUsers([]);
-          }
+        if (userIds.length > 0) {
+          const usersQuery = query(collection(db, 'users'), where('uid', 'in', userIds));
+          const usersSnapshot = await getDocs(usersQuery);
+          const usersList = usersSnapshot.docs.map(docSnap => docSnap.data() as UserProfile);
+          setUsers(usersList);
+        } else {
+          setUsers([]);
         }
       } catch (error) {
         console.error(`Error fetching ${roleToList}s:`, error);
@@ -86,21 +83,25 @@ export function NetworkList({ roleToList, refreshTrigger, onUserRemoved }: Netwo
     if (!user) return;
     
     try {
-        const currentUserRef = doc(db, 'users', user.uid);
-        const otherUserRef = doc(db, 'users', userToRemoveId);
+        const clientId = roleToList === 'provider' ? user.uid : userToRemoveId;
+        const providerId = roleToList === 'provider' ? userToRemoveId : user.uid;
 
-        const fieldForCurrentUser = roleToList === 'provider' ? 'network.providers' : 'network.clients';
-        const fieldForOtherUser = roleToList === 'provider' ? 'network.clients' : 'network.providers';
+        const connectionQuery = query(
+            collection(db, 'network_connections'),
+            where('client_id', '==', clientId),
+            where('provider_id', '==', providerId)
+        );
+        const snapshot = await getDocs(connectionQuery);
         
-        // Remove from current user's network
-        await updateDoc(currentUserRef, {
-            [fieldForCurrentUser]: arrayRemove(userToRemoveId)
+        if (snapshot.empty) {
+            throw new Error("Connection not found.");
+        }
+        
+        const batch = writeBatch(db);
+        snapshot.docs.forEach(doc => {
+            batch.delete(doc.ref);
         });
-
-        // Remove from the other user's network
-         await updateDoc(otherUserRef, {
-            [fieldForOtherUser]: arrayRemove(user.uid)
-        });
+        await batch.commit();
 
         toast({ title: 'Success', description: 'User removed from your network.' });
         onUserRemoved(); // Trigger a refresh in the parent component
@@ -110,7 +111,6 @@ export function NetworkList({ roleToList, refreshTrigger, onUserRemoved }: Netwo
         toast({ title: 'Error', description: 'Failed to remove user.', variant: 'destructive' });
     }
   }
-
 
   if (loading) {
     return <p>Loading {roleToList}s...</p>;
@@ -157,7 +157,7 @@ export function NetworkList({ roleToList, refreshTrigger, onUserRemoved }: Netwo
                       <AlertDialogHeader>
                         <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                         <AlertDialogDescription>
-                          This action will remove {networkUser.displayName || 'this user'} from your {roleToList} list. You can add them back later.
+                          This action will remove {networkUser.displayName || 'this user'} from your {roleToList} list.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
