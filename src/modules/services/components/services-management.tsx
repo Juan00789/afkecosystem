@@ -65,7 +65,7 @@ export function ServicesManagement() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [services, setServices] = useState<Service[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
 
@@ -99,7 +99,7 @@ export function ServicesManagement() {
 
   const onSubmit = async (data: ServiceFormData) => {
     if (!user) return;
-    setLoading(true);
+    setIsLoading(true);
 
     try {
       if (editingService) {
@@ -121,7 +121,7 @@ export function ServicesManagement() {
       console.error('Error saving service:', error);
       toast({ title: 'Error', description: 'Failed to save service.', variant: 'destructive' });
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -260,7 +260,7 @@ export function ServicesManagement() {
                  <DialogClose asChild>
                     <Button type="button" variant="secondary">Cancel</Button>
                 </DialogClose>
-                <Button type="submit" disabled={loading}>{loading ? 'Saving...' : 'Save Service'}</Button>
+                <Button type="submit" disabled={isLoading}>{isLoading ? 'Saving...' : 'Save Service'}</Button>
             </DialogFooter>
           </form>
         </DialogContent>
