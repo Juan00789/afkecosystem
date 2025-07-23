@@ -10,7 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
-import { MessageSquare, Search, LayoutGrid, Megaphone, PencilRuler, Code, Hotel, BookText, BrainCircuit, Wrench, Paintbrush, Flower2, ShoppingBag, Church } from 'lucide-react';
+import { MessageSquare, Search, LayoutGrid, Megaphone, PencilRuler, Code, Hotel, BookText, BrainCircuit, Wrench, Paintbrush, Flower2, ShoppingBag, Church, TrendingUp } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -33,6 +33,7 @@ const CATEGORIES = [
     { name: 'Tecnología', icon: <Code className="h-4 w-4 mr-2" /> },
     { name: 'Consultoría', icon: <BrainCircuit className="h-4 w-4 mr-2" /> },
     { name: 'Contenido', icon: <BookText className="h-4 w-4 mr-2" /> },
+    { name: 'Inversiones', icon: <TrendingUp className="h-4 w-4 mr-2" /> },
     { name: 'Hotelería', icon: <Hotel className="h-4 w-4 mr-2" /> },
     { name: 'Mantenimientos', icon: <Wrench className="h-4 w-4 mr-2" /> },
     { name: 'Manitas para decoración', icon: <Paintbrush className="h-4 w-4 mr-2" /> },

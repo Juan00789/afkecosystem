@@ -24,6 +24,7 @@ import {
   LineChart,
   Landmark,
   FileSearch,
+  TrendingUp,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
@@ -60,6 +61,12 @@ const modules = [
     title: 'Mentorías y Foros',
     description: 'Conecta con mentores y resuelve dudas.',
     href: '/dashboard/consultorias',
+  },
+  {
+    icon: <TrendingUp className="h-8 w-8 text-primary" />,
+    title: 'Inversiones',
+    description: 'Invierte tus créditos en otros proyectos.',
+    href: '/dashboard/inversiones',
   },
   {
     icon: <FileSearch className="h-8 w-8 text-primary" />,

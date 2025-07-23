@@ -20,6 +20,7 @@ import {
   FileSearch,
   Banknote,
   MessageSquareHeart,
+  TrendingUp,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -52,6 +53,7 @@ export function Header({}: HeaderProps) {
     { href: '/dashboard/my-courses', label: 'Mis Cursos', icon: GraduationCap },
     { href: '/dashboard/creditos', label: 'Créditos', icon: HandCoins },
     { href: '/dashboard/consultorias', label: 'Mentorías', icon: MessageSquareHeart },
+    { href: '/dashboard/inversiones', label: 'Inversiones', icon: TrendingUp },
     { href: '/dashboard/analisis', label: 'Análisis IA', icon: FileSearch },
     { href: '/dashboard/network', label: 'Mis Brokis', icon: Users },
     { href: '/dashboard/services', label: 'Mis Servicios', icon: Briefcase },
