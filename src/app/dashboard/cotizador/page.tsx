@@ -14,11 +14,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PlusCircle, Trash2, FileDown, Wand2, FileText, Bot } from 'lucide-react';
+import { PlusCircle, Trash2, Wand2, FileText, Bot } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import type { Service, QuoteFormData, QuoteAnalysisOutput, Product } from '@/modules/invoicing/types';
 import { generateInvoicePDF } from '@/modules/invoicing/components/invoice-pdf';
-import { generateQuotePDF } from '@/modules/invoicing/components/quote-pdf';
 import { analyzeQuote } from '@/ai/flows/quote-analysis-flow';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -112,11 +111,6 @@ export default function QuoteGeneratorPage() {
         price: product.price,
       });
     }
-  };
-
-  const onGenerateQuote = (data: QuoteFormData) => {
-    if (!userProfile) return;
-    generateQuotePDF(data, userProfile);
   };
   
   const onGenerateInvoice = (data: QuoteFormData) => {
@@ -218,7 +212,6 @@ export default function QuoteGeneratorPage() {
             {/* Actions */}
             <div className="flex flex-col sm:flex-row gap-4">
                 <Button type="button" onClick={handleAnalyzeQuote} disabled={isAnalyzing} variant="outline" className="w-full sm:w-auto"><Wand2 className="mr-2 h-4 w-4" /> {isAnalyzing ? 'Analizando...' : 'Analizar Cotización con IA'}</Button>
-                <Button type="button" onClick={handleSubmit(onGenerateQuote)} className="w-full sm:w-auto"><FileDown className="mr-2 h-4 w-4" /> Generar Cotización PDF</Button>
                 <Button type="button" onClick={handleSubmit(onGenerateInvoice)} className="w-full sm:w-auto"><FileText className="mr-2 h-4 w-4" /> Convertir a Factura PDF</Button>
             </div>
           </form>
