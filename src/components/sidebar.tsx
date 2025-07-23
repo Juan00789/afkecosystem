@@ -1,4 +1,3 @@
-
 // src/components/sidebar.tsx
 'use client';
 import Link from 'next/link';
@@ -17,6 +16,7 @@ import {
   Bot,
   GraduationCap,
   Landmark,
+  Wand2,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -34,6 +34,7 @@ const navLinks = [
   { href: '/dashboard/my-courses', label: 'My Courses', icon: GraduationCap },
   { href: '/dashboard/creditos', label: 'Créditos', icon: HandCoins },
   { href: '/dashboard/consultorias', label: 'Consultorías', icon: MessageSquareText },
+  { href: '/dashboard/analisis', label: 'Análisis IA', icon: Wand2 },
   { href: '/dashboard/network', label: 'Brokis', icon: Users },
   { href: '/dashboard/services', label: 'My Services', icon: Briefcase },
   { href: '/dashboard/contabilidad', label: 'Contabilidad', icon: Landmark },

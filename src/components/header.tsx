@@ -1,4 +1,3 @@
-
 // src/components/header.tsx
 'use client';
 
@@ -21,6 +20,7 @@ import {
   Bot,
   GraduationCap,
   Landmark,
+  Wand2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -53,6 +53,7 @@ export function Header({}: HeaderProps) {
     { href: '/dashboard/my-courses', label: 'My Courses', icon: GraduationCap },
     { href: '/dashboard/creditos', label: 'Créditos', icon: HandCoins },
     { href: '/dashboard/consultorias', label: 'Consultorías', icon: MessageSquareText },
+    { href: '/dashboard/analisis', label: 'Análisis IA', icon: Wand2 },
     { href: '/dashboard/network', label: 'Brokis', icon: Users },
     { href: '/dashboard/services', label: 'My Services', icon: Briefcase },
     { href: '/dashboard/contabilidad', label: 'Contabilidad', icon: Landmark },

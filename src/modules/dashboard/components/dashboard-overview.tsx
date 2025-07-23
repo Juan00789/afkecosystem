@@ -23,7 +23,8 @@ import {
   BarChart,
   LineChart,
   Landmark,
-  Bot
+  Bot,
+  Wand2,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
@@ -60,6 +61,12 @@ const modules = [
     title: 'Consultorías',
     description: 'Conecta con expertos y comparte.',
     href: '/dashboard/consultorias',
+  },
+  {
+    icon: <Wand2 className="h-8 w-8 text-primary" />,
+    title: 'Análisis IA',
+    description: 'Sube un archivo y obtén un análisis experto.',
+    href: '/dashboard/analisis',
   },
   {
     icon: <Users className="h-8 w-8 text-primary" />,
