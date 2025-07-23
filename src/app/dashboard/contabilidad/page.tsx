@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowLeft, Landmark, DollarSign, ArrowUpCircle, ArrowDownCircle, PlusCircle } from 'lucide-react';
+import { ArrowLeft, Landmark, DollarSign, ArrowUpCircle, ArrowDownCircle, PlusCircle, FileText } from 'lucide-react';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
 import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -70,12 +70,20 @@ export default function ContabilidadPage() {
                 <p className="text-muted-foreground">Una vista simple de la salud financiera de tu negocio.</p>
             </div>
         </div>
-        <Button asChild size="lg">
-            <Link href="/dashboard/contabilidad/transactions">
-                <PlusCircle className="mr-2 h-5 w-5" />
-                Añadir Transacción
-            </Link>
-        </Button>
+        <div className="flex gap-2">
+            <Button asChild size="lg" variant="outline">
+                <Link href="/dashboard/cotizador">
+                    <FileText className="mr-2 h-5 w-5" />
+                    Crear Cotización
+                </Link>
+            </Button>
+            <Button asChild size="lg">
+                <Link href="/dashboard/contabilidad/transactions">
+                    <PlusCircle className="mr-2 h-5 w-5" />
+                    Añadir Transacción
+                </Link>
+            </Button>
+        </div>
       </header>
 
       <section className="grid grid-cols-1 md:grid-cols-3 gap-6">

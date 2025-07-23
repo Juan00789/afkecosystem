@@ -42,6 +42,7 @@ export function Sidebar() {
     { href: '/dashboard/network', label: 'Mis Brokis', icon: Users },
     { href: '/dashboard/services', label: 'Mis Servicios', icon: Briefcase },
     { href: '/dashboard/contabilidad', label: 'Mis Finanzas', icon: Landmark },
+    { href: '/dashboard/cotizador', label: 'Cotizador', icon: FileText },
     ...(userProfile?.role === 'admin' ? [{ href: '/dashboard/fondo', label: 'Fondo Ecosistema', icon: Banknote }] : []),
   ];
 
