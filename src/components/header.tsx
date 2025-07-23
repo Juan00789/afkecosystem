@@ -14,13 +14,12 @@ import {
   ShoppingBag,
   BookOpen,
   HandCoins,
-  Rocket,
-  MessageSquareText,
-  Sparkles,
-  Bot,
+  Church,
+  MessageSquareHeart,
+  HandHelping,
   GraduationCap,
   Landmark,
-  Wand2,
+  FileSearch,
   Banknote,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -48,21 +47,21 @@ export function Header({}: HeaderProps) {
   };
 
   const navLinks = [
-    { href: '/dashboard', label: 'Dashboard', icon: Home },
-    { href: '/dashboard/marketplace', label: 'Marketplace', icon: ShoppingBag },
-    { href: '/dashboard/cursos', label: 'Cursos', icon: BookOpen },
-    { href: '/dashboard/my-courses', label: 'My Courses', icon: GraduationCap },
-    { href: '/dashboard/creditos', label: 'Créditos', icon: HandCoins },
-    { href: '/dashboard/consultorias', label: 'Consultorías', icon: MessageSquareText },
-    { href: '/dashboard/analisis', label: 'Análisis IA', icon: Wand2 },
-    { href: '/dashboard/network', label: 'Brokis', icon: Users },
-    { href: '/dashboard/services', label: 'My Services', icon: Briefcase },
-    { href: '/dashboard/contabilidad', label: 'Contabilidad', icon: Landmark },
-    ...(userProfile?.role === 'admin' ? [{ href: '/dashboard/fondo', label: 'Fondo Financiero', icon: Banknote }] : []),
+    { href: '/dashboard', label: 'Panel Principal', icon: Home },
+    { href: '/dashboard/marketplace', label: 'Ministerios', icon: HandHelping },
+    { href: '/dashboard/cursos', label: 'Estudios', icon: BookOpen },
+    { href: '/dashboard/my-courses', label: 'Mis Estudios', icon: GraduationCap },
+    { href: '/dashboard/creditos', label: 'Fondo de Ayuda', icon: HandCoins },
+    { href: '/dashboard/consultorias', label: 'Grupos de Apoyo', icon: MessageSquareHeart },
+    { href: '/dashboard/analisis', label: 'Análisis IA', icon: FileSearch },
+    { href: '/dashboard/network', label: 'Mi Comunidad', icon: Users },
+    { href: '/dashboard/services', label: 'Mis Servicios', icon: Briefcase },
+    { href: '/dashboard/contabilidad', label: 'Mis Finanzas', icon: Landmark },
+    ...(userProfile?.role === 'admin' ? [{ href: '/dashboard/fondo', label: 'Fondo Comunitario', icon: Banknote }] : []),
   ];
   
   const bottomLinks = [
-      { href: '/dashboard/profile', label: 'Settings', icon: Settings },
+      { href: '/dashboard/profile', label: 'Mi Perfil', icon: Settings },
   ]
 
   return (
@@ -80,8 +79,8 @@ export function Header({}: HeaderProps) {
               href="/dashboard"
               className="group flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:text-base"
             >
-              <Rocket className="h-5 w-5 transition-all group-hover:scale-110" />
-              <span className="sr-only">AFKEcosystem</span>
+              <Church className="h-5 w-5 transition-all group-hover:scale-110" />
+              <span className="sr-only">Comunidad de Fe</span>
             </Link>
             {navLinks.map(({ href, label, icon: Icon }) => (
               <Link
@@ -123,12 +122,12 @@ export function Header({}: HeaderProps) {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+            <DropdownMenuLabel>Notificaciones</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>You have a new case</DropdownMenuItem>
-            <DropdownMenuItem>Quote accepted</DropdownMenuItem>
+            <DropdownMenuItem>Nuevo pedido de oración</DropdownMenuItem>
+            <DropdownMenuItem>Estudio completado</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>View all</DropdownMenuItem>
+            <DropdownMenuItem>Ver todas</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
 
@@ -153,17 +152,17 @@ export function Header({}: HeaderProps) {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuLabel>My Account</DropdownMenuLabel>
+            <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
-              <Link href="/dashboard/profile">Settings</Link>
+              <Link href="/dashboard/profile">Mi Perfil</Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-                <a href="https://wa.me/18299226556" target="_blank" rel="noopener noreferrer">Support</a>
+                <a href="https://wa.me/18299226556" target="_blank" rel="noopener noreferrer">Soporte</a>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleSignOut}>
-              Logout
+              Cerrar Sesión
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

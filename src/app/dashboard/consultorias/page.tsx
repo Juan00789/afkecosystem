@@ -8,7 +8,7 @@ import type { Case } from '@/modules/cases/types';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
 import { CaseCard } from '@/modules/cases/components/case-card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { MessageSquareText, ArrowLeft } from 'lucide-react';
+import { MessageSquareHeart, ArrowLeft } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -90,10 +90,10 @@ export default function ConsultoriasPage() {
       if (cases.length === 0) {
           return (
             <div className="text-center py-20 border-2 border-dashed rounded-lg">
-                <MessageSquareText className="mx-auto h-12 w-12 text-muted-foreground" />
+                <MessageSquareHeart className="mx-auto h-12 w-12 text-muted-foreground" />
                 <h2 className="mt-4 text-xl font-semibold">No hay casos en esta categoría</h2>
                 <p className="text-muted-foreground mt-2">
-                    Parece que no hay proyectos con este estado. ¡Vuelve pronto!
+                    Parece que no hay casos de apoyo con este estado. ¡Vuelve pronto!
                 </p>
             </div>
           );
@@ -113,13 +113,13 @@ export default function ConsultoriasPage() {
         <Button asChild variant="outline">
           <Link href="/dashboard">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Regresar al Dashboard
+            Regresar al Panel Principal
           </Link>
         </Button>
       </div>
        <div>
-        <h1 className="text-3xl font-bold">Consultorías y Foros</h1>
-        <p className="text-muted-foreground">Encuentra proyectos donde puedas ayudar o busca inspiración en el historial de la comunidad.</p>
+        <h1 className="text-3xl font-bold">Grupos de Apoyo y Oración</h1>
+        <p className="text-muted-foreground">Encuentra casos donde puedes ofrecer tu apoyo o busca inspiración en el historial de la comunidad.</p>
       </div>
 
         <Tabs defaultValue="new" onValueChange={setActiveTab} className="w-full">

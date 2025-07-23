@@ -14,17 +14,16 @@ import {
   Briefcase,
   BookOpen,
   FileText,
-  ShoppingBag,
+  HandHelping,
   HandCoins,
-  MessageSquareText,
-  Rocket,
+  MessageSquareHeart,
+  Church,
   Sparkles,
   Award,
   BarChart,
   LineChart,
   Landmark,
-  Bot,
-  Wand2,
+  FileSearch,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
@@ -39,51 +38,51 @@ interface DashboardOverviewProps {
 
 const modules = [
   {
-    icon: <ShoppingBag className="h-8 w-8 text-primary" />,
-    title: 'Marketplace',
-    description: 'Encuentra y ofrece servicios locales.',
+    icon: <HandHelping className="h-8 w-8 text-primary" />,
+    title: 'Directorio de Ministerios',
+    description: 'Encuentra y sirve en los ministerios.',
     href: '/dashboard/marketplace',
   },
   {
     icon: <BookOpen className="h-8 w-8 text-primary" />,
-    title: 'Cursos Exprés',
-    description: 'Aprende habilidades esenciales.',
+    title: 'Estudios y Recursos',
+    description: 'Crece en tu formación espiritual.',
     href: '/dashboard/cursos',
   },
   {
     icon: <HandCoins className="h-8 w-8 text-primary" />,
-    title: 'Microcréditos',
-    description: 'Financia tu próximo proyecto.',
+    title: 'Fondo de Ayuda Mutua',
+    description: 'Apoya y solicita ayuda para proyectos.',
     href: '/dashboard/creditos',
   },
   {
-    icon: <MessageSquareText className="h-8 w-8 text-primary" />,
-    title: 'Consultorías',
-    description: 'Conecta con expertos y comparte.',
+    icon: <MessageSquareHeart className="h-8 w-8 text-primary" />,
+    title: 'Grupos de Apoyo',
+    description: 'Conecta con otros en oración y apoyo.',
     href: '/dashboard/consultorias',
   },
   {
-    icon: <Wand2 className="h-8 w-8 text-primary" />,
+    icon: <FileSearch className="h-8 w-8 text-primary" />,
     title: 'Análisis IA',
-    description: 'Sube un archivo y obtén un análisis experto.',
+    description: 'Analiza documentos con perspectiva de fe.',
     href: '/dashboard/analisis',
   },
   {
     icon: <Users className="h-8 w-8 text-primary" />,
-    title: 'Brokis',
-    description: 'Gestiona tus clientes y proveedores.',
+    title: 'Mi Comunidad',
+    description: 'Gestiona tu red de hermanos en fe.',
     href: '/dashboard/network',
   },
    {
     icon: <Briefcase className="h-8 w-8 text-primary" />,
-    title: 'My Services',
-    description: 'Gestiona los servicios que ofreces.',
+    title: 'Mis Servicios',
+    description: 'Administra los servicios que ofreces.',
     href: '/dashboard/services',
   },
   {
     icon: <Landmark className="h-8 w-8 text-primary" />,
-    title: 'Contabilidad',
-    description: 'Gestiona tus finanzas.',
+    title: 'Mis Finanzas',
+    description: 'Lleva un control de tus finanzas.',
     href: '/dashboard/contabilidad',
   },
 ];
@@ -124,7 +123,7 @@ async function fetchCaseWithProfiles(docSnap: any): Promise<Case> {
 
 
 export function DashboardOverview({ userId }: DashboardOverviewProps) {
-  const { userProfile } = useAuth();
+  const { userProfile, refreshUserProfile } = useAuth();
   const [clientCases, setClientCases] = useState<Case[]>([]);
   const [providerCases, setProviderCases] = useState<Case[]>([]);
   const [loading, setLoading] = useState(true);
@@ -132,6 +131,14 @@ export function DashboardOverview({ userId }: DashboardOverviewProps) {
   const isProfileIncomplete = useMemo(() => {
     return !userProfile?.companyName;
   }, [userProfile]);
+
+  useEffect(() => {
+      if (userProfile?.credits) {
+          // This effect is to ensure the UI updates when credits change.
+          // The actual logic is handled in the components that award credits.
+      }
+  }, [userProfile?.credits]);
+
 
   const allCases = useMemo(() => {
     const combined = [...clientCases, ...providerCases];
@@ -252,8 +259,8 @@ export function DashboardOverview({ userId }: DashboardOverviewProps) {
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-            <h1 className="text-3xl font-bold">Panel Personal</h1>
-            <p className="text-muted-foreground">Sigue tu progreso y oportunidades en tiempo real.</p>
+            <h1 className="text-3xl font-bold">Panel Principal</h1>
+            <p className="text-muted-foreground">Un resumen de tu actividad y crecimiento en la comunidad.</p>
         </div>
         <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 rounded-full bg-secondary/20 px-4 py-2 text-secondary">
@@ -271,13 +278,13 @@ export function DashboardOverview({ userId }: DashboardOverviewProps) {
       
       {isProfileIncomplete && (
         <Alert>
-          <Rocket className="h-4 w-4" />
-          <AlertTitle>¡Bienvenido a AFKEcosystem!</AlertTitle>
+          <Church className="h-4 w-4" />
+          <AlertTitle>¡Bienvenido a la Comunidad de Fe!</AlertTitle>
           <AlertDescription>
             <div className="flex justify-between items-center">
-                <p>Completa tu perfil para que otros puedan encontrarte y empezar a colaborar.</p>
+                <p>Completa tu perfil para que otros miembros puedan conocerte y conectar contigo.</p>
                 <Button asChild>
-                    <Link href="/dashboard/profile">Completar Perfil</Link>
+                    <Link href="/dashboard/profile">Completar Mi Perfil</Link>
                 </Button>
             </div>
           </AlertDescription>
@@ -285,9 +292,9 @@ export function DashboardOverview({ userId }: DashboardOverviewProps) {
       )}
 
       <div>
-        <h2 className="text-2xl font-semibold mb-4">Métricas Clave</h2>
+        <h2 className="text-2xl font-semibold mb-4">Métricas de la Comunidad</h2>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <StatsCard title="Actividad de Casos" description="Casos creados vs. completados en los últimos 6 meses." icon={<BarChart className="h-6 w-6 text-primary" />}>
+            <StatsCard title="Actividad de Casos" description="Casos iniciados vs. completados en los últimos 6 meses." icon={<BarChart className="h-6 w-6 text-primary" />}>
                 <ResponsiveContainer width="100%" height="100%">
                     <ReBarChart data={caseActivityData}>
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -295,7 +302,7 @@ export function DashboardOverview({ userId }: DashboardOverviewProps) {
                         <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
                         <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
                         <Legend />
-                        <Bar dataKey="created" fill="hsl(var(--primary))" name="Creados" />
+                        <Bar dataKey="created" fill="hsl(var(--primary))" name="Iniciados" />
                         <Bar dataKey="completed" fill="hsl(var(--secondary))" name="Completados" />
                     </ReBarChart>
                 </ResponsiveContainer>
@@ -357,10 +364,10 @@ export function DashboardOverview({ userId }: DashboardOverviewProps) {
             })
           ) : (
             <div className="text-center py-10 border-2 border-dashed rounded-lg">
-              <p className="text-muted-foreground">No hay casos recientes.</p>
+              <p className="text-muted-foreground">No hay casos de apoyo recientes.</p>
               <p className="mt-2">
                 <Button asChild variant="link">
-                  <Link href="/dashboard/cases/create">Crea tu primer caso</Link>
+                  <Link href="/dashboard/cases/create">Inicia un nuevo caso de apoyo</Link>
                 </Button>
               </p>
             </div>

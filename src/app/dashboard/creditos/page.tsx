@@ -49,18 +49,18 @@ interface Loan {
 const waysToEarn = [
   {
     icon: <CheckCircle className="h-6 w-6 text-green-500" />,
-    title: 'Resolver un Caso',
-    description: 'Gana 10 créditos cada vez que un caso se marca como completado.',
+    title: 'Completar un Caso de Apoyo',
+    description: 'Gana 10 créditos cada vez que ayudas a resolver una necesidad.',
   },
   {
     icon: <BookOpen className="h-6 w-6 text-blue-500" />,
-    title: 'Crear un Microcurso',
-    description: 'Gana 25 créditos por cada nuevo curso que compartas con la comunidad.',
+    title: 'Compartir un Estudio',
+    description: 'Gana 25 créditos por cada nuevo recurso que compartas con la comunidad.',
   },
   {
     icon: <UserPlus className="h-6 w-6 text-purple-500" />,
-    title: 'Expandir tu Red',
-    description: 'Gana 5 créditos la primera vez que añades un cliente y un proveedor.',
+    title: 'Invitar a un Hermano',
+    description: 'Gana 5 créditos por cada nuevo miembro que se una a tu red.',
   },
 ];
 
@@ -120,7 +120,7 @@ export default function CreditosPage() {
             status: 'pending',
             createdAt: serverTimestamp(),
         });
-        toast({ title: '¡Éxito!', description: 'Tu solicitud ha sido enviada para revisión.' });
+        toast({ title: '¡Éxito!', description: 'Tu solicitud de ayuda ha sido enviada para revisión.' });
         reset();
     } catch (error) {
         console.error('Error submitting credit request:', error);
@@ -137,7 +137,7 @@ export default function CreditosPage() {
     batch.update(loanRef, { status: 'paid' });
     // In a real scenario, you'd also decrease user credits and update fund capital
     await batch.commit();
-    toast({ title: 'Pago Registrado', description: 'Gracias por mantener tus cuentas al día.'});
+    toast({ title: 'Pago Registrado', description: 'Gracias por tu generosidad y compromiso.'});
   };
 
   return (
@@ -146,7 +146,7 @@ export default function CreditosPage() {
         <Button asChild variant="outline">
           <Link href="/dashboard">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Regresar al Dashboard
+            Regresar al Panel Principal
           </Link>
         </Button>
       </div>
@@ -161,38 +161,38 @@ export default function CreditosPage() {
                     </div>
                     <div>
                         <CardTitle className="text-3xl font-extrabold tracking-tight text-primary">
-                        Sistema de Microcréditos
+                        Fondo de Ayuda Mutua
                         </CardTitle>
                         <CardDescription className="text-lg">
-                        Invierte en tu crecimiento con el apoyo de la comunidad.
+                        Apoyándonos unos a otros en amor y servicio.
                         </CardDescription>
                     </div>
                 </div>
                 </CardHeader>
                 <CardContent>
                 <p className="text-muted-foreground">
-                    Los créditos son la moneda de confianza y colaboración en AFKEcosystem. Solicita un microcrédito para comprar equipo, invertir en marketing o lo que necesites para crecer. Tu actividad en la plataforma construye tu historial crediticio.
+                    Los créditos son un reflejo de nuestra contribución y confianza. Solicita apoyo del fondo para proyectos de ministerio, necesidades personales o para bendecir a otros. Tu participación activa en la comunidad fortalece este fondo de todos.
                 </p>
                 </CardContent>
             </Card>
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Solicitar un Microcrédito</CardTitle>
-                    <CardDescription>Completa el formulario para enviar tu solicitud.</CardDescription>
+                    <CardTitle>Solicitar Ayuda del Fondo</CardTitle>
+                    <CardDescription>Completa el formulario para enviar tu solicitud de apoyo.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                         <div className="space-y-2">
-                            <Label htmlFor="amount">Monto Solicitado (DOP)</Label>
+                            <Label htmlFor="amount">Monto Solicitado (Créditos)</Label>
                             <Controller name="amount" control={control} render={({ field }) => <Input id="amount" type="number" {...field} />} />
                         </div>
                          <div className="space-y-2">
-                            <Label htmlFor="purpose">Propósito del Crédito</Label>
-                            <Controller name="purpose" control={control} render={({ field }) => <Textarea id="purpose" placeholder="Ej: Comprar materiales para mi nuevo producto..." {...field} />} />
+                            <Label htmlFor="purpose">Propósito de la Ayuda</Label>
+                            <Controller name="purpose" control={control} render={({ field }) => <Textarea id="purpose" placeholder="Ej: Materiales para el ministerio de niños..." {...field} />} />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="repaymentTerm">Plazo de Devolución</Label>
+                            <Label htmlFor="repaymentTerm">Plazo de Devolución (si aplica)</Label>
                             <Controller name="repaymentTerm" control={control} render={({ field }) => (
                                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                                     <SelectTrigger><SelectValue placeholder="Selecciona un plazo..." /></SelectTrigger>
@@ -200,6 +200,7 @@ export default function CreditosPage() {
                                         <SelectItem value="30">30 días</SelectItem>
                                         <SelectItem value="60">60 días</SelectItem>
                                         <SelectItem value="90">90 días</SelectItem>
+                                        <SelectItem value="0">No aplica (Donación)</SelectItem>
                                     </SelectContent>
                                 </Select>
                             )} />
@@ -212,21 +213,21 @@ export default function CreditosPage() {
             </Card>
 
              <Card>
-                <CardHeader><CardTitle>Mis Préstamos Activos</CardTitle></CardHeader>
+                <CardHeader><CardTitle>Mis Compromisos Activos</CardTitle></CardHeader>
                 <CardContent>
                     {loans.length > 0 ? (
                         <ul className="space-y-3">
                             {loans.map(loan => (
                                 <li key={loan.id} className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
                                     <div>
-                                        <p className="font-semibold">DOP {loan.amount.toLocaleString()}</p>
-                                        <p className="text-sm text-muted-foreground">Vence el: {format(loan.dueDate.toDate(), 'PP')}</p>
+                                        <p className="font-semibold">{loan.amount.toLocaleString()} créditos</p>
+                                        <p className="text-sm text-muted-foreground">Fecha compromiso: {format(loan.dueDate.toDate(), 'PP')}</p>
                                     </div>
-                                    <Button size="sm" onClick={() => handlePayLoan(loan.id)}>Pagar</Button>
+                                    <Button size="sm" onClick={() => handlePayLoan(loan.id)}>Registrar Devolución</Button>
                                 </li>
                             ))}
                         </ul>
-                    ) : <p className="text-muted-foreground text-center py-4">No tienes préstamos pendientes.</p>}
+                    ) : <p className="text-muted-foreground text-center py-4">No tienes compromisos pendientes.</p>}
                 </CardContent>
             </Card>
         </div>
@@ -237,7 +238,7 @@ export default function CreditosPage() {
                     <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-secondary/20 mb-4">
                         <Wallet className="h-10 w-10 text-secondary" />
                     </div>
-                    <CardTitle className="text-xl font-bold">Tu Estado Económico</CardTitle>
+                    <CardTitle className="text-xl font-bold">Tu Balance de Créditos</CardTitle>
                 </CardHeader>
                 <CardContent>
                     {loading ? (
@@ -247,7 +248,7 @@ export default function CreditosPage() {
                             {userProfile?.credits || 0}
                         </p>
                     )}
-                    <p className="text-muted-foreground mt-2">créditos disponibles</p>
+                    <p className="text-muted-foreground mt-2">créditos por servicio</p>
 
                     <div className="mt-6 text-left">
                         <h4 className="font-semibold mb-2">Historial de Solicitudes</h4>
@@ -256,7 +257,7 @@ export default function CreditosPage() {
                             creditRequests.map(req => (
                                 <div key={req.id} className="flex justify-between items-center text-sm p-2 rounded-md bg-muted/50">
                                     <div>
-                                        <p className="font-medium">DOP {req.amount.toFixed(2)}</p>
+                                        <p className="font-medium">{req.amount.toLocaleString()} créditos</p>
                                         <p className="text-xs text-muted-foreground">{format(req.createdAt.toDate(), 'PP')}</p>
                                     </div>
                                     <Badge variant={req.status === 'approved' ? 'default' : req.status === 'rejected' ? 'destructive' : 'secondary'}>

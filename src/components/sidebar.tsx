@@ -10,13 +10,12 @@ import {
   ShoppingBag,
   BookOpen,
   HandCoins,
-  Rocket,
-  MessageSquareText,
-  Sparkles,
-  Bot,
+  Church,
+  MessageSquareHeart,
+  HandHelping,
   GraduationCap,
   Landmark,
-  Wand2,
+  FileSearch,
   Banknote,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
@@ -34,21 +33,21 @@ export function Sidebar() {
   const { userProfile } = useAuth();
 
   const navLinks = [
-    { href: '/dashboard', label: 'Dashboard', icon: Home },
-    { href: '/dashboard/marketplace', label: 'Marketplace', icon: ShoppingBag },
-    { href: '/dashboard/cursos', label: 'Cursos', icon: BookOpen },
-    { href: '/dashboard/my-courses', label: 'My Courses', icon: GraduationCap },
-    { href: '/dashboard/creditos', label: 'Créditos', icon: HandCoins },
-    { href: '/dashboard/consultorias', label: 'Consultorías', icon: MessageSquareText },
-    { href: '/dashboard/analisis', label: 'Análisis IA', icon: Wand2 },
-    { href: '/dashboard/network', label: 'Brokis', icon: Users },
-    { href: '/dashboard/services', label: 'My Services', icon: Briefcase },
-    { href: '/dashboard/contabilidad', label: 'Contabilidad', icon: Landmark },
-    ...(userProfile?.role === 'admin' ? [{ href: '/dashboard/fondo', label: 'Fondo Financiero', icon: Banknote }] : []),
+    { href: '/dashboard', label: 'Panel Principal', icon: Home },
+    { href: '/dashboard/marketplace', label: 'Ministerios', icon: HandHelping },
+    { href: '/dashboard/cursos', label: 'Estudios', icon: BookOpen },
+    { href: '/dashboard/my-courses', label: 'Mis Estudios', icon: GraduationCap },
+    { href: '/dashboard/creditos', label: 'Fondo de Ayuda', icon: HandCoins },
+    { href: '/dashboard/consultorias', label: 'Grupos de Apoyo', icon: MessageSquareHeart },
+    { href: '/dashboard/analisis', label: 'Análisis IA', icon: FileSearch },
+    { href: '/dashboard/network', label: 'Mi Comunidad', icon: Users },
+    { href: '/dashboard/services', label: 'Mis Servicios', icon: Briefcase },
+    { href: '/dashboard/contabilidad', label: 'Mis Finanzas', icon: Landmark },
+    ...(userProfile?.role === 'admin' ? [{ href: '/dashboard/fondo', label: 'Fondo Comunitario', icon: Banknote }] : []),
   ];
 
   const bottomLinks = [
-    { href: '/dashboard/profile', label: 'Settings', icon: Settings },
+    { href: '/dashboard/profile', label: 'Mi Perfil', icon: Settings },
   ];
 
   const renderLink = (link: { href: string; label: string; icon: any }) => {
@@ -84,8 +83,8 @@ export function Sidebar() {
             href="/dashboard"
             className="group flex h-9 w-9 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:h-8 md:w-8 md:text-base"
           >
-            <Rocket className="h-4 w-4 transition-all group-hover:scale-110" />
-            <span className="sr-only">AFKEcosystem</span>
+            <Church className="h-4 w-4 transition-all group-hover:scale-110" />
+            <span className="sr-only">Comunidad de Fe</span>
           </Link>
           {navLinks.map(renderLink)}
         </nav>
