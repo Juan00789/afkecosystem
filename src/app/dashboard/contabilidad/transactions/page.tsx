@@ -19,12 +19,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ArrowLeft, Trash2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Textarea } from '@/components/ui/textarea';
 
 const transactionSchema = z.object({
   type: z.enum(['income', 'expense'], { required_error: 'Please select a transaction type.' }),
   description: z.string().min(3, 'Description must be at least 3 characters.'),
   amount: z.coerce.number().positive('Amount must be positive.'),
-  category: z.string().min(3, 'Category is required.'),
   date: z.coerce.date({ required_error: 'Please select a date.' }),
 });
 
@@ -34,9 +34,6 @@ interface Transaction extends TransactionFormData {
   id: string;
   date: { toDate: () => Date };
 }
-
-const expenseCategories = ['Marketing', 'Suministros', 'Alquiler', 'Software', 'Salarios', 'Impuestos', 'Otros'];
-const incomeCategories = ['Venta de Producto', 'Servicio Prestado', 'Consultoría', 'Otro'];
 
 export default function TransactionsPage() {
   const { user } = useAuth();
@@ -51,7 +48,6 @@ export default function TransactionsPage() {
       type: 'expense',
       description: '',
       amount: 0,
-      category: '',
       date: new Date(),
     },
   });
@@ -134,27 +130,13 @@ export default function TransactionsPage() {
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="description">Descripción</Label>
-                            <Controller name="description" control={control} render={({ field }) => <Input id="description" {...field} />} />
+                            <Controller name="description" control={control} render={({ field }) => <Textarea id="description" {...field} />} />
                             {errors.description && <p className="text-sm text-destructive">{errors.description.message}</p>}
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="amount">Monto (DOP)</Label>
                             <Controller name="amount" control={control} render={({ field }) => <Input id="amount" type="number" {...field} />} />
                             {errors.amount && <p className="text-sm text-destructive">{errors.amount.message}</p>}
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="category">Categoría</Label>
-                             <Controller name="category" control={control} render={({ field }) => (
-                               <Select onValueChange={field.onChange} value={field.value}>
-                                   <SelectTrigger><SelectValue placeholder="Selecciona una categoría" /></SelectTrigger>
-                                   <SelectContent>
-                                       {(transactionType === 'income' ? incomeCategories : expenseCategories).map(cat => (
-                                           <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                                       ))}
-                                   </SelectContent>
-                               </Select>
-                           )} />
-                           {errors.category && <p className="text-sm text-destructive">{errors.category.message}</p>}
                         </div>
                          <div className="space-y-2">
                             <Label htmlFor="date">Fecha</Label>
@@ -180,20 +162,18 @@ export default function TransactionsPage() {
                             <TableRow>
                                 <TableHead>Fecha</TableHead>
                                 <TableHead>Descripción</TableHead>
-                                <TableHead>Categoría</TableHead>
                                 <TableHead className="text-right">Monto</TableHead>
                                 <TableHead className="text-right">Acciones</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {loading ? (
-                                <TableRow><TableCell colSpan={5} className="text-center">Cargando...</TableCell></TableRow>
+                                <TableRow><TableCell colSpan={4} className="text-center">Cargando...</TableCell></TableRow>
                             ) : transactions.length > 0 ? (
                                 transactions.map(t => (
                                 <TableRow key={t.id}>
                                     <TableCell>{format(t.date.toDate(), 'dd/MM/yy')}</TableCell>
                                     <TableCell className="font-medium">{t.description}</TableCell>
-                                    <TableCell>{t.category}</TableCell>
                                     <TableCell className={`text-right font-semibold ${t.type === 'income' ? 'text-green-500' : 'text-red-500'}`}>
                                         ${t.amount.toLocaleString()}
                                     </TableCell>
@@ -217,7 +197,7 @@ export default function TransactionsPage() {
                                 </TableRow>
                             ))
                             ) : (
-                                <TableRow><TableCell colSpan={5} className="text-center">No hay transacciones.</TableCell></TableRow>
+                                <TableRow><TableCell colSpan={4} className="text-center">No hay transacciones.</TableCell></TableRow>
                             )}
                         </TableBody>
                     </Table>

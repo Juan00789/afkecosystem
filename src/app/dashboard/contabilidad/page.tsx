@@ -1,6 +1,6 @@
 // src/app/dashboard/contabilidad/page.tsx
 'use client';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -9,8 +9,6 @@ import { useAuth } from '@/modules/auth/hooks/use-auth';
 import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
-import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Legend, Bar, PieChart, Pie, Cell } from 'recharts';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 interface Transaction {
@@ -19,16 +17,16 @@ interface Transaction {
   description: string;
   amount: number;
   date: { toDate: () => Date };
-  category: string;
 }
-
-const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088fe', '#00c49f'];
-
 
 export default function ContabilidadPage() {
   const { user } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  const [totalIncome, setTotalIncome] = useState(0);
+  const [totalExpenses, setTotalExpenses] = useState(0);
+  const [balance, setBalance] = useState(0);
 
   useEffect(() => {
     if (!user) return;
@@ -37,6 +35,12 @@ export default function ContabilidadPage() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const trans = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction));
       setTransactions(trans);
+
+      const income = trans.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+      const expenses = trans.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+      setTotalIncome(income);
+      setTotalExpenses(expenses);
+      setBalance(income - expenses);
       setLoading(false);
     }, (error) => {
         console.error("Error fetching transactions: ", error);
@@ -44,52 +48,6 @@ export default function ContabilidadPage() {
     });
     return () => unsubscribe();
   }, [user]);
-  
-  const { totalIncome, totalExpenses, balance } = useMemo(() => {
-    const income = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
-    const expenses = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
-    return {
-      totalIncome: income,
-      totalExpenses: expenses,
-      balance: income - expenses,
-    };
-  }, [transactions]);
-  
-  const barChartData = useMemo(() => {
-    const monthlyData: { [key: string]: { income: number; expenses: number } } = {};
-    transactions.forEach(t => {
-      const month = format(t.date.toDate(), 'MMM yyyy', { locale: es });
-      if (!monthlyData[month]) {
-        monthlyData[month] = { income: 0, expenses: 0 };
-      }
-      if (t.type === 'income') {
-        monthlyData[month].income += t.amount;
-      } else {
-        monthlyData[month].expenses += t.amount;
-      }
-    });
-    return Object.keys(monthlyData).map(month => ({
-      name: month,
-      Ingresos: monthlyData[month].income,
-      Gastos: monthlyData[month].expenses,
-    })).reverse();
-  }, [transactions]);
-  
-  const pieChartData = useMemo(() => {
-    const expenseByCategory: { [key: string]: number } = {};
-    transactions
-      .filter(t => t.type === 'expense')
-      .forEach(t => {
-        if (!expenseByCategory[t.category]) {
-          expenseByCategory[t.category] = 0;
-        }
-        expenseByCategory[t.category] += t.amount;
-      });
-    return Object.keys(expenseByCategory).map(category => ({
-      name: category,
-      value: expenseByCategory[category],
-    }));
-  }, [transactions]);
 
   return (
     <div className="container mx-auto max-w-7xl p-4 space-y-8">
@@ -108,14 +66,14 @@ export default function ContabilidadPage() {
                 <Landmark className="h-8 w-8 text-primary" />
             </div>
             <div>
-                <h1 className="text-3xl font-bold">Dashboard de Contabilidad</h1>
-                <p className="text-muted-foreground">Una vista completa de la salud financiera de tu negocio.</p>
+                <h1 className="text-3xl font-bold">Mis Finanzas</h1>
+                <p className="text-muted-foreground">Una vista simple de la salud financiera de tu negocio.</p>
             </div>
         </div>
         <Button asChild size="lg">
             <Link href="/dashboard/contabilidad/transactions">
                 <PlusCircle className="mr-2 h-5 w-5" />
-                Gestionar Transacciones
+                Añadir Transacción
             </Link>
         </Button>
       </header>
@@ -151,68 +109,25 @@ export default function ContabilidadPage() {
         </Card>
       </section>
 
-       <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-            <CardHeader>
-                <CardTitle>Análisis de Ingresos vs. Gastos</CardTitle>
-                <CardDescription>Comparativa mensual de tus flujos de efectivo.</CardDescription>
-            </CardHeader>
-            <CardContent className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={barChartData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                        <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                        <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickFormatter={(value) => `$${value/1000}k`} />
-                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }}/>
-                        <Legend />
-                        <Bar dataKey="Ingresos" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                        <Bar dataKey="Gastos" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                </ResponsiveContainer>
-            </CardContent>
-        </Card>
-        <Card>
-            <CardHeader>
-                <CardTitle>Desglose de Gastos</CardTitle>
-                <CardDescription>Distribución de tus gastos por categoría.</CardDescription>
-            </CardHeader>
-            <CardContent className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                        <Pie data={pieChartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
-                             {pieChartData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                            ))}
-                        </Pie>
-                         <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }}/>
-                        <Legend />
-                    </PieChart>
-                </ResponsiveContainer>
-            </CardContent>
-        </Card>
-      </section>
-
       <section>
         <Card>
           <CardHeader>
-            <CardTitle>Transacciones Recientes</CardTitle>
-            <CardDescription>Las últimas 5 transacciones registradas.</CardDescription>
+            <CardTitle>Historial de Transacciones</CardTitle>
+            <CardDescription>Todas tus transacciones registradas.</CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
                 <TableHeader>
                     <TableRow>
                         <TableHead>Descripción</TableHead>
-                        <TableHead>Categoría</TableHead>
                         <TableHead>Fecha</TableHead>
                         <TableHead className="text-right">Monto</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {transactions.slice(0, 5).map(t => (
+                    {transactions.map(t => (
                         <TableRow key={t.id}>
                             <TableCell className="font-medium">{t.description}</TableCell>
-                            <TableCell>{t.category}</TableCell>
                             <TableCell>{format(t.date.toDate(), 'dd/MM/yyyy')}</TableCell>
                             <TableCell className={`text-right font-semibold ${t.type === 'income' ? 'text-green-500' : 'text-red-500'}`}>
                                 {t.type === 'income' ? '+' : '-'}${t.amount.toLocaleString()}
