@@ -24,7 +24,6 @@ import {
   LineChart,
   Landmark,
   FileSearch,
-  TrendingUp,
   Banknote,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -62,12 +61,6 @@ const modules = [
     title: 'Mentorías',
     description: 'Conecta con mentores y resuelve dudas.',
     href: '/dashboard/mentorias',
-  },
-  {
-    icon: <TrendingUp className="h-8 w-8 text-primary" />,
-    title: 'Inversiones',
-    description: 'Invierte tus créditos en otros proyectos.',
-    href: '/dashboard/inversiones',
   },
   {
     icon: <FileSearch className="h-8 w-8 text-primary" />,
