@@ -13,45 +13,47 @@ service cloud.firestore {
       return request.auth.uid == userId;
     }
 
-    // Users can read any profile, but only write to their own.
+    // Users can read any profile, but only write to their own profile.
+    // They can modify their own network lists.
     match /users/{userId} {
       allow read: if true;
-      allow create, update, delete: if isOwner(userId);
+      allow create: if isOwner(userId);
+      // Allow updates to own profile, including network changes.
+      // The logic for adding users to the network and awarding credits is handled
+      // in a client-side transaction, which these rules permit.
+      allow update: if isOwner(userId);
     }
     
     // Services are public to read for the marketplace, but only the provider can manage them.
     match /services/{serviceId} {
       allow read: if true;
-      // On create, the providerId must be the user's own uid.
-      allow create: if isAuthenticated() && isOwner(request.resource.data.providerId);
-      // On update/delete, only the original provider can modify.
+      allow create: if isAuthenticated() && request.resource.data.providerId == request.auth.uid;
       allow update, delete: if isAuthenticated() && isOwner(resource.data.providerId);
     }
 
     // Cases can only be accessed by the client or the provider involved.
     match /cases/{caseId} {
       allow read, update: if isAuthenticated() && (isOwner(resource.data.clientId) || isOwner(resource.data.providerId));
-      // On create, the clientId must be the user's own uid.
       allow create: if isAuthenticated() && isOwner(request.resource.data.clientId);
       
       // Comments follow the same rule as the parent case.
       match /comments/{commentId} {
-        allow read: if isAuthenticated() && (isOwner(get(/databases/$(database)/documents/cases/$(caseId)).data.clientId) || isOwner(get(/databases/$(database)/documents/cases/$(caseId)).data.providerId));
-        allow create: if isAuthenticated() && (isOwner(request.auth.uid));
+        allow read, create: if isAuthenticated() && (
+          isOwner(get(/databases/$(database)/documents/cases/$(caseId)).data.clientId) || 
+          isOwner(get(/databases/$(database)/documents/cases/$(caseId)).data.providerId)
+        );
       }
     }
     
-    // Credit requests can only be read by the user who created them (and admins in the future).
+    // Credit requests can only be read/created by the user who created them (and admins in the future).
     match /credit_requests/{requestId} {
       allow read: if isAuthenticated() && isOwner(resource.data.userId);
-      // On create, the userId must be the user's own uid.
       allow create: if isAuthenticated() && isOwner(request.resource.data.userId);
     }
     
     // Courses are public to read, but only the provider can manage them.
     match /courses/{courseId} {
        allow read: if true;
-       // On create, the providerId must be the user's own uid.
        allow create: if isAuthenticated() && isOwner(request.resource.data.providerId);
        allow update, delete: if isAuthenticated() && isOwner(resource.data.providerId);
     }
