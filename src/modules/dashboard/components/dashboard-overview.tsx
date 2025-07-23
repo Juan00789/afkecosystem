@@ -58,12 +58,6 @@ const modules = [
     href: '/dashboard/creditos',
   },
   {
-    icon: <Banknote className="h-8 w-8 text-primary" />,
-    title: 'Inversiones',
-    description: 'Invierte en los casos de otros miembros.',
-    href: '/dashboard/inversiones',
-  },
-  {
     icon: <MessageSquareHeart className="h-8 w-8 text-primary" />,
     title: 'Mentorías',
     description: 'Conecta con mentores y resuelve dudas.',
