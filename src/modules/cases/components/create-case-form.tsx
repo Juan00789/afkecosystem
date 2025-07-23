@@ -18,7 +18,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { Suspense } from 'react';
 import { Sparkles } from 'lucide-react';
-import { chatWithOniara } from '@/ai/flows/oniara-flow';
 
 
 const caseSchema = z.object({
@@ -41,7 +40,6 @@ function CreateCaseFormComponent() {
   const { toast } = useToast();
   const [providers, setProviders] = useState<Provider[]>([]);
   const [loading, setLoading] = useState(false);
-  const [isEnhancing, setIsEnhancing] = useState(false);
   
   const preselectedProviderId = searchParams.get('providerId');
   const serviceName = searchParams.get('serviceName');
@@ -51,8 +49,6 @@ function CreateCaseFormComponent() {
     handleSubmit,
     formState: { errors },
     setValue,
-    watch,
-    getValues,
   } = useForm<CaseFormData>({
     resolver: zodResolver(caseSchema),
     defaultValues: {
@@ -62,8 +58,6 @@ function CreateCaseFormComponent() {
     },
   });
   
-  const selectedProviderId = watch('providerId');
-
 
   useEffect(() => {
     const fetchProviders = async () => {
@@ -117,26 +111,6 @@ function CreateCaseFormComponent() {
     }
   }, [preselectedProviderId, serviceName, setValue]);
   
-  const handleEnhanceDescription = async () => {
-    const title = getValues('title');
-    if (!title) {
-        toast({ title: "Título Requerido", description: "Por favor, escribe un título para el caso antes de mejorar la descripción.", variant: "destructive"});
-        return;
-    }
-    setIsEnhancing(true);
-    try {
-        const response = await chatWithOniara([], `Genera una descripción detallada para un caso con el título: "${title}"`);
-        if (response.type === 'text') {
-            setValue('description', response.text, { shouldValidate: true });
-            toast({ title: "Descripción Mejorada", description: "La descripción ha sido generada por Oniara."});
-        }
-    } catch(e) {
-        toast({ title: "Error de IA", description: "No se pudo generar la descripción.", variant: "destructive"});
-    } finally {
-        setIsEnhancing(false);
-    }
-  };
-
 
   const onSubmit = async (data: CaseFormData) => {
     if (!user) {
@@ -184,10 +158,6 @@ function CreateCaseFormComponent() {
           <div className="space-y-2">
             <div className="flex justify-between items-center">
                 <Label htmlFor="description">Descripción</Label>
-                <Button type="button" variant="ghost" size="sm" onClick={handleEnhanceDescription} disabled={isEnhancing}>
-                    <Sparkles className="mr-2 h-4 w-4" />
-                    {isEnhancing ? 'Mejorando...' : 'Mejorar con IA'}
-                </Button>
             </div>
             <Controller
               name="description"
@@ -195,7 +165,7 @@ function CreateCaseFormComponent() {
               render={({ field }) => (
                 <Textarea
                   id="description"
-                  placeholder="Provee una descripción detallada de lo que necesitas o usa la IA para generar una."
+                  placeholder="Provee una descripción detallada de lo que necesitas."
                   className="min-h-[150px]"
                   {...field}
                 />
