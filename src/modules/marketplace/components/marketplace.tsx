@@ -10,7 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
-import { MessageSquare, Search, LayoutGrid, Megaphone, PencilRuler, Code, Hotel, BookText, BrainCircuit, Wrench, Paintbrush, Flower2 } from 'lucide-react';
+import { MessageSquare, Search, LayoutGrid, Megaphone, PencilRuler, Code, Hotel, BookText, BrainCircuit, Wrench, Paintbrush, Flower2, ShoppingBag } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
