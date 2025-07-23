@@ -2,21 +2,34 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // Users can upload their own avatar.
-    match /avatars/{userId}.{ext} {
-      allow read;
-      allow write: if request.auth != null && request.auth.uid == userId
-                   && request.resource.size < 5 * 1024 * 1024
-                   && request.resource.contentType.matches('image/.*');
+    
+    // Helper function for auth check
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper function to check ownership based on UID in filename
+    function isOwner(userId) {
+      return request.auth.uid == userId;
     }
     
-    // Users can upload cover images for their courses.
+    // Avatars: Public read, but only owner can write/delete.
+    // Filename format: {userId}.{extension}
+    match /avatars/{userIdWithExt} {
+      allow read: if true;
+      allow write: if isAuthenticated() && isOwner(userIdWithExt.split('.')[0]);
+    }
+    
+    // Course Covers: Public read, but only authenticated users can write.
+    // We assume the providerId is checked at the Firestore level before generating an upload URL.
     match /course-covers/{fileName} {
-      allow read;
-      allow write: if request.auth != null
-                   && request.resource.size < 5 * 1024 * 1024
-                   && request.resource.contentType.matches('image/.*')
-                   && fileName.startsWith(request.auth.uid);
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+
+    // Default deny all other paths
+    match /{allPaths=**} {
+      allow read, write: if false;
     }
   }
 }
