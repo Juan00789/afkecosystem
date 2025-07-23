@@ -1,41 +1,79 @@
 // src/app/dashboard/contabilidad/page.tsx
 'use client';
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Landmark, BarChart2, FileText, Bot, Upload, Send } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { useToast } from '@/hooks/use-toast';
+import { ArrowLeft, Landmark, DollarSign, ArrowUpCircle, ArrowDownCircle, PlusCircle } from 'lucide-react';
+import { useAuth } from '@/modules/auth/hooks/use-auth';
+import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
+import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Legend, Bar } from 'recharts';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+
+interface Transaction {
+  id: string;
+  type: 'income' | 'expense';
+  description: string;
+  amount: number;
+  date: { toDate: () => Date };
+  category: string;
+}
 
 export default function ContabilidadPage() {
-    const { toast } = useToast();
-    const [analysisResult, setAnalysisResult] = useState('');
-    const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const { user } = useAuth();
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
 
-    const handleAnalysis = async () => {
-        setIsAnalyzing(true);
-        // Placeholder for AI analysis logic
-        setTimeout(() => {
-            setAnalysisResult("Análisis de IA (simulado):\n- Mayor gasto: Alquiler ($25,000)\n- Gasto recurrente notable: Publicidad en redes ($5,000)\n- Ahorro potencial: Reducir suscripciones de software ($1,500).");
-            setIsAnalyzing(false);
-            toast({ title: "Análisis completado", description: "La IA ha revisado tus gastos." });
-        }, 2000);
+  useEffect(() => {
+    if (!user) return;
+    setLoading(true);
+    const q = query(collection(db, 'transactions'), where('userId', '==', user.uid), orderBy('date', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const trans = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction));
+      setTransactions(trans);
+      setLoading(false);
+    }, (error) => {
+        console.error("Error fetching transactions: ", error);
+        setLoading(false);
+    });
+    return () => unsubscribe();
+  }, [user]);
+  
+  const { totalIncome, totalExpenses, balance } = useMemo(() => {
+    const income = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+    const expenses = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+    return {
+      totalIncome: income,
+      totalExpenses: expenses,
+      balance: income - expenses,
     };
-
-    const handleGenerateInvoice = () => {
-        toast({ title: "Factura Generada", description: "La factura en PDF ha sido descargada (simulación)." });
-    };
-
-    const handleAskAssistant = () => {
-        toast({ title: "Respuesta del Asistente", description: "El ITBIS es un 18% y debes declararlo mensualmente (simulación)." });
-    }
+  }, [transactions]);
+  
+  const chartData = useMemo(() => {
+    const monthlyData: { [key: string]: { income: number; expenses: number } } = {};
+    transactions.forEach(t => {
+      const month = format(t.date.toDate(), 'MMM yyyy', { locale: es });
+      if (!monthlyData[month]) {
+        monthlyData[month] = { income: 0, expenses: 0 };
+      }
+      if (t.type === 'income') {
+        monthlyData[month].income += t.amount;
+      } else {
+        monthlyData[month].expenses += t.amount;
+      }
+    });
+    return Object.keys(monthlyData).map(month => ({
+      name: month,
+      Ingresos: monthlyData[month].income,
+      Gastos: monthlyData[month].expenses,
+    })).reverse();
+  }, [transactions]);
 
   return (
-    <div className="container mx-auto max-w-5xl p-4 space-y-8">
+    <div className="container mx-auto max-w-7xl p-4 space-y-8">
       <div className="mb-6">
         <Button asChild variant="outline">
           <Link href="/dashboard">
@@ -45,110 +83,113 @@ export default function ContabilidadPage() {
         </Button>
       </div>
 
-      <div className="text-center">
-        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 mb-4">
-            <Landmark className="h-10 w-10 text-primary" />
+      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex items-center gap-4">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+                <Landmark className="h-8 w-8 text-primary" />
+            </div>
+            <div>
+                <h1 className="text-3xl font-bold">Dashboard de Contabilidad</h1>
+                <p className="text-muted-foreground">Una vista completa de la salud financiera de tu negocio.</p>
+            </div>
         </div>
-        <h1 className="text-4xl font-extrabold tracking-tight text-primary">Contabilidad y Facturación Inteligente</h1>
-        <p className="mt-4 max-w-2xl mx-auto text-lg text-muted-foreground">
-            Simplifica tus finanzas para que puedas enfocarte en lo que realmente importa: hacer crecer tu negocio.
-        </p>
-      </div>
+        <Button asChild size="lg">
+            <Link href="/dashboard/contabilidad/transactions">
+                <PlusCircle className="mr-2 h-5 w-5" />
+                Gestionar Transacciones
+            </Link>
+        </Button>
+      </header>
 
-      <Tabs defaultValue="analysis" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="analysis"><BarChart2 className="mr-2 h-4 w-4" /> Análisis de Gastos</TabsTrigger>
-          <TabsTrigger value="invoicing"><FileText className="mr-2 h-4 w-4" /> Generación de Facturas</TabsTrigger>
-          <TabsTrigger value="assistant"><Bot className="mr-2 h-4 w-4" /> Asistente Fiscal</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="analysis">
-          <Card>
-            <CardHeader>
-              <CardTitle>Análisis de Gastos con IA</CardTitle>
-              <CardDescription>Sube tu estado de cuenta o un archivo de gastos (CSV, Excel) y nuestra IA lo analizará por ti.</CardDescription>
+      <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
+         <Card className="bg-gradient-to-br from-primary/20 to-primary/5">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Balance Total</CardTitle>
+                <DollarSign className="h-4 w-4 text-primary" />
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="expense-file">Sube tu archivo de gastos</Label>
-                <div className="flex items-center gap-2">
-                    <Input id="expense-file" type="file" />
-                    <Button onClick={handleAnalysis} disabled={isAnalyzing}>
-                        <Upload className="mr-2 h-4 w-4" />
-                        {isAnalyzing ? 'Analizando...' : 'Analizar'}
-                    </Button>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Resultados del Análisis</Label>
-                <Textarea 
-                    placeholder="Los resultados de la IA aparecerán aquí..." 
-                    className="min-h-[150px] bg-muted/50" 
-                    readOnly
-                    value={analysisResult}
-                />
-              </div>
+            <CardContent>
+                <div className="text-4xl font-extrabold text-primary">${balance.toLocaleString()}</div>
+                <p className="text-xs text-primary/80">Tu capital actual.</p>
             </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="invoicing">
-          <Card>
-            <CardHeader>
-              <CardTitle>Generación de Facturas</CardTitle>
-              <CardDescription>Crea facturas profesionales y con los requerimientos fiscales de RD en segundos.</CardDescription>
+        </Card>
+        <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Ingresos Totales</CardTitle>
+                <ArrowUpCircle className="h-4 w-4 text-green-500" />
             </CardHeader>
-            <CardContent className="space-y-4">
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="client-name">Nombre del Cliente</Label>
-                        <Input id="client-name" placeholder="Juan Pérez" />
-                    </div>
-                     <div className="space-y-2">
-                        <Label htmlFor="client-rnc">RNC/Cédula del Cliente</Label>
-                        <Input id="client-rnc" placeholder="001-1234567-8" />
-                    </div>
-               </div>
-               <div className="space-y-2">
-                  <Label>Items de la Factura</Label>
-                  <div className="grid grid-cols-3 gap-2">
-                      <Input placeholder="Descripción" />
-                      <Input type="number" placeholder="Cantidad" />
-                      <Input type="number" placeholder="Precio" />
-                  </div>
-                   <div className="grid grid-cols-3 gap-2">
-                      <Input placeholder="Descripción" />
-                      <Input type="number" placeholder="Cantidad" />
-                      <Input type="number" placeholder="Precio" />
-                  </div>
-               </div>
-               <Button onClick={handleGenerateInvoice}>
-                    <FileText className="mr-2 h-4 w-4" />
-                    Generar y Descargar Factura
-               </Button>
+            <CardContent>
+                <div className="text-3xl font-bold text-green-500">${totalIncome.toLocaleString()}</div>
             </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="assistant">
-          <Card>
-            <CardHeader>
-              <CardTitle>Asistente Fiscal</CardTitle>
-              <CardDescription>Tu asistente personal para recordarte fechas importantes y ayudarte a preparar tus declaraciones.</CardDescription>
+        </Card>
+        <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Gastos Totales</CardTitle>
+                <ArrowDownCircle className="h-4 w-4 text-red-500" />
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="tax-question">Haz una pregunta fiscal</Label>
-                <Textarea id="tax-question" placeholder="Ej: ¿Cuál es la fecha límite para declarar el IT-1?" />
-              </div>
-              <Button onClick={handleAskAssistant}>
-                <Send className="mr-2 h-4 w-4" />
-                Preguntar
-              </Button>
+            <CardContent>
+                <div className="text-3xl font-bold text-red-500">${totalExpenses.toLocaleString()}</div>
             </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+        </Card>
+      </section>
+
+       <section>
+        <Card>
+            <CardHeader>
+                <CardTitle>Análisis de Ingresos vs. Gastos</CardTitle>
+                <CardDescription>Comparativa mensual de tus flujos de efectivo.</CardDescription>
+            </CardHeader>
+            <CardContent className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={chartData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                        <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickFormatter={(value) => `$${value/1000}k`} />
+                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }}/>
+                        <Legend />
+                        <Bar dataKey="Ingresos" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="Gastos" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                </ResponsiveContainer>
+            </CardContent>
+        </Card>
+      </section>
+
+      <section>
+        <Card>
+          <CardHeader>
+            <CardTitle>Transacciones Recientes</CardTitle>
+            <CardDescription>Las últimas 5 transacciones registradas.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>Descripción</TableHead>
+                        <TableHead>Categoría</TableHead>
+                        <TableHead>Fecha</TableHead>
+                        <TableHead className="text-right">Monto</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {transactions.slice(0, 5).map(t => (
+                        <TableRow key={t.id}>
+                            <TableCell className="font-medium">{t.description}</TableCell>
+                            <TableCell>{t.category}</TableCell>
+                            <TableCell>{format(t.date.toDate(), 'dd/MM/yyyy')}</TableCell>
+                            <TableCell className={`text-right font-semibold ${t.type === 'income' ? 'text-green-500' : 'text-red-500'}`}>
+                                {t.type === 'income' ? '+' : '-'}${t.amount.toLocaleString()}
+                            </TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
+             {transactions.length === 0 && !loading && (
+              <p className="text-center text-muted-foreground py-4">No hay transacciones registradas.</p>
+            )}
+          </CardContent>
+        </Card>
+      </section>
+
     </div>
   );
 }

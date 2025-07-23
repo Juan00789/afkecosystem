@@ -14,7 +14,6 @@ service cloud.firestore {
     }
 
     // Users can read any profile, but only write to their own.
-    // Allow reading all user profiles for network search.
     match /users/{userId} {
       allow read: if isAuthenticated();
       allow create, update: if isOwner(userId);
@@ -25,6 +24,14 @@ service cloud.firestore {
       allow read: if true;
       allow create: if isAuthenticated() && isOwner(request.resource.data.providerId);
       allow update, delete: if isAuthenticated() && isOwner(resource.data.providerId);
+    }
+    
+    // Connections between users (Brokis)
+    match /network_connections/{connectionId} {
+        // A user can create a connection if they are either the client or the provider in it.
+        allow create: if isAuthenticated() && (isOwner(request.resource.data.client_id) || isOwner(request.resource.data.provider_id));
+        // A user can read or delete a connection if they are part of it.
+        allow read, delete: if isAuthenticated() && (isOwner(resource.data.client_id) || isOwner(resource.data.provider_id));
     }
 
     // Cases can only be accessed by the client or the provider involved.
@@ -51,12 +58,10 @@ service cloud.firestore {
        allow update, delete: if isAuthenticated() && isOwner(resource.data.providerId);
     }
 
-    // Network connections can be created by either party involved.
-    // Deletion could be restricted to just the creator or both parties.
-    match /network_connections/{connectionId} {
-      allow read: if isAuthenticated() && (isOwner(resource.data.client_id) || isOwner(resource.data.provider_id));
-      allow create: if isAuthenticated() && (isOwner(request.resource.data.client_id) || isOwner(request.resource.data.provider_id));
-      allow delete: if isAuthenticated() && (isOwner(resource.data.client_id) || isOwner(resource.data.provider_id));
+    // Transactions can only be managed by the user who owns them.
+    match /transactions/{transactionId} {
+      allow read, write: if isAuthenticated() && isOwner(resource.data.userId);
+      allow create: if isAuthenticated() && isOwner(request.resource.data.userId);
     }
   }
 }
