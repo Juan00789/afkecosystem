@@ -8,13 +8,27 @@ import type { UserProfile } from '@/modules/auth/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Briefcase, Mail, Globe, Phone, UserPlus, Check, Landmark } from 'lucide-react';
+import { Briefcase, Mail, Globe, Phone, UserPlus, Check, Landmark, Wallet, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { useParams } from 'next/navigation';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { processP2PTransfer } from '@/ai/flows/p2p-transfer-flow';
+
 
 interface Service {
   id: string;
@@ -37,6 +51,9 @@ export default function PublicProfilePage() {
   
   const [isConnecting, setIsConnecting] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
+  const [isSendingCredits, setIsSendingCredits] = useState(false);
+  const [creditsToSend, setCreditsToSend] = useState(0);
+  const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
 
   const groupedServices = useMemo(() => {
     return services.reduce((acc, service) => {
@@ -67,7 +84,6 @@ export default function PublicProfilePage() {
         const userProfileData = userDocSnap.data() as UserProfile;
         setProfile(userProfileData);
 
-        // Check connection status if a current user exists and has a profile
         if (currentUserProfile?.network?.providers?.includes(id)) {
             setIsConnected(true);
         }
@@ -110,16 +126,13 @@ export default function PublicProfilePage() {
             const providers = network.providers || [];
 
             if (providers.includes(profile.uid)) {
-              // This case is handled by UI disabling the button, but good to have server-side check
               toast({ title: 'Already Connected', description: 'This provider is already in your network.'});
               return;
             }
 
             const isFirstProvider = providers.length === 0;
 
-            // Add provider to current user's network
             transaction.update(currentUserRef, { 'network.providers': arrayUnion(profile.uid) });
-            // Add current user to provider's client list
             transaction.update(otherUserRef, { 'network.clients': arrayUnion(currentUser.uid) });
             
             if (isFirstProvider) {
@@ -136,7 +149,7 @@ export default function PublicProfilePage() {
             description: `${profile.displayName} ha sido añadido a tus proveedores.`,
         });
         setIsConnected(true);
-        await refreshUserProfile(); // Refresh profile to get updated credits
+        await refreshUserProfile();
 
     } catch (err: any) {
         console.error("Error adding to network:", err);
@@ -148,6 +161,36 @@ export default function PublicProfilePage() {
     } finally {
         setIsConnecting(false);
     }
+  };
+
+  const handleSendCredits = async () => {
+      if (!currentUser || !profile || creditsToSend <= 0) return;
+
+      if ((currentUserProfile?.credits || 0) < creditsToSend) {
+        toast({ title: 'Fondos Insuficientes', description: 'No tienes suficientes créditos para esta transferencia.', variant: 'destructive'});
+        return;
+      }
+      setIsSendingCredits(true);
+      try {
+        const result = await processP2PTransfer({
+            senderUid: currentUser.uid,
+            recipientUid: profile.uid,
+            amount: creditsToSend
+        });
+
+        if (result.success) {
+            toast({ title: 'Transferencia Exitosa', description: result.message });
+            await refreshUserProfile(); // Refresh sender's balance
+            setIsTransferDialogOpen(false);
+            setCreditsToSend(0);
+        } else {
+            toast({ title: 'Error en la Transferencia', description: result.message, variant: 'destructive' });
+        }
+      } catch (error: any) {
+         toast({ title: 'Error', description: error.message || 'No se pudo completar la transferencia.', variant: 'destructive' });
+      } finally {
+        setIsSendingCredits(false);
+      }
   };
 
 
@@ -184,18 +227,45 @@ export default function PublicProfilePage() {
                 )}
                  <div className="mt-2 flex flex-wrap justify-center sm:justify-start gap-2">
                     {!isOwnProfile && currentUser && (
-                         <Button onClick={handleAddToNetwork} disabled={isConnecting || isConnected}>
-                            {isConnected ? (
-                                <>
-                                    <Check className="mr-2 h-4 w-4" /> Ya en tu red
-                                </>
-                            ) : (
-                                 <>
-                                    <UserPlus className="mr-2 h-4 w-4" /> 
-                                    {isConnecting ? 'Añadiendo...' : 'Añadir a Proveedores'}
-                                 </>
-                            )}
+                      <>
+                        <Button onClick={handleAddToNetwork} disabled={isConnecting || isConnected}>
+                            {isConnected ? (<><Check className="mr-2 h-4 w-4" /> Ya en tu red</>) : (<><UserPlus className="mr-2 h-4 w-4" /> {isConnecting ? 'Añadiendo...' : 'Añadir a Proveedores'}</>)}
                         </Button>
+                        <Dialog open={isTransferDialogOpen} onOpenChange={setIsTransferDialogOpen}>
+                          <DialogTrigger asChild>
+                            <Button variant="secondary">
+                              <Send className="mr-2 h-4 w-4" /> Enviar Créditos
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Enviar créditos a {profile.displayName}</DialogTitle>
+                              <DialogDescription>
+                                Tu balance actual: {currentUserProfile?.credits || 0} créditos.
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-2">
+                              <Label htmlFor="credits-amount">Monto a Enviar</Label>
+                              <Input 
+                                id="credits-amount"
+                                type="number"
+                                value={creditsToSend}
+                                onChange={(e) => setCreditsToSend(Number(e.target.value))}
+                                min="1"
+                                max={currentUserProfile?.credits || 0}
+                              />
+                            </div>
+                            <DialogFooter>
+                              <DialogClose asChild>
+                                <Button variant="outline">Cancelar</Button>
+                              </DialogClose>
+                              <Button onClick={handleSendCredits} disabled={isSendingCredits || creditsToSend <= 0}>
+                                {isSendingCredits ? "Enviando..." : "Confirmar Envío"}
+                              </Button>
+                            </DialogFooter>
+                          </DialogContent>
+                        </Dialog>
+                      </>
                     )}
                     <Button asChild>
                         <Link href={`/dashboard/cases/create?providerId=${id}`}>Create a Case</Link>

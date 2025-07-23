@@ -2,72 +2,114 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
+
+    // Helper function to check if a user is authenticated
     function isAuthenticated() {
       return request.auth != null;
     }
 
+    // Helper function to check if the request is from the user who owns the data
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
-    
+
+    // Users collection:
+    // - Anyone can create their own user profile upon signing up.
+    // - Users can only read their own profile.
+    // - Users can only update their own profile.
+    // - No one can delete a user profile.
+    match /users/{userId} {
+      allow create: if isAuthenticated() && isOwner(userId);
+      allow read, update: if isAuthenticated() && isOwner(userId);
+      allow delete: if false; // Deletion not allowed
+    }
+
+    // Services collection:
+    // - Authenticated users can create services.
+    // - Anyone (even unauthenticated users) can read services (for the marketplace).
+    // - Users can only update or delete their own services.
+    match /services/{serviceId} {
+      allow create: if isAuthenticated();
+      allow read: if true;
+      allow update, delete: if isAuthenticated() && isOwner(resource.data.providerId);
+    }
+
+    // Cases collection:
+    // - Authenticated users can create cases.
+    // - Only the client or the provider involved in the case can read, update, or delete it.
+    match /cases/{caseId} {
+      allow create: if isAuthenticated();
+      allow read, update: if isAuthenticated() && (isOwner(resource.data.clientId) || isOwner(resource.data.providerId));
+      allow delete: if isAuthenticated() && isOwner(resource.data.clientId); // Only client can delete
+
+      // Comments subcollection:
+      // - Only client or provider can add comments.
+      // - Only client or provider can read comments.
+      match /comments/{commentId} {
+        allow create, read: if isAuthenticated() && (isOwner(get(/databases/$(database)/documents/cases/$(caseId)).data.clientId) || isOwner(get(/databases/$(database)/documents/cases/$(caseId)).data.providerId));
+        allow update, delete: if false; // Comments are immutable
+      }
+    }
+
+    // Network connections:
+    // - Authenticated users can create connections where they are either the client or provider.
+    // - Users can only read connections where they are involved.
+    // - Users can only delete connections where they are involved.
+    match /network_connections/{connectionId} {
+        allow create: if isAuthenticated() && (isOwner(request.resource.data.client_id) || isOwner(request.resource.data.provider_id));
+        allow read: if isAuthenticated() && (isOwner(resource.data.client_id) || isOwner(resource.data.provider_id));
+        allow delete: if isAuthenticated() && (isOwner(resource.data.client_id) || isOwner(resource.data.provider_id));
+        allow update: if false;
+    }
+
+    // Courses collection:
+    // - Authenticated users can read all courses.
+    // - Users can only create, update, or delete their own courses.
+    match /courses/{courseId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated();
+        allow update, delete: if isAuthenticated() && isOwner(resource.data.providerId);
+    }
+
+    // Fund collection:
+    // - Only admins can read or write to the fund document.
     function isAdmin() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
+    match /fund/{fundId} {
+      allow read, write: if isAuthenticated() && isAdmin();
+    }
 
-    match /users/{userId} {
-      allow read: if isAuthenticated();
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId);
-      allow delete: if isOwner(userId);
-    }
-    
-    match /services/{serviceId} {
-      allow read: if isAuthenticated();
-      allow create, update, delete: if isAuthenticated() && request.resource.data.providerId == request.auth.uid;
-    }
-    
-    match /cases/{caseId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && request.resource.data.clientId == request.auth.uid;
-      allow update: if isAuthenticated() && (isOwner(resource.data.clientId) || isOwner(resource.data.providerId));
-    }
-    
-    match /cases/{caseId}/comments/{commentId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-    }
-    
-    match /courses/{courseId} {
-      allow read: if isAuthenticated();
-      allow create, update, delete: if isAuthenticated() && request.resource.data.providerId == request.auth.uid;
-    }
-    
-    match /network_connections/{connectionId} {
-      allow read: if isAuthenticated() && (request.auth.uid == resource.data.client_id || request.auth.uid == resource.data.provider_id);
-      allow create: if isAuthenticated() && (request.auth.uid == request.resource.data.client_id || request.auth.uid == request.resource.data.provider_id);
-      allow delete: if isAuthenticated() && (isOwner(resource.data.client_id) || isOwner(resource.data.provider_id));
-    }
-    
-    match /transactions/{transactionId} {
-      allow read, create, update, delete: if isAuthenticated() && isOwner(request.resource.data.userId);
-    }
-    
+    // Credit Requests collection:
+    // - Users can create their own requests.
+    // - Users can read their own requests.
+    // - Admins can read and update (approve/reject) any request.
     match /credit_requests/{requestId} {
-      allow read, create: if isAuthenticated() && isOwner(request.resource.data.userId);
-      // Only admin can update status
-      allow update: if isAdmin();
+      allow create: if isAuthenticated() && isOwner(request.resource.data.userId);
+      allow read: if isAuthenticated() && (isOwner(resource.data.userId) || isAdmin());
+      allow update: if isAuthenticated() && isAdmin(); // Only admins can change status
+      allow delete: if false;
     }
 
+    // Loans collection:
+    // - Only the user who owns the loan and admins can read it.
+    // - Admins can create loans (when approving a request).
+    // - User can update (e.g., mark as paid - simulated), but not delete.
     match /loans/{loanId} {
-        allow read: if isAuthenticated() && isOwner(resource.data.userId);
-        allow create: if isAdmin(); // Loans are created by the system/admin
-        allow update: if isAuthenticated() && isOwner(resource.data.userId); // User can update status to 'paid'
+      allow create: if isAuthenticated() && isAdmin();
+      allow read: if isAuthenticated() && (isOwner(resource.data.userId) || isAdmin());
+      allow update: if isAuthenticated() && (isOwner(resource.data.userId) || isAdmin());
+      allow delete: if false;
     }
 
-    match /fund/{fundDoc} {
-        allow read: if isAuthenticated();
-        allow write: if isAdmin(); // Only admins can modify the fund details
+    // P2P Transactions collection:
+    // - Only the sender or receiver can read the transaction.
+    // - Transactions are created via a transaction flow, so direct write is disallowed.
+    // - Transactions are immutable.
+    match /p2p_transactions/{transactionId} {
+      allow read: if isAuthenticated() && (isOwner(resource.data.senderUid) || isOwner(resource.data.recipientUid));
+      allow create, update, delete: if false;
     }
+
   }
 }
