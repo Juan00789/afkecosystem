@@ -3,32 +3,15 @@
  * @fileOverview An AI flow for analyzing and providing feedback on business quotes.
  *
  * - analyzeQuote - A function that takes quote data and returns an expert analysis.
- * - QuoteAnalysisInput - The input type for the analysis.
- * - QuoteAnalysisOutput - The return type for the analysis.
  */
 
 import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
-
-const QuoteItemSchema = z.object({
-  description: z.string(),
-  quantity: z.number(),
-  price: z.number(),
-});
-
-export const QuoteAnalysisInputSchema = z.object({
-  clientName: z.string().describe("The name of the client receiving the quote."),
-  items: z.array(QuoteItemSchema).describe("The list of items or services in the quote."),
-  notes: z.string().optional().describe("Additional notes or terms included in the quote."),
-});
-export type QuoteAnalysisInput = z.infer<typeof QuoteAnalysisInputSchema>;
-
-export const QuoteAnalysisOutputSchema = z.object({
-  strengths: z.array(z.string()).describe("Positive aspects of the quote."),
-  weaknesses: z.array(z.string()).describe("Areas where the quote could be improved."),
-  suggestions: z.array(z.string()).describe("Actionable suggestions to enhance the quote."),
-});
-export type QuoteAnalysisOutput = z.infer<typeof QuoteAnalysisOutputSchema>;
+import {
+  QuoteAnalysisInputSchema,
+  QuoteAnalysisOutputSchema,
+  type QuoteAnalysisInput,
+  type QuoteAnalysisOutput,
+} from '@/modules/invoicing/types';
 
 const analysisPrompt = ai.definePrompt({
   name: 'quoteAnalysisPrompt',
@@ -54,7 +37,9 @@ Analyze the quote from a strategic business perspective. Your goal is to help th
 Provide your response in the required JSON format. Be constructive and encouraging.`,
 });
 
-export async function analyzeQuote(input: QuoteAnalysisInput): Promise<QuoteAnalysisOutput> {
+export async function analyzeQuote(
+  input: QuoteAnalysisInput
+): Promise<QuoteAnalysisOutput> {
   const { output } = await analysisPrompt(input);
   if (!output) {
     throw new Error('Failed to get quote analysis from the model.');
