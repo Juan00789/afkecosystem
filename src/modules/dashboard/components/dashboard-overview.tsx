@@ -25,6 +25,7 @@ import {
   Landmark,
   FileSearch,
   TrendingUp,
+  Banknote,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
