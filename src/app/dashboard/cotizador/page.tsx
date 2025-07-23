@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
 import { db } from '@/lib/firebase';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -44,6 +44,7 @@ export default function QuoteGeneratorPage() {
   
   const { toast } = useToast();
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<QuoteAnalysisOutput | null>(null);
 
   const { control, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<QuoteFormData>({
@@ -113,9 +114,31 @@ export default function QuoteGeneratorPage() {
     }
   };
   
-  const onGenerateInvoice = (data: QuoteFormData) => {
-    if (!userProfile) return;
-    generateInvoicePDF(data, userProfile);
+  const onGenerateInvoice = async (data: QuoteFormData) => {
+    if (!userProfile || !user) return;
+    setIsGenerating(true);
+    try {
+      // 1. Save invoice to Firestore
+      await addDoc(collection(db, 'invoices'), {
+        providerId: user.uid,
+        ...data,
+        subtotal,
+        itbis,
+        total,
+        status: 'sent', // Initial status
+        createdAt: serverTimestamp(),
+      });
+
+      // 2. Generate PDF
+      generateInvoicePDF(data, userProfile);
+      
+      toast({ title: 'Factura Generada', description: 'La factura ha sido creada y guardada en tus registros.'});
+    } catch (error) {
+      console.error("Error generating invoice:", error);
+      toast({ title: 'Error', description: 'No se pudo generar o guardar la factura.', variant: 'destructive'});
+    } finally {
+      setIsGenerating(false);
+    }
   };
   
   const handleAnalyzeQuote = async () => {
@@ -212,7 +235,7 @@ export default function QuoteGeneratorPage() {
             {/* Actions */}
             <div className="flex flex-col sm:flex-row gap-4">
                 <Button type="button" onClick={handleAnalyzeQuote} disabled={isAnalyzing} variant="outline" className="w-full sm:w-auto"><Wand2 className="mr-2 h-4 w-4" /> {isAnalyzing ? 'Analizando...' : 'Analizar Cotización con IA'}</Button>
-                <Button type="button" onClick={handleSubmit(onGenerateInvoice)} className="w-full sm:w-auto"><FileText className="mr-2 h-4 w-4" /> Convertir a Factura PDF</Button>
+                <Button type="button" onClick={handleSubmit(onGenerateInvoice)} disabled={isGenerating} className="w-full sm:w-auto"><FileText className="mr-2 h-4 w-4" /> {isGenerating ? 'Generando...' : 'Convertir a Factura PDF'}</Button>
             </div>
           </form>
 

@@ -72,9 +72,9 @@ export default function ContabilidadPage() {
         </div>
         <div className="flex gap-2">
             <Button asChild size="lg" variant="outline">
-                <Link href="/dashboard/cotizador">
+                <Link href="/dashboard/contabilidad/invoices">
                     <FileText className="mr-2 h-5 w-5" />
-                    Crear Cotización
+                    Ver Facturas
                 </Link>
             </Button>
             <Button asChild size="lg">

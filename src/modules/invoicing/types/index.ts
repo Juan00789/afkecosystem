@@ -1,5 +1,6 @@
 // src/modules/invoicing/types/index.ts
 import * as z from 'zod';
+import type { Timestamp } from 'firebase/firestore';
 
 export interface Service {
   id: string;
@@ -54,3 +55,13 @@ export const QuoteAnalysisOutputSchema = z.object({
     .describe('A single, consolidated text block containing the expert analysis and recommendations for the quote.'),
 });
 export type QuoteAnalysisOutput = z.infer<typeof QuoteAnalysisOutputSchema>;
+
+export interface Invoice extends QuoteFormData {
+  id: string;
+  providerId: string;
+  subtotal: number;
+  itbis: number;
+  total: number;
+  status: 'sent' | 'paid' | 'overdue';
+  createdAt: Timestamp;
+}
