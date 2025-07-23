@@ -20,6 +20,7 @@ import {
   FileSearch,
   Banknote,
   MessageSquareHeart,
+  Archive,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -51,10 +52,12 @@ export function Header({}: HeaderProps) {
     { href: '/dashboard/cursos', label: 'Cursos', icon: BookOpen },
     { href: '/dashboard/my-courses', label: 'Mis Cursos', icon: GraduationCap },
     { href: '/dashboard/creditos', label: 'Créditos', icon: HandCoins },
+    { href: '/dashboard/inversiones', label: 'Inversiones', icon: Banknote },
     { href: '/dashboard/mentorias', label: 'Mentorías', icon: MessageSquareHeart },
     { href: '/dashboard/analisis', label: 'Análisis IA', icon: FileSearch },
     { href: '/dashboard/network', label: 'Mis Brokis', icon: Users },
     { href: '/dashboard/services', label: 'Mis Servicios', icon: Briefcase },
+    { href: '/dashboard/productos', label: 'Mi Almacén', icon: Archive },
     { href: '/dashboard/contabilidad', label: 'Mis Finanzas', icon: Landmark },
     { href: '/dashboard/cotizador', label: 'Cotizador', icon: FileText },
     ...(userProfile?.role === 'admin' ? [{ href: '/dashboard/fondo', label: 'Fondo Ecosistema', icon: Banknote }] : []),

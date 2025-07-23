@@ -25,6 +25,7 @@ import {
   Landmark,
   FileSearch,
   Banknote,
+  Archive,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
@@ -57,6 +58,12 @@ const modules = [
     href: '/dashboard/creditos',
   },
   {
+    icon: <Banknote className="h-8 w-8 text-primary" />,
+    title: 'Inversiones',
+    description: 'Invierte en los casos de otros miembros.',
+    href: '/dashboard/inversiones',
+  },
+  {
     icon: <MessageSquareHeart className="h-8 w-8 text-primary" />,
     title: 'Mentorías',
     description: 'Conecta con mentores y resuelve dudas.',
@@ -79,6 +86,12 @@ const modules = [
     title: 'Mis Servicios',
     description: 'Administra los servicios que ofreces.',
     href: '/dashboard/services',
+  },
+  {
+    icon: <Archive className="h-8 w-8 text-primary" />,
+    title: 'Mi Almacén',
+    description: 'Gestiona tu inventario de productos.',
+    href: '/dashboard/productos',
   },
   {
     icon: <Landmark className="h-8 w-8 text-primary" />,
