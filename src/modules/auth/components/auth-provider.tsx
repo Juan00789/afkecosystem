@@ -48,6 +48,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           photoURL: firebaseUser.photoURL || '',
           phoneNumber: firebaseUser.phoneNumber || '',
           credits: 0,
+          network: {
+            clients: [],
+            providers: [],
+          },
         };
         await setDoc(userDocRef, newProfile);
         setUserProfile(newProfile);
