@@ -12,7 +12,11 @@ import { z } from 'genkit';
 
 const FileAnalysisInputSchema = z.object({
   fileName: z.string().describe('The name of the file being audited.'),
-  fileContent: z.string().describe('The Base64 encoded content of the file.'),
+  fileContent: z
+    .string()
+    .describe(
+      "The content of the file, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
+    ),
   userQuery: z.string().describe('The specific question or type of audit the user wants.'),
 });
 export type FileAnalysisInput = z.infer<typeof FileAnalysisInputSchema>;
@@ -34,12 +38,8 @@ const analysisPrompt = ai.definePrompt({
 **User's Request for Audit:**
 "{{{userQuery}}}"
 
-**File Details:**
-- **Name:** {{{fileName}}}
-
-**File Content (Base64 Encoded):**
-"{{{fileContent}}}"
-(The model will natively decode and understand the file content from the base64 string).
+**File to Analyze (Name: {{{fileName}}}):**
+{{media url=fileContent}}
 
 **Instructions:**
 1.  **Analyze from an Auditor's Perspective:** Meticulously examine the file content, focusing on identifying strengths, weaknesses, opportunities, and threats (SWOT) in the context of the user's query.

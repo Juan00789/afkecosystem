@@ -86,11 +86,11 @@ export default function AnalisisPage() {
     const reader = new FileReader();
 
     reader.onload = async (e) => {
-        const fileContentBase64 = (e.target?.result as string).split(',')[1];
+        const fileDataUrl = e.target?.result as string;
         try {
             const result = await analyzeFileContent({
                 fileName: file.name,
-                fileContent: fileContentBase64,
+                fileContent: fileDataUrl, // Pass the entire data URL
                 userQuery: data.context,
             });
             setAnalysisResult(result);
