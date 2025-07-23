@@ -18,6 +18,7 @@ import {
   serverTimestamp,
   increment,
   runTransaction,
+  getDoc,
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -58,6 +59,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import Image from 'next/image';
 import { validateCourse } from '@/ai/flows/course-validation-flow';
+import type { UserProfile } from '@/modules/auth/types';
 
 const courseStepSchema = z.object({
   title: z.string().min(3, 'Step title is too short'),
@@ -135,13 +137,24 @@ export function MyCoursesManagement() {
   };
 
   const onSubmit = async (data: CourseFormData) => {
-    if (!user || !userProfile) {
+    if (!user) {
       toast({ title: 'Error', description: 'You must be logged in.', variant: 'destructive' });
       return;
     }
     setLoading(true);
-  
+
     try {
+      // Ensure we have the user profile. If not available in context, fetch it.
+      let profileToUse = userProfile;
+      if (!profileToUse) {
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        if (userDoc.exists()) {
+          profileToUse = userDoc.data() as UserProfile;
+        } else {
+          throw new Error('User profile not found.');
+        }
+      }
+
       // Step 1: Upload the image first if it exists.
       let coverImageUrl = editingCourse?.coverImageUrl || '';
       if (coverImageFile) {
@@ -154,7 +167,7 @@ export function MyCoursesManagement() {
       const validationResult = await validateCourse({
         title: data.title,
         description: data.description,
-        providerProfile: userProfile,
+        providerProfile: profileToUse,
       });
   
       if (!validationResult.isKnowledgeable || !validationResult.isValid) {
@@ -171,7 +184,6 @@ export function MyCoursesManagement() {
             description: validationResult.reason,
             variant: 'destructive',
           });
-          // Penalize only for content validation failure, not for lack of knowledge.
           const userRef = doc(db, 'users', user.uid);
           await updateDoc(userRef, { credits: increment(-10) });
           toast({
@@ -180,7 +192,7 @@ export function MyCoursesManagement() {
             variant: 'destructive',
           });
         }
-        setLoading(false);
+        setLoading(false); // Make sure to stop loading on validation failure
         return;
       }
   
@@ -190,11 +202,9 @@ export function MyCoursesManagement() {
       await runTransaction(db, async (transaction) => {
         const userRef = doc(db, 'users', user.uid);
         if (editingCourse) {
-          // Update existing course
           const courseRef = doc(db, 'courses', editingCourse.id);
           transaction.update(courseRef, { ...courseDataWithImage, updatedAt: serverTimestamp() });
         } else {
-          // Add new course and award credits
           const courseRef = doc(collection(db, 'courses'));
           transaction.set(courseRef, {
             ...courseDataWithImage,
@@ -206,14 +216,12 @@ export function MyCoursesManagement() {
         }
       });
   
-      // Step 4: User feedback.
       if (editingCourse) {
         toast({ title: 'Success', description: 'Course updated successfully.' });
       } else {
         toast({ title: 'Success', description: 'New course created. You earned 25 credits!' });
       }
   
-      // Step 5: Clean up.
       setIsDialogOpen(false);
       reset();
     } catch (error) {
