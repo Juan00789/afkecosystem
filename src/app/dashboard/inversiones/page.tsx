@@ -3,9 +3,9 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, onSnapshot, documentId } from 'firebase/firestore';
+import { collection, query, where, getDocs, onSnapshot, documentId, doc } from 'firebase/firestore';
 import type { Case, Investment } from '@/modules/cases/types';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { ArrowLeft, TrendingUp, Briefcase, PiggyBank, Search, BarChart } from 'lucide-react';
@@ -113,19 +113,21 @@ export default function InversionesPage() {
     });
 
     // Fetch Open Opportunities
-    const opportunitiesQuery = query(collection(db, 'cases'), where('status', 'in', ['new', 'in-progress']), where('clientId', '!=', user.uid), where('providerId', '!=', user.uid));
+    const opportunitiesQuery = query(collection(db, 'cases'), where('status', 'in', ['new', 'in-progress']));
     const unsubscribeOpps = onSnapshot(opportunitiesQuery, async (snapshot) => {
-        const oppsPromises = snapshot.docs.map(async (docSnap) => {
-            const data = docSnap.data();
-            const clientSnap = await getDoc(doc(db, 'users', data.clientId));
-            const providerSnap = await getDoc(doc(db, 'users', data.providerId));
-            return {
-                id: docSnap.id,
-                ...data,
-                client: clientSnap.exists() ? clientSnap.data() : null,
-                provider: providerSnap.exists() ? providerSnap.data() : null,
-            } as Case
-        });
+        const oppsPromises = snapshot.docs
+          .filter(docSnap => docSnap.data().clientId !== user.uid && docSnap.data().providerId !== user.uid)
+          .map(async (docSnap) => {
+              const data = docSnap.data();
+              const clientSnap = await getDoc(doc(db, 'users', data.clientId));
+              const providerSnap = await getDoc(doc(db, 'users', data.providerId));
+              return {
+                  id: docSnap.id,
+                  ...data,
+                  client: clientSnap.exists() ? clientSnap.data() : null,
+                  provider: providerSnap.exists() ? providerSnap.data() : null,
+              } as Case
+          });
         const oppsData = await Promise.all(oppsPromises);
         setOpenOpportunities(oppsData);
         setLoading(false);
