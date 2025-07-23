@@ -104,7 +104,10 @@ export function ProductsManagement() {
   };
 
   const onSubmit = async (data: ProductFormData) => {
-    if (!user) return;
+    if (!user) {
+        toast({ title: 'Error', description: 'You must be logged in.', variant: 'destructive' });
+        return;
+    }
     setIsLoading(true);
 
     try {
