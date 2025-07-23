@@ -8,6 +8,15 @@ export interface Service {
   price: number;
 }
 
+export interface Product {
+    id: string;
+    name: string;
+    description: string;
+    price: number;
+    stock: number;
+    imageUrl?: string;
+}
+
 const quoteItemSchema = z.object({
   serviceId: z.string().optional(),
   description: z.string().min(1, 'La descripción no puede estar vacía.'),

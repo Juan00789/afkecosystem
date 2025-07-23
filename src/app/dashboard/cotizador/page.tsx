@@ -16,7 +16,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PlusCircle, Trash2, FileDown, Wand2, FileText, Bot, ThumbsUp, AlertTriangle, Sparkles } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
-import type { Service, QuoteFormData, QuoteAnalysisOutput } from '@/modules/invoicing/types';
+import type { Service, QuoteFormData, QuoteAnalysisOutput, Product } from '@/modules/invoicing/types';
 import { generateInvoicePDF } from '@/modules/invoicing/components/invoice-pdf';
 import { generateQuotePDF } from '@/modules/invoicing/components/quote-pdf';
 import { analyzeQuote } from '@/ai/flows/quote-analysis-flow';
@@ -41,6 +41,7 @@ const quoteSchema = z.object({
 export default function QuoteGeneratorPage() {
   const { user, userProfile } = useAuth();
   const [services, setServices] = useState<Service[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   
   const { toast } = useToast();
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -71,12 +72,23 @@ export default function QuoteGeneratorPage() {
 
   useEffect(() => {
     if (!user) return;
-    const q = query(collection(db, 'services'), where('providerId', '==', user.uid));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const servicesQuery = query(collection(db, 'services'), where('providerId', '==', user.uid));
+    const productsQuery = query(collection(db, 'products'), where('providerId', '==', user.uid));
+    
+    const unsubServices = onSnapshot(servicesQuery, (snapshot) => {
       const servicesList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Service));
       setServices(servicesList);
     });
-    return () => unsubscribe();
+
+    const unsubProducts = onSnapshot(productsQuery, (snapshot) => {
+      const productsList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+      setProducts(productsList);
+    });
+
+    return () => {
+        unsubServices();
+        unsubProducts();
+    };
   }, [user]);
   
   const handleServiceSelect = (serviceId: string) => {
@@ -90,6 +102,17 @@ export default function QuoteGeneratorPage() {
       });
     }
   }
+
+  const handleProductSelect = (productId: string) => {
+    const product = products.find(p => p.id === productId);
+    if(product) {
+      append({
+        description: product.name,
+        quantity: 1,
+        price: product.price,
+      });
+    }
+  };
 
   const onGenerateQuote = (data: QuoteFormData) => {
     if (!userProfile) return;
@@ -154,11 +177,21 @@ export default function QuoteGeneratorPage() {
             {/* Items */}
             <div className="space-y-4">
               <Label className="text-lg font-semibold">Ítems</Label>
-              <div className="space-y-2">
-                 <Select onValueChange={handleServiceSelect}>
-                    <SelectTrigger><SelectValue placeholder="O selecciona un servicio existente para añadirlo..." /></SelectTrigger>
-                    <SelectContent>{services.map(s => <SelectItem key={s.id} value={s.id}>{s.name} - ${s.price}</SelectItem>)}</SelectContent>
-                </Select>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                   <Label>Añadir desde Catálogo</Label>
+                   <Select onValueChange={handleServiceSelect}>
+                      <SelectTrigger><SelectValue placeholder="Selecciona un servicio..." /></SelectTrigger>
+                      <SelectContent>{services.map(s => <SelectItem key={s.id} value={s.id}>{s.name} - ${s.price}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                   <Label>&nbsp;</Label> {/* Spacer */}
+                   <Select onValueChange={handleProductSelect}>
+                      <SelectTrigger><SelectValue placeholder="Selecciona un producto..." /></SelectTrigger>
+                      <SelectContent>{products.map(p => <SelectItem key={p.id} value={p.id}>{p.name} - ${p.price}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
               </div>
               {fields.map((field, index) => (
                 <div key={field.id} className="grid grid-cols-12 gap-2 items-end border p-4 rounded-lg">
