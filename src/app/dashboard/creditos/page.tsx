@@ -1,3 +1,4 @@
+
 // src/app/dashboard/creditos/page.tsx
 'use client';
 import { useState, useEffect } from 'react';
@@ -15,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { collection, addDoc, serverTimestamp, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -73,7 +74,7 @@ export default function CreditosPage() {
 
   useEffect(() => {
     if (!user) return;
-    const q = query(collection(db, 'credit_requests'), where('userId', '==', user.uid));
+    const q = query(collection(db, 'credit_requests'), where('userId', '==', user.uid), orderBy('createdAt', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
         const requests = snapshot.docs.map(doc => ({
             id: doc.id,

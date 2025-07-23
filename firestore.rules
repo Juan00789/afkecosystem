@@ -1,3 +1,4 @@
+
 rules_version = '2';
 
 service cloud.firestore {
@@ -8,30 +9,44 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Helper function to check if the user is the owner of a document
+    // Helper function to check if the user is the owner of a document by a given field
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
+    
+    // Helper function to check if user is part of a network connection
+    function isInNetwork(connectionId) {
+        let connection = get(/databases/$(database)/documents/network_connections/$(connectionId)).data;
+        return isOwner(connection.client_id) || isOwner(connection.provider_id);
+    }
 
-    // Users can read any profile, but only write to their own.
+    // Users can read any profile, but only write to their own, except for network updates.
     match /users/{userId} {
       allow read: if isAuthenticated();
-      allow create, update: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
     }
     
-    // Services are public to read for the marketplace, but only the provider can manage them.
+    // Network connections can be created by any authenticated user, as long as they are part of it.
+    // They can only be deleted by the participants.
+    match /network_connections/{connectionId} {
+        allow read: if isAuthenticated() && (isOwner(resource.data.client_id) || isOwner(resource.data.provider_id));
+        allow create: if isAuthenticated() && (isOwner(request.resource.data.client_id) || isOwner(request.resource.data.provider_id));
+        allow delete: if isAuthenticated() && (isOwner(resource.data.client_id) || isOwner(resource.data.provider_id));
+    }
+
+    // Services are public to read, but only the provider can manage them.
     match /services/{serviceId} {
       allow read: if true;
       allow create: if isAuthenticated() && isOwner(request.resource.data.providerId);
       allow update, delete: if isAuthenticated() && isOwner(resource.data.providerId);
     }
     
-    // Connections between users (Brokis)
-    match /network_connections/{connectionId} {
-        // A user can create a connection if they are either the client or the provider in it.
-        allow create: if isAuthenticated() && (isOwner(request.resource.data.client_id) || isOwner(request.resource.data.provider_id));
-        // A user can read or delete a connection if they are part of it.
-        allow read, delete: if isAuthenticated() && (isOwner(resource.data.client_id) || isOwner(resource.data.provider_id));
+    // Courses are public to read, but only the provider can manage them.
+    match /courses/{courseId} {
+       allow read: if true;
+       allow create: if isAuthenticated() && isOwner(request.resource.data.providerId);
+       allow update, delete: if isAuthenticated() && isOwner(resource.data.providerId);
     }
 
     // Cases can only be accessed by the client or the provider involved.
@@ -45,23 +60,15 @@ service cloud.firestore {
       }
     }
     
-    // Credit requests can only be read by the user who created them (and admins in the future).
+    // Credit requests can only be accessed by the user who created them.
     match /credit_requests/{requestId} {
       allow read: if isAuthenticated() && isOwner(resource.data.userId);
       allow create: if isAuthenticated() && isOwner(request.resource.data.userId);
     }
     
-    // Courses are public to read, but only the provider can manage them.
-    match /courses/{courseId} {
-       allow read: if true;
-       allow create: if isAuthenticated() && isOwner(request.resource.data.providerId);
-       allow update, delete: if isAuthenticated() && isOwner(resource.data.providerId);
-    }
-
-    // Transactions can only be managed by the user who owns them.
+    // Transactions can only be accessed by the user who created them.
     match /transactions/{transactionId} {
-      allow read, write: if isAuthenticated() && isOwner(resource.data.userId);
-      allow create: if isAuthenticated() && isOwner(request.resource.data.userId);
+        allow read, create, delete, update: if isAuthenticated() && isOwner(request.auth.uid);
     }
   }
 }
