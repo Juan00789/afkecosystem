@@ -106,9 +106,6 @@ export default function HomePage() {
             <Link href="#" className="text-sm text-primary hover:underline">
               Privacidad
             </Link>
-             <Link href="/dashboard/quotes" className="flex items-center text-sm text-primary hover:underline">
-              <Bot className="mr-1 h-4 w-4" /> Habla con Oniara (IA)
-            </Link>
           </div>
         </div>
       </footer>
