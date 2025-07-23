@@ -10,9 +10,19 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Search, BrainCircuit } from 'lucide-react';
+import { Search, BrainCircuit, LayoutGrid, Megaphone, Code, TrendingUp, Landmark } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
+
+const MENTOR_CATEGORIES = [
+    { name: 'Todos', icon: <LayoutGrid className="h-4 w-4 mr-2" /> },
+    { name: 'Marketing', icon: <Megaphone className="h-4 w-4 mr-2" /> },
+    { name: 'Finanzas', icon: <Landmark className="h-4 w-4 mr-2" /> },
+    { name: 'Tecnología', icon: <Code className="h-4 w-4 mr-2" /> },
+    { name: 'Estrategia', icon: <TrendingUp className="h-4 w-4 mr-2" /> },
+];
+
 
 const MentorCard = ({ mentor }: { mentor: UserProfile }) => {
     return (
@@ -70,6 +80,7 @@ export default function MentoriasPage() {
     const [mentors, setMentors] = useState<UserProfile[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState('Todos');
 
     useEffect(() => {
         const fetchMentors = async () => {
@@ -92,11 +103,17 @@ export default function MentoriasPage() {
     const filteredMentors = useMemo(() => {
         return mentors.filter(mentor => {
             const searchTermLower = searchTerm.toLowerCase();
-            const matchesName = mentor.displayName?.toLowerCase().includes(searchTermLower);
-            const matchesSpecialties = mentor.mentorSpecialties?.some(s => s.toLowerCase().includes(searchTermLower));
-            return matchesName || matchesSpecialties;
+            const specialtiesLower = mentor.mentorSpecialties?.map(s => s.toLowerCase()) || [];
+
+            const matchesCategory = selectedCategory === 'Todos' || specialtiesLower.includes(selectedCategory.toLowerCase());
+            
+            const matchesSearch = searchTermLower === '' || 
+                                  mentor.displayName?.toLowerCase().includes(searchTermLower) ||
+                                  specialtiesLower.some(s => s.includes(searchTermLower));
+
+            return matchesCategory && matchesSearch;
         });
-    }, [mentors, searchTerm]);
+    }, [mentors, searchTerm, selectedCategory]);
 
 
   return (
@@ -119,6 +136,19 @@ export default function MentoriasPage() {
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                 />
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+                {MENTOR_CATEGORIES.map(category => (
+                    <Button 
+                        key={category.name}
+                        variant={selectedCategory === category.name ? "default" : "outline"}
+                        onClick={() => setSelectedCategory(category.name)}
+                        className="flex items-center"
+                    >
+                        {category.icon}
+                        {category.name}
+                    </Button>
+                ))}
             </div>
       </div>
 
