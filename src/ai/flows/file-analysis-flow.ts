@@ -2,7 +2,7 @@
 /**
  * @fileOverview An AI flow for performing an expert audit on arbitrary file content.
  *
- * - analyzeFileContent - A function that takes file content and a query, and returns an expert audit.
+ * - analyzeFileContent - A function that takes file content and returns an expert audit.
  * - FileAnalysisInput - The input type for the analysis.
  * - FileAnalysisOutput - The return type for the analysis.
  */
@@ -17,7 +17,6 @@ const FileAnalysisInputSchema = z.object({
     .describe(
       "The content of the file, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
     ),
-  userQuery: z.string().describe('The specific question or type of audit the user wants.'),
 });
 export type FileAnalysisInput = z.infer<typeof FileAnalysisInputSchema>;
 
@@ -33,23 +32,20 @@ const analysisPrompt = ai.definePrompt({
   name: 'fileAnalysisPrompt',
   input: { schema: FileAnalysisInputSchema },
   output: { schema: FileAnalysisOutputSchema },
-  prompt: `You are Oniara, a world-class auditor and risk assessment expert. Your task is to perform a detailed audit of the provided file based on the user's request.
+  prompt: `You are Oniara, a world-class auditor and business strategist. Your task is to perform an integral audit of the provided file, focusing on uncovering hidden risks and opportunities.
 
-**User's Request for Audit:**
-"{{{userQuery}}}"
+**Instructions for Oniara:**
+1.  **Analyze Holistically:** Review the entire document. Go beyond the surface-level information. Your value is in seeing what others miss.
+2.  **Identify Strengths:** What are the strongest points? What is well-executed or strategically sound?
+3.  **Uncover Risks and Weaknesses:** What are the blind spots? Identify potential risks, inconsistencies, strategic flaws, or areas that need significant improvement. This is where you provide the most value.
+4.  **Provide Actionable Recommendations:** Based on your analysis, offer clear, prioritized, and practical recommendations. Suggest concrete steps to mitigate risks and capitalize on strengths.
+5.  **Summarize Your Findings:** Conclude with a concise executive summary of your audit.
+
+Your tone should be that of a trusted, expert advisor: professional, objective, and deeply insightful. Structure your entire response in the required JSON format.
 
 **File to Analyze (Name: {{{fileName}}}):**
 {{media url=fileContent}}
-
-**Instructions:**
-1.  **Analyze from an Auditor's Perspective:** Meticulously examine the file content, focusing on identifying strengths, weaknesses, opportunities, and threats (SWOT) in the context of the user's query.
-2.  **Formulate an Expert Opinion:** Develop a professional audit based on your findings.
-3.  **Create a Summary:** Write a concise executive summary of your audit.
-4.  **Identify Key Strengths:** List the most significant positive aspects or well-implemented areas.
-5.  **Identify Key Risks:** List the most critical risks, inconsistencies, or areas needing improvement.
-6.  **Provide Actionable Recommendations:** Offer clear, prioritized, and practical recommendations to mitigate risks and enhance strengths.
-
-Structure your entire response in the required JSON format. Your tone should be objective, professional, and constructive, providing high-value feedback that helps the user make informed decisions.`,
+`,
 });
 
 export async function analyzeFileContent(input: FileAnalysisInput): Promise<FileAnalysisOutput> {

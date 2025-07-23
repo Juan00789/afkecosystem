@@ -9,14 +9,12 @@ import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Bot, FileUp, Sparkles, Wand2, AlertTriangle, ThumbsUp, ShieldCheck } from 'lucide-react';
 import { analyzeFileContent, type FileAnalysisOutput } from '@/ai/flows/file-analysis-flow';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const analysisSchema = z.object({
-  context: z.string().min(10, 'Please provide more context for the analysis.'),
   file: z.any().refine((files) => files?.length === 1, 'File is required.'),
 });
 
@@ -90,8 +88,7 @@ export default function AnalisisPage() {
         try {
             const result = await analyzeFileContent({
                 fileName: file.name,
-                fileContent: fileDataUrl, // Pass the entire data URL
-                userQuery: data.context,
+                fileContent: fileDataUrl,
             });
             setAnalysisResult(result);
             toast({ title: 'Auditoría Completa', description: 'Tu archivo ha sido analizado.' });
@@ -138,22 +135,6 @@ export default function AnalisisPage() {
                     </label>
                 </div>
                 {errors.file && <p className="text-sm text-destructive">{errors.file.message?.toString()}</p>}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="context">¿Qué necesitas auditar?</Label>
-              <Controller
-                name="context"
-                control={control}
-                render={({ field }) => (
-                  <Textarea
-                    id="context"
-                    placeholder="Ej: 'Realiza una auditoría de este plan de negocios, enfocándote en la viabilidad financiera y los riesgos de mercado. ¿Qué tan sólida es la estrategia de marketing?'"
-                    className="min-h-[100px]"
-                    {...field}
-                  />
-                )}
-              />
-              {errors.context && <p className="text-sm text-destructive">{errors.context.message}</p>}
             </div>
             <Button type="submit" className="w-full" disabled={isAnalyzing}>
               {isAnalyzing ? (
