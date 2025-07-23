@@ -4,12 +4,13 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowLeft, Landmark, DollarSign, ArrowUpCircle, ArrowDownCircle, PlusCircle, FileText } from 'lucide-react';
+import { ArrowLeft, Landmark, DollarSign, ArrowUpCircle, ArrowDownCircle, PlusCircle, FileText, Archive } from 'lucide-react';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
 import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import type { Product } from '@/modules/products/types';
 
 interface Transaction {
   id: string;
@@ -23,6 +24,7 @@ export default function ContabilidadPage() {
   const { user } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [inventoryValue, setInventoryValue] = useState(0);
   
   const [totalIncome, setTotalIncome] = useState(0);
   const [totalExpenses, setTotalExpenses] = useState(0);
@@ -31,8 +33,9 @@ export default function ContabilidadPage() {
   useEffect(() => {
     if (!user) return;
     setLoading(true);
-    const q = query(collection(db, 'transactions'), where('userId', '==', user.uid), orderBy('date', 'desc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+
+    const qTransactions = query(collection(db, 'transactions'), where('userId', '==', user.uid), orderBy('date', 'desc'));
+    const unsubTransactions = onSnapshot(qTransactions, (snapshot) => {
       const trans = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction));
       setTransactions(trans);
 
@@ -41,12 +44,25 @@ export default function ContabilidadPage() {
       setTotalIncome(income);
       setTotalExpenses(expenses);
       setBalance(income - expenses);
-      setLoading(false);
     }, (error) => {
         console.error("Error fetching transactions: ", error);
-        setLoading(false);
     });
-    return () => unsubscribe();
+
+    const qProducts = query(collection(db, 'products'), where('providerId', '==', user.uid));
+    const unsubProducts = onSnapshot(qProducts, (snapshot) => {
+      const products = snapshot.docs.map(doc => doc.data() as Product);
+      const totalValue = products.reduce((sum, product) => sum + (product.price * product.stock), 0);
+      setInventoryValue(totalValue);
+    }, (error) => {
+        console.error("Error fetching products: ", error);
+    });
+
+    setLoading(false); // Can be improved to handle both listeners
+    
+    return () => {
+        unsubTransactions();
+        unsubProducts();
+    };
   }, [user]);
 
   return (
@@ -86,7 +102,7 @@ export default function ContabilidadPage() {
         </div>
       </header>
 
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
          <Card className="bg-gradient-to-br from-primary/20 to-primary/5">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">Balance Total</CardTitle>
@@ -113,6 +129,16 @@ export default function ContabilidadPage() {
             </CardHeader>
             <CardContent>
                 <div className="text-3xl font-bold text-red-500">${totalExpenses.toLocaleString()}</div>
+            </CardContent>
+        </Card>
+         <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Valor de Inventario</CardTitle>
+                <Archive className="h-4 w-4 text-secondary" />
+            </CardHeader>
+            <CardContent>
+                <div className="text-3xl font-bold text-secondary">${inventoryValue.toLocaleString()}</div>
+                 <p className="text-xs text-muted-foreground">Capital invertido en productos.</p>
             </CardContent>
         </Card>
       </section>
