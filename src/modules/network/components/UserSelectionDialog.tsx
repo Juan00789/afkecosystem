@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
-import { collection, query, where, getDocs, doc, writeBatch, serverTimestamp, increment, limit } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, writeBatch, serverTimestamp, increment, limit, runTransaction } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
 import type { UserProfile } from '@/modules/auth/types';
@@ -75,14 +75,16 @@ export function UserSelectionDialog({ roleToAdd, existingNetworkIds, onUserAdded
     
     try {
         await runTransaction(db, async (transaction) => {
-            // Check if user already has a connection of this type
-            const fieldToCheck = roleToAdd === 'client' ? 'provider_id' : 'client_id';
+            const fieldToCheck = roleToAdd === 'client' ? 'client_id' : 'provider_id';
+            const valueToCheck = roleToAdd === 'client' ? userToAdd.uid : user.uid;
+
             const connectionsQuery = query(
                 collection(db, 'network_connections'),
-                where(fieldToCheck, '==', user.uid),
+                where(fieldToCheck, '==', valueToCheck),
                 limit(1)
             );
-            const existingConnectionsSnap = await transaction.get(connectionsQuery);
+            
+            const existingConnectionsSnap = await getDocs(connectionsQuery);
             const isFirstConnectionOfType = existingConnectionsSnap.empty;
             
             // Add the new connection
@@ -104,7 +106,7 @@ export function UserSelectionDialog({ roleToAdd, existingNetworkIds, onUserAdded
             }
         });
         
-        toast({ title: '¡Éxito!', description: `${userToAdd.displayName} has sido añadido como tu ${roleToAdd}.` });
+        toast({ title: '¡Éxito!', description: `${userToAdd.displayName} ha sido añadido como tu ${roleToAdd}.` });
         
         // Refresh local and global state
         onUserAdded();
