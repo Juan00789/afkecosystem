@@ -61,12 +61,6 @@ const modules = [
     description: 'Conecta con expertos y comparte.',
     href: '/dashboard/consultorias',
   },
-    {
-    icon: <Bot className="h-8 w-8 text-primary" />,
-    title: 'Habla con Oniara',
-    description: 'Tu asistente de IA personal.',
-    href: '/dashboard/quotes',
-  },
   {
     icon: <Users className="h-8 w-8 text-primary" />,
     title: 'Brokis',

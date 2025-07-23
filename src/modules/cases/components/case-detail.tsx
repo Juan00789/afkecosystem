@@ -14,9 +14,10 @@ import { format } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
-import { CheckCircle, Circle, CircleDot } from 'lucide-react';
+import { CheckCircle, Circle, CircleDot, Bot, Sparkles, AlertTriangle,ThumbsUp, Frown, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import { analyzeCaseSentiment, type CaseSentimentOutput } from '@/ai/flows/case-sentiment-flow';
 
 
 const WhatsAppIcon = () => (
@@ -75,6 +76,8 @@ export function CaseDetail({ caseId }: CaseDetailProps) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [loading, setLoading] = useState(true);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<CaseSentimentOutput | null>(null);
 
   const getStatusVariant = useCallback((status: string) => {
     switch (status) {
@@ -189,6 +192,46 @@ export function CaseDetail({ caseId }: CaseDetailProps) {
     }
   };
 
+  const handleSentimentAnalysis = async () => {
+    if (!caseData || comments.length === 0) {
+      toast({
+        title: 'No hay suficientes datos',
+        description: 'Se necesita al menos un comentario para analizar el sentimiento.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setIsAnalyzing(true);
+    setAnalysisResult(null);
+    try {
+      const result = await analyzeCaseSentiment({
+        caseTitle: caseData.title,
+        comments: comments.map(c => ({ authorName: c.authorName, text: c.text })),
+      });
+      setAnalysisResult(result);
+      toast({ title: 'Análisis Completado', description: 'Oniara ha evaluado la conversación.' });
+    } catch (error) {
+      console.error('Error analyzing sentiment:', error);
+      toast({ title: 'Error de Análisis', description: 'No se pudo analizar el sentimiento del caso.', variant: 'destructive' });
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const SentimentIcon = ({ sentiment }: { sentiment: CaseSentimentOutput['sentiment'] }) => {
+    switch (sentiment) {
+      case 'Positivo':
+        return <ThumbsUp className="h-5 w-5 text-green-500" />;
+      case 'Negativo':
+        return <Frown className="h-5 w-5 text-red-500" />;
+      case 'Conflicto Potencial':
+        return <AlertTriangle className="h-5 w-5 text-yellow-500" />;
+      case 'Neutral':
+      default:
+        return <MessageSquare className="h-5 w-5 text-muted-foreground" />;
+    }
+  };
+
   if (loading) {
     return <div>Loading case details...</div>;
   }
@@ -289,9 +332,45 @@ export function CaseDetail({ caseId }: CaseDetailProps) {
 
       <Card>
         <CardHeader>
-          <CardTitle>Comments</CardTitle>
+            <div className="flex justify-between items-center">
+                <CardTitle>Comentarios</CardTitle>
+                <Button variant="outline" onClick={handleSentimentAnalysis} disabled={isAnalyzing}>
+                    <Bot className="mr-2 h-4 w-4" />
+                    {isAnalyzing ? 'Analizando...' : 'Analizar Sentimiento'}
+                </Button>
+            </div>
         </CardHeader>
         <CardContent>
+          {analysisResult && (
+            <Card className="mb-6 bg-secondary/10">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <SentimentIcon sentiment={analysisResult.sentiment} />
+                  Análisis de Oniara: {analysisResult.sentiment}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <p className="italic text-muted-foreground">{analysisResult.summary}</p>
+                {analysisResult.keyPositivePoints && analysisResult.keyPositivePoints.length > 0 && (
+                  <div>
+                    <h4 className="font-semibold text-green-600">Puntos Positivos:</h4>
+                    <ul className="list-disc pl-5">
+                      {analysisResult.keyPositivePoints.map((point, i) => <li key={i}>{point}</li>)}
+                    </ul>
+                  </div>
+                )}
+                {analysisResult.keyNegativePoints && analysisResult.keyNegativePoints.length > 0 && (
+                  <div>
+                    <h4 className="font-semibold text-red-600">Puntos de Fricción:</h4>
+                    <ul className="list-disc pl-5">
+                      {analysisResult.keyNegativePoints.map((point, i) => <li key={i}>{point}</li>)}
+                    </ul>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           <div className="space-y-4">
             {comments.map(comment => (
               <div key={comment.id} className="flex items-start gap-3">
