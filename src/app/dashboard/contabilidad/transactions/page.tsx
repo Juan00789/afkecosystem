@@ -157,6 +157,7 @@ export default function TransactionsPage() {
         relatedPartyName: relatedPartyName,
         userId: user.uid,
         status: 'active',
+        createdAt: serverTimestamp(),
       });
       toast({ title: 'Éxito', description: 'Transacción añadida.' });
       reset();
