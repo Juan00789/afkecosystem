@@ -16,7 +16,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PlusCircle, Trash2, Wand2, FileText, Bot } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
-import type { Service, QuoteFormData, QuoteAnalysisOutput, Product } from '@/modules/invoicing/types';
+import type { Service, QuoteFormData, QuoteAnalysisOutput, Product, Invoice } from '@/modules/invoicing/types';
 import { generateInvoicePDF } from '@/modules/invoicing/components/invoice-pdf';
 import { analyzeQuote } from '@/ai/flows/quote-analysis-flow';
 import { useToast } from '@/hooks/use-toast';
@@ -117,9 +117,10 @@ export default function QuoteGeneratorPage() {
   const onGenerateInvoice = async (data: QuoteFormData) => {
     if (!userProfile || !user) return;
     setIsGenerating(true);
+    const invoiceNumber = `INV-${Date.now().toString().slice(-6)}`;
     try {
       // 1. Save invoice to Firestore
-      await addDoc(collection(db, 'invoices'), {
+      const invoiceData: Omit<Invoice, 'id'> = {
         providerId: user.uid,
         ...data,
         subtotal,
@@ -127,12 +128,29 @@ export default function QuoteGeneratorPage() {
         total,
         status: 'sent', // Initial status
         createdAt: serverTimestamp(),
-      });
+      };
+      const invoiceRef = await addDoc(collection(db, 'invoices'), invoiceData);
 
-      // 2. Generate PDF
-      generateInvoicePDF(data, userProfile);
+      // 2. Add a corresponding transaction
+      const transactionData = {
+        userId: user.uid,
+        type: 'income',
+        description: `Factura ${invoiceNumber} a ${data.clientName}`,
+        amount: total,
+        date: new Date(),
+        category: 'Venta de Servicio/Producto',
+        paymentMethod: 'Facturado',
+        status: 'active',
+        relatedPartyName: data.clientName,
+        invoiceId: invoiceRef.id,
+      };
+      await addDoc(collection(db, 'transactions'), transactionData);
       
-      toast({ title: 'Factura Generada', description: 'La factura ha sido creada y guardada en tus registros.'});
+      // 3. Generate PDF
+      generateInvoicePDF(data, userProfile, invoiceNumber);
+      
+      toast({ title: 'Factura Generada', description: 'La factura y la transacción han sido creadas.'});
+      reset(); // Clear the form
     } catch (error) {
       console.error("Error generating invoice:", error);
       toast({ title: 'Error', description: 'No se pudo generar o guardar la factura.', variant: 'destructive'});

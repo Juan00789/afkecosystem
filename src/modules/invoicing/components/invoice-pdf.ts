@@ -4,7 +4,7 @@ import 'jspdf-autotable';
 import type { UserProfile } from '@/modules/auth/types';
 import type { QuoteFormData } from '../types';
 
-export const generateInvoicePDF = (data: QuoteFormData, userProfile: UserProfile) => {
+export const generateInvoicePDF = (data: QuoteFormData, userProfile: UserProfile, invoiceNumber: string) => {
     const doc = new jsPDF();
     const companyName = userProfile?.companyName || userProfile?.displayName || 'Mi Empresa';
     const userEmail = userProfile?.email || '';
@@ -25,7 +25,6 @@ export const generateInvoicePDF = (data: QuoteFormData, userProfile: UserProfile
     doc.text("FACTURA", 200, 22, { align: 'right' });
     
     // Invoice Info
-    const invoiceNumber = `INV-${Date.now().toString().slice(-6)}`;
     const dueDate = new Date();
     dueDate.setDate(dueDate.getDate() + 30); // Due in 30 days
     
@@ -59,7 +58,7 @@ export const generateInvoicePDF = (data: QuoteFormData, userProfile: UserProfile
         body: tableRows,
         startY: 70,
         theme: 'striped',
-        headStyles: { fillColor: [33, 150, 243] } // Primary color
+        headStyles: { fillColor: [38, 92, 56] } // Secondary color for a change
     });
 
     // Totals

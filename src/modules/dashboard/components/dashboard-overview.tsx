@@ -11,13 +11,11 @@ import { CaseCard } from '@/modules/cases/components/case-card';
 import Link from 'next/link';
 import {
   PlusCircle,
-  Users,
-  Briefcase,
+  ShoppingBag,
   BookOpen,
-  FileText,
   HandCoins,
   MessageSquareHeart,
-  ShoppingBag,
+  Briefcase,
   Sparkles,
   Award,
   BarChart,
@@ -27,6 +25,7 @@ import {
   Archive,
   GitFork,
   GraduationCap,
+  FileText
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
@@ -184,8 +183,8 @@ export function DashboardOverview({ userId }: DashboardOverviewProps) {
       // Dummy data for demonstration
       const baseCredits = userProfile?.credits || 0;
       return [
-          { name: 'Jan', credits: baseCredits - 50 },
-          { name: 'Feb', credits: baseCredits - 30 },
+          { name: 'Jan', credits: baseCredits > 50 ? baseCredits - 50 : 0 },
+          { name: 'Feb', credits: baseCredits > 30 ? baseCredits - 30 : 0 },
           { name: 'Mar', credits: baseCredits + 20 },
           { name: 'Apr', credits: baseCredits + 10 },
           { name: 'May', credits: baseCredits + 40 },
