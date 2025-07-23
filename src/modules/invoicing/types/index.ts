@@ -6,6 +6,7 @@ export interface Service {
   name: string;
   description: string;
   price: number;
+  category?: string;
 }
 
 export interface Product {
@@ -48,14 +49,8 @@ export const QuoteAnalysisInputSchema = z.object({
 export type QuoteAnalysisInput = z.infer<typeof QuoteAnalysisInputSchema>;
 
 export const QuoteAnalysisOutputSchema = z.object({
-  strengths: z
-    .array(z.string())
-    .describe('Positive aspects of the quote.'),
-  weaknesses: z
-    .array(z.string())
-    .describe('Areas where the quote could be improved.'),
-  suggestions: z
-    .array(z.string())
-    .describe('Actionable suggestions to enhance the quote.'),
+  analysis: z
+    .string()
+    .describe('A single, consolidated text block containing the expert analysis and recommendations for the quote.'),
 });
 export type QuoteAnalysisOutput = z.infer<typeof QuoteAnalysisOutputSchema>;

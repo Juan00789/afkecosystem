@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PlusCircle, Trash2, FileDown, Wand2, FileText, Bot, ThumbsUp, AlertTriangle, Sparkles } from 'lucide-react';
+import { PlusCircle, Trash2, FileDown, Wand2, FileText, Bot } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import type { Service, QuoteFormData, QuoteAnalysisOutput, Product } from '@/modules/invoicing/types';
 import { generateInvoicePDF } from '@/modules/invoicing/components/invoice-pdf';
@@ -198,7 +198,7 @@ export default function QuoteGeneratorPage() {
                   <div className="col-span-12 md:col-span-5 space-y-2"><Label>Descripción</Label><Controller name={`items.${index}.description`} control={control} render={({ field }) => <Input {...field} />} /></div>
                   <div className="col-span-4 md:col-span-2 space-y-2"><Label>Cantidad</Label><Controller name={`items.${index}.quantity`} control={control} render={({ field }) => <Input type="number" {...field} />} /></div>
                   <div className="col-span-4 md:col-span-2 space-y-2"><Label>Precio</Label><Controller name={`items.${index}.price`} control={control} render={({ field }) => <Input type="number" step="0.01" {...field} />} /></div>
-                  <div className="col-span-4 md:col-span-2 space-y-2 text-right"><Label>Total</Label><p className="font-semibold h-10 flex items-center justify-end pr-3">${(watchedItems[index].quantity * watchedItems[index].price).toFixed(2)}</p></div>
+                  <div className="col-span-4 md:col-span-2 space-y-2 text-right"><Label>Total</Label><p className="font-semibold h-10 flex items-center justify-end pr-3">${(watchedItems[index]?.quantity * watchedItems[index]?.price || 0).toFixed(2)}</p></div>
                   <div className="col-span-12 md:col-span-1 flex justify-end"><Button type="button" variant="destructive" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button></div>
                 </div>
               ))}
@@ -230,10 +230,8 @@ export default function QuoteGeneratorPage() {
           {analysisResult && (
              <Card className="mt-6 bg-secondary/10 border-primary/20">
               <CardHeader><CardTitle className="flex items-center gap-2"><Bot className="h-6 w-6" />Análisis de Oniara</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                {analysisResult.strengths.length > 0 && <div><h3 className="font-semibold text-lg mb-2 flex items-center gap-2 text-green-600"><ThumbsUp className="h-5 w-5" />Puntos Fuertes</h3><ul className="list-disc pl-5 space-y-1 text-muted-foreground">{analysisResult.strengths.map((point, i) => <li key={i}>{point}</li>)}</ul></div>}
-                {analysisResult.weaknesses.length > 0 && <div><h3 className="font-semibold text-lg mb-2 flex items-center gap-2 text-destructive"><AlertTriangle className="h-5 w-5" />Áreas de Mejora</h3><ul className="list-disc pl-5 space-y-1 text-muted-foreground">{analysisResult.weaknesses.map((point, i) => <li key={i}>{point}</li>)}</ul></div>}
-                {analysisResult.suggestions.length > 0 && <div><h3 className="font-semibold text-lg mb-2 flex items-center gap-2 text-primary"><Sparkles className="h-5 w-5" />Sugerencias</h3><ul className="list-disc pl-5 space-y-1 text-muted-foreground">{analysisResult.suggestions.map((rec, i) => <li key={i}>{rec}</li>)}</ul></div>}
+              <CardContent>
+                <p className="text-muted-foreground whitespace-pre-wrap">{analysisResult.analysis}</p>
               </CardContent>
             </Card>
           )}
