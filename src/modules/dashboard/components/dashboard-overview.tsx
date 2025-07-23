@@ -17,7 +17,7 @@ import {
   HandHelping,
   HandCoins,
   MessageSquareHeart,
-  Church,
+  ShoppingBag,
   Sparkles,
   Award,
   BarChart,
@@ -38,39 +38,39 @@ interface DashboardOverviewProps {
 
 const modules = [
   {
-    icon: <HandHelping className="h-8 w-8 text-primary" />,
-    title: 'Directorio de Ministerios',
-    description: 'Encuentra y sirve en los ministerios.',
+    icon: <ShoppingBag className="h-8 w-8 text-primary" />,
+    title: 'Marketplace',
+    description: 'Explora servicios y productos del ecosistema.',
     href: '/dashboard/marketplace',
   },
   {
     icon: <BookOpen className="h-8 w-8 text-primary" />,
-    title: 'Estudios y Recursos',
-    description: 'Crece en tu formación espiritual.',
+    title: 'Cursos Exprés',
+    description: 'Aprende habilidades clave para crecer.',
     href: '/dashboard/cursos',
   },
   {
     icon: <HandCoins className="h-8 w-8 text-primary" />,
-    title: 'Fondo de Ayuda Mutua',
-    description: 'Apoya y solicita ayuda para proyectos.',
+    title: 'Microcréditos',
+    description: 'Accede a financiamiento colaborativo.',
     href: '/dashboard/creditos',
   },
   {
     icon: <MessageSquareHeart className="h-8 w-8 text-primary" />,
-    title: 'Grupos de Apoyo',
-    description: 'Conecta con otros en oración y apoyo.',
+    title: 'Mentorías y Foros',
+    description: 'Conecta con mentores y resuelve dudas.',
     href: '/dashboard/consultorias',
   },
   {
     icon: <FileSearch className="h-8 w-8 text-primary" />,
     title: 'Análisis IA',
-    description: 'Analiza documentos con perspectiva de fe.',
+    description: 'Obtén opiniones expertas de tus documentos.',
     href: '/dashboard/analisis',
   },
   {
     icon: <Users className="h-8 w-8 text-primary" />,
-    title: 'Mi Comunidad',
-    description: 'Gestiona tu red de hermanos en fe.',
+    title: 'Mis Brokis',
+    description: 'Gestiona tu red de clientes y proveedores.',
     href: '/dashboard/network',
   },
    {
@@ -260,7 +260,7 @@ export function DashboardOverview({ userId }: DashboardOverviewProps) {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
             <h1 className="text-3xl font-bold">Panel Principal</h1>
-            <p className="text-muted-foreground">Un resumen de tu actividad y crecimiento en la comunidad.</p>
+            <p className="text-muted-foreground">Un resumen de tu actividad y crecimiento en el ecosistema.</p>
         </div>
         <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 rounded-full bg-secondary/20 px-4 py-2 text-secondary">
@@ -278,11 +278,11 @@ export function DashboardOverview({ userId }: DashboardOverviewProps) {
       
       {isProfileIncomplete && (
         <Alert>
-          <Church className="h-4 w-4" />
-          <AlertTitle>¡Bienvenido a la Comunidad de Fe!</AlertTitle>
+          <Sparkles className="h-4 w-4" />
+          <AlertTitle>¡Bienvenido a AFKEcosystem!</AlertTitle>
           <AlertDescription>
             <div className="flex justify-between items-center">
-                <p>Completa tu perfil para que otros miembros puedan conocerte y conectar contigo.</p>
+                <p>Completa tu perfil para que otros miembros puedan encontrarte y colaborar contigo.</p>
                 <Button asChild>
                     <Link href="/dashboard/profile">Completar Mi Perfil</Link>
                 </Button>
@@ -292,7 +292,7 @@ export function DashboardOverview({ userId }: DashboardOverviewProps) {
       )}
 
       <div>
-        <h2 className="text-2xl font-semibold mb-4">Métricas de la Comunidad</h2>
+        <h2 className="text-2xl font-semibold mb-4">Métricas del Ecosistema</h2>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <StatsCard title="Actividad de Casos" description="Casos iniciados vs. completados en los últimos 6 meses." icon={<BarChart className="h-6 w-6 text-primary" />}>
                 <ResponsiveContainer width="100%" height="100%">
@@ -367,7 +367,7 @@ export function DashboardOverview({ userId }: DashboardOverviewProps) {
               <p className="text-muted-foreground">No hay casos de apoyo recientes.</p>
               <p className="mt-2">
                 <Button asChild variant="link">
-                  <Link href="/dashboard/cases/create">Inicia un nuevo caso de apoyo</Link>
+                  <Link href="/dashboard/cases/create">Inicia un nuevo caso</Link>
                 </Button>
               </p>
             </div>

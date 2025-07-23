@@ -42,8 +42,8 @@ export function NetworkManagement() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Mi Comunidad</h1>
-        <p className="text-muted-foreground">Tu red de hermanos en fe. Conexiones para servir y ser servido.</p>
+        <h1 className="text-3xl font-bold">Mis Brokis</h1>
+        <p className="text-muted-foreground">Tu red de clientes y proveedores. Conexiones para crecer.</p>
       </div>
 
       <div className="space-y-8">
@@ -54,9 +54,9 @@ export function NetworkManagement() {
               <div className="flex items-center gap-3">
                 <Users className="h-6 w-6 text-primary" />
                 <div>
-                  <CardTitle>Personas a las que Sirvo</CardTitle>
+                  <CardTitle>Clientes</CardTitle>
                   <CardDescription>
-                    Miembros de la comunidad a quienes ofreces tu apoyo y servicios.
+                    Emprendedores a los que ayudas con tus servicios.
                   </CardDescription>
                 </div>
               </div>
@@ -83,9 +83,9 @@ export function NetworkManagement() {
               <div className="flex items-center gap-3">
                  <HandHelping className="h-6 w-6 text-secondary" />
                  <div>
-                    <CardTitle>Personas que me Sirven</CardTitle>
+                    <CardTitle>Proveedores</CardTitle>
                     <CardDescription>
-                      Miembros de la comunidad que te ofrecen su apoyo y servicios.
+                      Emprendedores que te ayudan con sus servicios.
                     </CardDescription>
                  </div>
               </div>

@@ -14,13 +14,12 @@ import {
   ShoppingBag,
   BookOpen,
   HandCoins,
-  Church,
-  MessageSquareHeart,
   HandHelping,
   GraduationCap,
   Landmark,
   FileSearch,
   Banknote,
+  MessageSquareHeart,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -48,16 +47,16 @@ export function Header({}: HeaderProps) {
 
   const navLinks = [
     { href: '/dashboard', label: 'Panel Principal', icon: Home },
-    { href: '/dashboard/marketplace', label: 'Ministerios', icon: HandHelping },
-    { href: '/dashboard/cursos', label: 'Estudios', icon: BookOpen },
-    { href: '/dashboard/my-courses', label: 'Mis Estudios', icon: GraduationCap },
-    { href: '/dashboard/creditos', label: 'Fondo de Ayuda', icon: HandCoins },
-    { href: '/dashboard/consultorias', label: 'Grupos de Apoyo', icon: MessageSquareHeart },
+    { href: '/dashboard/marketplace', label: 'Marketplace', icon: ShoppingBag },
+    { href: '/dashboard/cursos', label: 'Cursos', icon: BookOpen },
+    { href: '/dashboard/my-courses', label: 'Mis Cursos', icon: GraduationCap },
+    { href: '/dashboard/creditos', label: 'Créditos', icon: HandCoins },
+    { href: '/dashboard/consultorias', label: 'Mentorías', icon: MessageSquareHeart },
     { href: '/dashboard/analisis', label: 'Análisis IA', icon: FileSearch },
-    { href: '/dashboard/network', label: 'Mi Comunidad', icon: Users },
+    { href: '/dashboard/network', label: 'Mis Brokis', icon: Users },
     { href: '/dashboard/services', label: 'Mis Servicios', icon: Briefcase },
     { href: '/dashboard/contabilidad', label: 'Mis Finanzas', icon: Landmark },
-    ...(userProfile?.role === 'admin' ? [{ href: '/dashboard/fondo', label: 'Fondo Comunitario', icon: Banknote }] : []),
+    ...(userProfile?.role === 'admin' ? [{ href: '/dashboard/fondo', label: 'Fondo Ecosistema', icon: Banknote }] : []),
   ];
   
   const bottomLinks = [
@@ -79,8 +78,8 @@ export function Header({}: HeaderProps) {
               href="/dashboard"
               className="group flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:text-base"
             >
-              <Church className="h-5 w-5 transition-all group-hover:scale-110" />
-              <span className="sr-only">Comunidad de Fe</span>
+              <HandHelping className="h-5 w-5 transition-all group-hover:scale-110" />
+              <span className="sr-only">AFKEcosystem</span>
             </Link>
             {navLinks.map(({ href, label, icon: Icon }) => (
               <Link
@@ -124,8 +123,8 @@ export function Header({}: HeaderProps) {
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Notificaciones</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Nuevo pedido de oración</DropdownMenuItem>
-            <DropdownMenuItem>Estudio completado</DropdownMenuItem>
+            <DropdownMenuItem>Nuevo caso asignado</DropdownMenuItem>
+            <DropdownMenuItem>Créditos acreditados</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem>Ver todas</DropdownMenuItem>
           </DropdownMenuContent>
