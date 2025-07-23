@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { Bot, FileUp, Sparkles, Wand2 } from 'lucide-react';
+import { Bot, FileUp, Sparkles, Wand2, AlertTriangle, ThumbsUp, ShieldCheck } from 'lucide-react';
 import { analyzeFileContent, type FileAnalysisOutput } from '@/ai/flows/file-analysis-flow';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -28,26 +28,38 @@ function ResultDisplay({ result }: { result: FileAnalysisOutput }) {
           <CardHeader>
               <CardTitle className="flex items-center gap-2">
                   <Bot className="h-6 w-6" />
-                  Análisis de Oniara
+                  Auditoría de Oniara
               </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-6">
               <div>
-                  <h3 className="font-semibold text-lg mb-2">Resumen Ejecutivo</h3>
+                  <h3 className="font-semibold text-lg mb-2 flex items-center gap-2"><ShieldCheck className="h-5 w-5" />Resumen Ejecutivo</h3>
                   <p className="text-muted-foreground whitespace-pre-wrap">{result.summary}</p>
               </div>
-              <div>
-                  <h3 className="font-semibold text-lg mb-2">Puntos Clave</h3>
-                  <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
-                      {result.keyPoints.map((point, i) => <li key={i}>{point}</li>)}
-                  </ul>
-              </div>
-              <div>
-                  <h3 className="font-semibold text-lg mb-2">Recomendaciones</h3>
-                   <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
-                      {result.recommendations.map((rec, i) => <li key={i}>{rec}</li>)}
-                  </ul>
-              </div>
+              {result.strengths.length > 0 && (
+                <div>
+                    <h3 className="font-semibold text-lg mb-2 flex items-center gap-2 text-green-600"><ThumbsUp className="h-5 w-5" />Puntos Fuertes</h3>
+                    <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
+                        {result.strengths.map((point, i) => <li key={i}>{point}</li>)}
+                    </ul>
+                </div>
+              )}
+              {result.risks.length > 0 && (
+                <div>
+                    <h3 className="font-semibold text-lg mb-2 flex items-center gap-2 text-destructive"><AlertTriangle className="h-5 w-5" />Riesgos Identificados</h3>
+                    <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
+                        {result.risks.map((point, i) => <li key={i}>{point}</li>)}
+                    </ul>
+                </div>
+              )}
+              {result.recommendations.length > 0 && (
+                <div>
+                    <h3 className="font-semibold text-lg mb-2 flex items-center gap-2 text-primary"><Sparkles className="h-5 w-5" />Recomendaciones</h3>
+                    <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
+                        {result.recommendations.map((rec, i) => <li key={i}>{rec}</li>)}
+                    </ul>
+                </div>
+              )}
           </CardContent>
       </Card>
   );
@@ -82,7 +94,7 @@ export default function AnalisisPage() {
                 userQuery: data.context,
             });
             setAnalysisResult(result);
-            toast({ title: 'Análisis Completo', description: 'Tu archivo ha sido analizado.' });
+            toast({ title: 'Auditoría Completa', description: 'Tu archivo ha sido analizado.' });
         } catch (error) {
             console.error('Error during file analysis:', error);
             toast({ title: 'Error', description: 'No se pudo analizar el archivo.', variant: 'destructive' });
@@ -100,14 +112,14 @@ export default function AnalisisPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Análisis de Archivos con Oniara</h1>
-        <p className="text-muted-foreground">Sube cualquier archivo y obtén una opinión experta para tomar mejores decisiones.</p>
+        <h1 className="text-3xl font-bold">Auditoría de Documentos con Oniara</h1>
+        <p className="text-muted-foreground">Sube cualquier archivo y obtén una auditoría experta para tomar mejores decisiones.</p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Sube tu Documento</CardTitle>
-          <CardDescription>Formatos soportados: PDF, TXT, CSV. Tamaño máximo: 5MB.</CardDescription>
+          <CardTitle>Sube tu Documento para Auditar</CardTitle>
+          <CardDescription>Formatos soportados: PDF, TXT, CSV, DOCX. Tamaño máximo: 5MB.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -128,14 +140,14 @@ export default function AnalisisPage() {
                 {errors.file && <p className="text-sm text-destructive">{errors.file.message?.toString()}</p>}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="context">¿Qué necesitas analizar?</Label>
+              <Label htmlFor="context">¿Qué necesitas auditar?</Label>
               <Controller
                 name="context"
                 control={control}
                 render={({ field }) => (
                   <Textarea
                     id="context"
-                    placeholder="Ej: 'Analiza este plan de negocios y dame tu opinión sobre su viabilidad financiera y estrategias de marketing. ¿Cuáles son los mayores riesgos?'"
+                    placeholder="Ej: 'Realiza una auditoría de este plan de negocios, enfocándote en la viabilidad financiera y los riesgos de mercado. ¿Qué tan sólida es la estrategia de marketing?'"
                     className="min-h-[100px]"
                     {...field}
                   />
@@ -145,9 +157,9 @@ export default function AnalisisPage() {
             </div>
             <Button type="submit" className="w-full" disabled={isAnalyzing}>
               {isAnalyzing ? (
-                <> <Sparkles className="mr-2 h-4 w-4 animate-spin" /> Analizando... </>
+                <> <Sparkles className="mr-2 h-4 w-4 animate-spin" /> Auditando... </>
               ) : (
-                <> <Wand2 className="mr-2 h-4 w-4" /> Analizar Archivo </>
+                <> <Wand2 className="mr-2 h-4 w-4" /> Auditar Archivo </>
               )}
             </Button>
           </form>
