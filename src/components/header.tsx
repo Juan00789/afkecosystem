@@ -36,6 +36,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
 import type { Role } from '@/modules/auth/types';
 import { Separator } from './ui/separator';
+import { ThemeToggle } from './theme-toggle';
 
 interface HeaderProps {}
 
@@ -133,6 +134,7 @@ export function Header({}: HeaderProps) {
         {/* Placeholder for potential search bar */}
       </div>
       <div className="flex items-center gap-4">
+        <ThemeToggle />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
