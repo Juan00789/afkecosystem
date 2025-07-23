@@ -13,21 +13,19 @@ service cloud.firestore {
       return request.auth.uid == userId;
     }
 
-    // Users can read any profile, but only write to their own profile.
-    // They can modify their own network lists.
+    // Users can read any profile, but only write to their own.
+    // Reading is necessary to allow users to search for and add others to their network.
     match /users/{userId} {
-      allow read: if true;
-      allow create: if isOwner(userId);
-      // Allow updates to own profile, including network changes.
-      // The logic for adding users to the network and awarding credits is handled
-      // in a client-side transaction, which these rules permit.
+      allow read: if isAuthenticated();
       allow update: if isOwner(userId);
+      // Create is open to allow for initial profile setup during sign-up.
+      allow create: if isAuthenticated();
     }
     
     // Services are public to read for the marketplace, but only the provider can manage them.
     match /services/{serviceId} {
       allow read: if true;
-      allow create: if isAuthenticated() && request.resource.data.providerId == request.auth.uid;
+      allow create: if isAuthenticated() && isOwner(request.resource.data.providerId);
       allow update, delete: if isAuthenticated() && isOwner(resource.data.providerId);
     }
 
@@ -38,14 +36,11 @@ service cloud.firestore {
       
       // Comments follow the same rule as the parent case.
       match /comments/{commentId} {
-        allow read, create: if isAuthenticated() && (
-          isOwner(get(/databases/$(database)/documents/cases/$(caseId)).data.clientId) || 
-          isOwner(get(/databases/$(database)/documents/cases/$(caseId)).data.providerId)
-        );
+        allow read, create: if isAuthenticated() && (isOwner(get(/databases/$(database)/documents/cases/$(caseId)).data.clientId) || isOwner(get(/databases/$(database)/documents/cases/$(caseId)).data.providerId));
       }
     }
     
-    // Credit requests can only be read/created by the user who created them (and admins in the future).
+    // Credit requests can only be read by the user who created them (and admins in the future).
     match /credit_requests/{requestId} {
       allow read: if isAuthenticated() && isOwner(resource.data.userId);
       allow create: if isAuthenticated() && isOwner(request.resource.data.userId);

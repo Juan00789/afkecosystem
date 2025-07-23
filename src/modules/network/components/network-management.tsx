@@ -7,12 +7,16 @@ import { AddUserDialog } from './add-user-dialog';
 import { NetworkList } from './network-list';
 import { Separator } from '@/components/ui/separator';
 import { Users, Briefcase } from 'lucide-react';
+import { useAuth } from '@/modules/auth/hooks/use-auth';
 
 export function NetworkManagement() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const { refreshUserProfile } = useAuth();
+
 
   const handleUserAddedOrRemoved = () => {
     setRefreshTrigger(prev => prev + 1);
+    refreshUserProfile();
   };
 
   return (
