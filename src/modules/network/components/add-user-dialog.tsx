@@ -60,8 +60,12 @@ export function AddUserDialog({ roleToAdd, onUserAdded }: AddUserDialogProps) {
       const queries = [
         query(collection(db, 'users'), where('email', '==', trimmedIdentifier)),
         query(collection(db, 'users'), where('phoneNumber', '==', trimmedIdentifier)),
-        query(collection(db, 'users'), where(documentId(), '==', trimmedIdentifier)),
       ];
+      // Only check by ID if it looks like an ID
+      if (trimmedIdentifier.length > 10 && !trimmedIdentifier.includes('@')) {
+         queries.push(query(collection(db, 'users'), where(documentId(), '==', trimmedIdentifier)))
+      }
+
 
       let foundUserDoc = null;
       for (const q of queries) {
@@ -114,10 +118,8 @@ export function AddUserDialog({ roleToAdd, onUserAdded }: AddUserDialogProps) {
           throw new Error(`This user is already in your ${roleToAdd}s list.`);
         }
         
-        const hasExistingProviders = network.providers && network.providers.length > 0;
-        const hasExistingClients = network.clients && network.clients.length > 0;
-        const isFirstConnectionOfType = isProvider ? !hasExistingProviders : !hasExistingClients;
-
+        // Correctly determine if this is the first connection of its type
+        const isFirstConnectionOfType = listToCheck.length === 0;
 
         // Perform updates
         const fieldForCurrentUser = isProvider ? 'network.providers' : 'network.clients';
