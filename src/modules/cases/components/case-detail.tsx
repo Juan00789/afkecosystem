@@ -1,9 +1,7 @@
-
-      
 // src/modules/cases/components/case-detail.tsx
 'use client';
 import { useState, useEffect, useCallback } from 'react';
-import { doc, getDoc, onSnapshot, updateDoc, collection, query, orderBy, addDoc, serverTimestamp, runTransaction, increment } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, updateDoc, collection, query, orderBy, addDoc, serverTimestamp, runTransaction, increment, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
 import type { Case, Comment, Investment } from '../types';
@@ -139,7 +137,7 @@ export function CaseDetail({ caseId }: CaseDetailProps) {
         setComments(fetchedComments);
     });
     
-    const investmentsQuery = query(collection(db, `cases/${caseId}/investments`), orderBy('createdAt', 'asc'));
+    const investmentsQuery = query(collection(db, 'investments'), where('caseId', '==', caseId));
     const unsubscribeInvestments = onSnapshot(investmentsQuery, (snapshot) => {
         const fetchedInvestments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Investment));
         setInvestments(fetchedInvestments);
@@ -454,5 +452,3 @@ export function CaseDetail({ caseId }: CaseDetailProps) {
     </div>
   );
 }
-      
-    

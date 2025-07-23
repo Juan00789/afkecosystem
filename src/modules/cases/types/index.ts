@@ -1,5 +1,3 @@
-
-      
 // src/modules/cases/types/index.ts
 import type { Timestamp } from 'firebase/firestore';
 
@@ -47,9 +45,8 @@ export interface Comment {
 
 export interface Investment {
   id: string;
+  caseId: string;
   investorId: string;
   amount: number;
   createdAt: Timestamp;
 }
-      
-    

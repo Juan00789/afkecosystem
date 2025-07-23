@@ -1,5 +1,3 @@
-
-      
 'use server';
 /**
  * @fileOverview An AI flow for handling case investments.
@@ -54,10 +52,11 @@ export async function processInvestment(input: InvestmentInput): Promise<Investm
       // Deduct credits from investor
       transaction.update(investorRef, { credits: increment(-amount) });
 
-      // Record the investment in a subcollection within the case
-      const investmentRef = doc(collection(db, `cases/${caseId}/investments`));
+      // Record the investment in a top-level collection for easier querying
+      const investmentRef = doc(collection(db, `investments`));
       transaction.set(investmentRef, {
         investorId,
+        caseId,
         amount,
         createdAt: serverTimestamp(),
       });
@@ -79,5 +78,3 @@ export async function processInvestment(input: InvestmentInput): Promise<Investm
     return { success: false, message: error.message || 'An unexpected error occurred during the investment.' };
   }
 }
-      
-    
