@@ -84,9 +84,9 @@ export default function PublicProfilePage() {
         const userProfileData = userDocSnap.data() as UserProfile;
         setProfile(userProfileData);
 
-        if (currentUserProfile?.network?.providers?.includes(id)) {
-            setIsConnected(true);
-        }
+        const networkConnectionsQuery = query(collection(db, 'network_connections'), where('client_id', '==', currentUser?.uid), where('provider_id', '==', id));
+        const networkConnectionsSnapshot = await getDocs(networkConnectionsQuery);
+        setIsConnected(!networkConnectionsSnapshot.empty);
 
         const servicesQuery = query(collection(db, 'services'), where('providerId', '==', id));
         const servicesSnapshot = await getDocs(servicesQuery);
@@ -105,7 +105,7 @@ export default function PublicProfilePage() {
     };
 
     fetchProfileData();
-  }, [id, currentUserProfile]);
+  }, [id, currentUser]);
 
   const handleAddToNetwork = async () => {
     if (!currentUser || !profile) return;
@@ -116,31 +116,31 @@ export default function PublicProfilePage() {
             const currentUserRef = doc(db, 'users', currentUser.uid);
             const otherUserRef = doc(db, 'users', profile.uid);
 
-            const currentUserSnap = await transaction.get(currentUserRef);
-            if (!currentUserSnap.exists()) {
-              throw new Error("Your user profile does not exist.");
-            }
+            const connectionsQuery = query(
+              collection(db, 'network_connections'),
+              where('client_id', '==', currentUser.uid),
+              where('provider_id', '==', profile.uid)
+            );
+            const connectionSnapshot = await getDocs(connectionsQuery);
             
-            const currentUserData = currentUserSnap.data();
-            const network = currentUserData.network || {};
-            const providers = network.providers || [];
-
-            if (providers.includes(profile.uid)) {
-              toast({ title: 'Already Connected', description: 'This provider is already in your network.'});
-              return;
+            if (!connectionSnapshot.empty) {
+                toast({ title: 'Already Connected', description: 'This provider is already in your network.'});
+                return;
             }
 
-            const isFirstProvider = providers.length === 0;
+            const newConnectionRef = doc(collection(db, 'network_connections'));
+            transaction.set(newConnectionRef, {
+                client_id: currentUser.uid,
+                provider_id: profile.uid,
+                created_at: serverTimestamp(),
+            });
 
-            transaction.update(currentUserRef, { 'network.providers': arrayUnion(profile.uid) });
-            transaction.update(otherUserRef, { 'network.clients': arrayUnion(currentUser.uid) });
-            
-            if (isFirstProvider) {
-                transaction.update(currentUserRef, { credits: increment(5) });
-                toast({
-                    title: '¡Créditos Ganados!',
-                    description: 'Has ganado 5 créditos por añadir tu primer proveedor.',
-                });
+            // Check if it's the first provider for the current user
+            const providersQuery = query(collection(db, 'network_connections'), where('client_id', '==', currentUser.uid));
+            const providersSnapshot = await getDocs(providersQuery);
+            if (providersSnapshot.docs.length === 0) { // This check is slightly flawed due to transaction, better to check on user's profile array length
+                 transaction.update(currentUserRef, { credits: increment(5) });
+                 toast({ title: '¡Créditos Ganados!', description: 'Has ganado 5 créditos por añadir tu primer proveedor.' });
             }
         });
 

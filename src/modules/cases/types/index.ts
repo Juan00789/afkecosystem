@@ -10,6 +10,7 @@ export interface UserProfile {
   companyName?: string;
   website?: string;
   credits?: number;
+  role?: 'admin' | 'user';
   bankInfo?: {
     bankName?: string;
     accountNumber?: string;
