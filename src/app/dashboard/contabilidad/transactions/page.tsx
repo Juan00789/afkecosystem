@@ -14,7 +14,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -46,7 +45,7 @@ export default function TransactionsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const { control, handleSubmit, reset, watch } = useForm<TransactionFormData>({
+  const { control, handleSubmit, reset, watch, formState: { errors } } = useForm<TransactionFormData>({
     resolver: zodResolver(transactionSchema),
     defaultValues: {
       type: 'expense',
@@ -78,7 +77,7 @@ export default function TransactionsPage() {
       await addDoc(collection(db, 'transactions'), {
         ...data,
         userId: user.uid,
-        date: data.date, 
+        date: data.date,
       });
       toast({ title: 'Éxito', description: 'Transacción añadida.' });
       reset();
@@ -131,14 +130,17 @@ export default function TransactionsPage() {
                                    </SelectContent>
                                </Select>
                            )} />
+                           {errors.type && <p className="text-sm text-destructive">{errors.type.message}</p>}
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="description">Descripción</Label>
                             <Controller name="description" control={control} render={({ field }) => <Input id="description" {...field} />} />
+                            {errors.description && <p className="text-sm text-destructive">{errors.description.message}</p>}
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="amount">Monto (DOP)</Label>
                             <Controller name="amount" control={control} render={({ field }) => <Input id="amount" type="number" {...field} />} />
+                            {errors.amount && <p className="text-sm text-destructive">{errors.amount.message}</p>}
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="category">Categoría</Label>
@@ -152,10 +154,12 @@ export default function TransactionsPage() {
                                    </SelectContent>
                                </Select>
                            )} />
+                           {errors.category && <p className="text-sm text-destructive">{errors.category.message}</p>}
                         </div>
                          <div className="space-y-2">
                             <Label htmlFor="date">Fecha</Label>
                             <Controller name="date" control={control} render={({ field }) => <Input id="date" type="date" value={field.value ? format(new Date(field.value), 'yyyy-MM-dd') : ''} onChange={e => field.onChange(new Date(e.target.value))} />} />
+                            {errors.date && <p className="text-sm text-destructive">{errors.date.message}</p>}
                         </div>
                         <Button type="submit" disabled={isSubmitting} className="w-full">
                             {isSubmitting ? 'Guardando...' : 'Guardar Transacción'}

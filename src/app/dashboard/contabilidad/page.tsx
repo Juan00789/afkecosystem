@@ -10,7 +10,7 @@ import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestor
 import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Legend, Bar } from 'recharts';
+import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Legend, Bar, PieChart, Pie, Cell } from 'recharts';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 interface Transaction {
@@ -21,6 +21,9 @@ interface Transaction {
   date: { toDate: () => Date };
   category: string;
 }
+
+const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088fe', '#00c49f'];
+
 
 export default function ContabilidadPage() {
   const { user } = useAuth();
@@ -52,7 +55,7 @@ export default function ContabilidadPage() {
     };
   }, [transactions]);
   
-  const chartData = useMemo(() => {
+  const barChartData = useMemo(() => {
     const monthlyData: { [key: string]: { income: number; expenses: number } } = {};
     transactions.forEach(t => {
       const month = format(t.date.toDate(), 'MMM yyyy', { locale: es });
@@ -70,6 +73,22 @@ export default function ContabilidadPage() {
       Ingresos: monthlyData[month].income,
       Gastos: monthlyData[month].expenses,
     })).reverse();
+  }, [transactions]);
+  
+  const pieChartData = useMemo(() => {
+    const expenseByCategory: { [key: string]: number } = {};
+    transactions
+      .filter(t => t.type === 'expense')
+      .forEach(t => {
+        if (!expenseByCategory[t.category]) {
+          expenseByCategory[t.category] = 0;
+        }
+        expenseByCategory[t.category] += t.amount;
+      });
+    return Object.keys(expenseByCategory).map(category => ({
+      name: category,
+      value: expenseByCategory[category],
+    }));
   }, [transactions]);
 
   return (
@@ -132,7 +151,7 @@ export default function ContabilidadPage() {
         </Card>
       </section>
 
-       <section>
+       <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
             <CardHeader>
                 <CardTitle>Análisis de Ingresos vs. Gastos</CardTitle>
@@ -140,7 +159,7 @@ export default function ContabilidadPage() {
             </CardHeader>
             <CardContent className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData}>
+                    <BarChart data={barChartData}>
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                         <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
                         <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickFormatter={(value) => `$${value/1000}k`} />
@@ -149,6 +168,25 @@ export default function ContabilidadPage() {
                         <Bar dataKey="Ingresos" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                         <Bar dataKey="Gastos" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
                     </BarChart>
+                </ResponsiveContainer>
+            </CardContent>
+        </Card>
+        <Card>
+            <CardHeader>
+                <CardTitle>Desglose de Gastos</CardTitle>
+                <CardDescription>Distribución de tus gastos por categoría.</CardDescription>
+            </CardHeader>
+            <CardContent className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                        <Pie data={pieChartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
+                             {pieChartData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                        </Pie>
+                         <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }}/>
+                        <Legend />
+                    </PieChart>
                 </ResponsiveContainer>
             </CardContent>
         </Card>
