@@ -1,4 +1,3 @@
-
 // src/app/dashboard/cotizador/page.tsx
 'use client';
 import { useState, useEffect } from 'react';
@@ -8,8 +7,6 @@ import * as z from 'zod';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
 import { db } from '@/lib/firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
-import { jsPDF } from "jspdf";
-import 'jspdf-autotable';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,8 +14,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PlusCircle, Trash2, FileDown } from 'lucide-react';
+import { PlusCircle, Trash2, FileDown, Wand2, FileText, Bot, ThumbsUp, AlertTriangle, Sparkles } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import type { Service, QuoteFormData, QuoteAnalysisOutput } from '@/modules/invoicing/types';
+import { generateInvoicePDF } from '@/modules/invoicing/components/invoice-pdf';
+import { generateQuotePDF } from '@/modules/invoicing/components/quote-pdf';
+import { analyzeQuote } from '@/ai/flows/quote-analysis-flow';
+import { useToast } from '@/hooks/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const quoteItemSchema = z.object({
   serviceId: z.string().optional(),
@@ -35,20 +38,13 @@ const quoteSchema = z.object({
   includeITBIS: z.boolean().default(true),
 });
 
-type QuoteFormData = z.infer<typeof quoteSchema>;
-type QuoteItem = z.infer<typeof quoteItemSchema>;
-
-interface Service {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-}
-
 export default function QuoteGeneratorPage() {
   const { user, userProfile } = useAuth();
   const [services, setServices] = useState<Service[]>([]);
-  const [selectedService, setSelectedService] = useState<Service | null>(null);
+  
+  const { toast } = useToast();
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<QuoteAnalysisOutput | null>(null);
 
   const { control, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<QuoteFormData>({
     resolver: zodResolver(quoteSchema),
@@ -61,7 +57,7 @@ export default function QuoteGeneratorPage() {
     },
   });
 
-  const { fields, append, remove, update } = useFieldArray({
+  const { fields, append, remove } = useFieldArray({
     control,
     name: "items"
   });
@@ -95,92 +91,39 @@ export default function QuoteGeneratorPage() {
     }
   }
 
-  const generatePDF = (data: QuoteFormData) => {
-    const doc = new jsPDF();
-    const companyName = userProfile?.companyName || userProfile?.displayName || 'Mi Empresa';
-    const userEmail = userProfile?.email || '';
-    const userPhone = userProfile?.phoneNumber || '';
-    const bankName = userProfile?.bankInfo?.bankName || '';
-    const accountNumber = userProfile?.bankInfo?.accountNumber || '';
-
-    // Header
-    doc.setFontSize(22);
-    doc.setFont("helvetica", "bold");
-    doc.text(companyName, 14, 22);
-
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    doc.text(`${userProfile?.displayName || ''}\n${userEmail}\n${userPhone}`, 14, 30);
-    
-    doc.setFontSize(18);
-    doc.text("COTIZACIÓN", 200, 22, { align: 'right' });
-
-    // Client Info
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "bold");
-    doc.text("PARA:", 14, 50);
-    doc.setFont("helvetica", "normal");
-    doc.text(`${data.clientName}\n${data.clientAddress || ''}`, 14, 56);
-    
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "bold");
-    doc.text("FECHA:", 140, 50);
-    doc.setFont("helvetica", "normal");
-    doc.text(new Date().toLocaleDateString('es-DO'), 160, 50);
-
-
-    // Table
-    const tableColumn = ["Descripción", "Cantidad", "Precio Unitario", "Total"];
-    const tableRows: (string|number)[][] = [];
-    data.items.forEach(item => {
-        const itemData = [
-            item.description,
-            item.quantity,
-            `$${item.price.toFixed(2)}`,
-            `$${(item.quantity * item.price).toFixed(2)}`
-        ];
-        tableRows.push(itemData);
-    });
-
-    (doc as any).autoTable({
-        head: [tableColumn],
-        body: tableRows,
-        startY: 70,
-        theme: 'striped',
-        headStyles: { fillColor: [33, 150, 243] } // Primary color
-    });
-
-    // Totals
-    const finalY = (doc as any).lastAutoTable.finalY;
-    doc.setFontSize(12);
-    doc.text("Subtotal:", 140, finalY + 10);
-    doc.text(`$${subtotal.toFixed(2)}`, 200, finalY + 10, { align: 'right' });
-    if(includeITBIS) {
-      doc.text("ITBIS (18%):", 140, finalY + 17);
-      doc.text(`$${itbis.toFixed(2)}`, 200, finalY + 17, { align: 'right' });
-    }
-    doc.setFont("helvetica", "bold");
-    doc.text("Total:", 140, finalY + 24);
-    doc.text(`$${total.toFixed(2)}`, 200, finalY + 24, { align: 'right' });
-
-    // Notes and Banking Info
-    let bottomY = finalY + 40;
-    if (data.notes) {
-      doc.setFont("helvetica", "bold");
-      doc.text("Notas:", 14, bottomY);
-      doc.setFont("helvetica", "normal");
-      doc.text(doc.splitTextToSize(data.notes, 180), 14, bottomY + 6);
-      bottomY += 20;
-    }
-    
-    if (bankName || accountNumber) {
-      doc.setFont("helvetica", "bold");
-      doc.text("Información de Pago:", 14, bottomY);
-      doc.setFont("helvetica", "normal");
-      doc.text(`${bankName ? `Banco: ${bankName}` : ''}\n${accountNumber ? `Cuenta: ${accountNumber}` : ''}`, 14, bottomY + 6);
-    }
-    
-    doc.save(`Cotizacion-${data.clientName.replace(/\s+/g, '-')}.pdf`);
+  const onGenerateQuote = (data: QuoteFormData) => {
+    if (!userProfile) return;
+    generateQuotePDF(data, userProfile);
+  };
+  
+  const onGenerateInvoice = (data: QuoteFormData) => {
+    if (!userProfile) return;
+    generateInvoicePDF(data, userProfile);
+  };
+  
+  const handleAnalyzeQuote = async () => {
+      const formData = watch();
+      if (formData.items.length === 0 || !formData.clientName) {
+        toast({ title: 'Información Incompleta', description: 'Por favor, añade un cliente y al menos un ítem antes de analizar.', variant: 'destructive'});
+        return;
+      }
+      
+      setIsAnalyzing(true);
+      setAnalysisResult(null);
+      try {
+        const result = await analyzeQuote({
+            clientName: formData.clientName,
+            items: formData.items,
+            notes: formData.notes,
+        });
+        setAnalysisResult(result);
+        toast({ title: 'Análisis Completo', description: 'Oniara ha revisado tu cotización.' });
+      } catch (error) {
+          console.error('Error analyzing quote:', error);
+          toast({ title: 'Error de Análisis', description: 'No se pudo analizar la cotización.', variant: 'destructive' });
+      } finally {
+          setIsAnalyzing(false);
+      }
   };
 
 
@@ -188,11 +131,11 @@ export default function QuoteGeneratorPage() {
     <div className="container mx-auto max-w-4xl p-4 space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl">Generador de Cotizaciones</CardTitle>
-          <CardDescription>Crea y descarga cotizaciones profesionales para tus clientes.</CardDescription>
+          <CardTitle className="text-2xl">Generador de Cotizaciones y Facturas</CardTitle>
+          <CardDescription>Crea, analiza y convierte cotizaciones en facturas profesionales.</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit(generatePDF)} className="space-y-6">
+          <form className="space-y-6">
             {/* Client Info */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -210,85 +153,58 @@ export default function QuoteGeneratorPage() {
             
             {/* Items */}
             <div className="space-y-4">
-              <Label className="text-lg font-semibold">Ítems de la Cotización</Label>
+              <Label className="text-lg font-semibold">Ítems</Label>
               <div className="space-y-2">
                  <Select onValueChange={handleServiceSelect}>
-                    <SelectTrigger>
-                        <SelectValue placeholder="O selecciona un servicio existente para añadirlo..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {services.map(s => <SelectItem key={s.id} value={s.id}>{s.name} - ${s.price}</SelectItem>)}
-                    </SelectContent>
+                    <SelectTrigger><SelectValue placeholder="O selecciona un servicio existente para añadirlo..." /></SelectTrigger>
+                    <SelectContent>{services.map(s => <SelectItem key={s.id} value={s.id}>{s.name} - ${s.price}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               {fields.map((field, index) => (
                 <div key={field.id} className="grid grid-cols-12 gap-2 items-end border p-4 rounded-lg">
-                  <div className="col-span-12 md:col-span-5 space-y-2">
-                    <Label>Descripción</Label>
-                    <Controller name={`items.${index}.description`} control={control} render={({ field }) => <Input {...field} />} />
-                  </div>
-                  <div className="col-span-4 md:col-span-2 space-y-2">
-                    <Label>Cantidad</Label>
-                    <Controller name={`items.${index}.quantity`} control={control} render={({ field }) => <Input type="number" {...field} />} />
-                  </div>
-                  <div className="col-span-4 md:col-span-2 space-y-2">
-                    <Label>Precio Unit.</Label>
-                    <Controller name={`items.${index}.price`} control={control} render={({ field }) => <Input type="number" step="0.01" {...field} />} />
-                  </div>
-                  <div className="col-span-4 md:col-span-2 space-y-2 text-right">
-                    <Label>Total</Label>
-                    <p className="font-semibold h-10 flex items-center justify-end pr-3">
-                      ${(watchedItems[index].quantity * watchedItems[index].price).toFixed(2)}
-                    </p>
-                  </div>
-                  <div className="col-span-12 md:col-span-1 flex justify-end">
-                    <Button type="button" variant="destructive" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
-                  </div>
+                  <div className="col-span-12 md:col-span-5 space-y-2"><Label>Descripción</Label><Controller name={`items.${index}.description`} control={control} render={({ field }) => <Input {...field} />} /></div>
+                  <div className="col-span-4 md:col-span-2 space-y-2"><Label>Cantidad</Label><Controller name={`items.${index}.quantity`} control={control} render={({ field }) => <Input type="number" {...field} />} /></div>
+                  <div className="col-span-4 md:col-span-2 space-y-2"><Label>Precio</Label><Controller name={`items.${index}.price`} control={control} render={({ field }) => <Input type="number" step="0.01" {...field} />} /></div>
+                  <div className="col-span-4 md:col-span-2 space-y-2 text-right"><Label>Total</Label><p className="font-semibold h-10 flex items-center justify-end pr-3">${(watchedItems[index].quantity * watchedItems[index].price).toFixed(2)}</p></div>
+                  <div className="col-span-12 md:col-span-1 flex justify-end"><Button type="button" variant="destructive" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button></div>
                 </div>
               ))}
-              <Button type="button" variant="outline" onClick={() => append({ description: '', quantity: 1, price: 0 })}>
-                <PlusCircle className="mr-2 h-4 w-4" /> Añadir Ítem Manualmente
-              </Button>
+              <Button type="button" variant="outline" onClick={() => append({ description: '', quantity: 1, price: 0 })}><PlusCircle className="mr-2 h-4 w-4" /> Añadir Ítem Manualmente</Button>
             </div>
             
             <Separator />
 
             {/* Totals */}
-            <div className="flex justify-end">
-                <div className="w-full max-w-sm space-y-2">
-                    <div className="flex justify-between">
-                        <span className="text-muted-foreground">Subtotal</span>
-                        <span className="font-semibold">${subtotal.toFixed(2)}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          <Controller name="includeITBIS" control={control} render={({ field }) => (
-                              <input type="checkbox" id="itbis-checkbox" checked={field.value} onChange={field.onChange} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"/>
-                          )} />
-                          <Label htmlFor="itbis-checkbox" className="text-muted-foreground">ITBIS (18%)</Label>
-                        </div>
-                        <span className="font-semibold">${itbis.toFixed(2)}</span>
-                    </div>
-                    <Separator />
-                     <div className="flex justify-between text-xl font-bold">
-                        <span>Total</span>
-                        <span>${total.toFixed(2)}</span>
-                    </div>
-                </div>
-            </div>
+            <div className="flex justify-end"><div className="w-full max-w-sm space-y-2"><div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span className="font-semibold">${subtotal.toFixed(2)}</span></div><div className="flex items-center justify-between"><div className="flex items-center space-x-2"><Controller name="includeITBIS" control={control} render={({ field }) => (<input type="checkbox" id="itbis-checkbox" checked={field.value} onChange={field.onChange} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"/>)} /><Label htmlFor="itbis-checkbox" className="text-muted-foreground">ITBIS (18%)</Label></div><span className="font-semibold">${itbis.toFixed(2)}</span></div><Separator /><div className="flex justify-between text-xl font-bold"><span>Total</span><span>${total.toFixed(2)}</span></div></div></div>
             
             <Separator />
             
             {/* Notes */}
-            <div className="space-y-2">
-              <Label htmlFor="notes">Notas Adicionales</Label>
-              <Controller name="notes" control={control} render={({ field }) => <Textarea id="notes" placeholder="Ej: Válido por 30 días. 50% de inicial para comenzar." {...field} />} />
-            </div>
+            <div className="space-y-2"><Label htmlFor="notes">Notas Adicionales</Label><Controller name="notes" control={control} render={({ field }) => <Textarea id="notes" placeholder="Ej: Válido por 30 días. 50% de inicial para comenzar." {...field} />} /></div>
 
-            <Button type="submit" className="w-full">
-              <FileDown className="mr-2 h-4 w-4" /> Generar y Descargar PDF
-            </Button>
+            {/* Actions */}
+            <div className="flex flex-col sm:flex-row gap-4">
+                <Button type="button" onClick={handleAnalyzeQuote} disabled={isAnalyzing} variant="outline" className="w-full sm:w-auto"><Wand2 className="mr-2 h-4 w-4" /> {isAnalyzing ? 'Analizando...' : 'Analizar Cotización con IA'}</Button>
+                <Button type="button" onClick={handleSubmit(onGenerateQuote)} className="w-full sm:w-auto"><FileDown className="mr-2 h-4 w-4" /> Generar Cotización PDF</Button>
+                <Button type="button" onClick={handleSubmit(onGenerateInvoice)} className="w-full sm:w-auto"><FileText className="mr-2 h-4 w-4" /> Convertir a Factura PDF</Button>
+            </div>
           </form>
+
+          {isAnalyzing && (
+            <div className="space-y-4 mt-6"><Skeleton className="h-8 w-1/3" /><Skeleton className="h-24 w-full" /></div>
+          )}
+
+          {analysisResult && (
+             <Card className="mt-6 bg-secondary/10 border-primary/20">
+              <CardHeader><CardTitle className="flex items-center gap-2"><Bot className="h-6 w-6" />Análisis de Oniara</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
+                {analysisResult.strengths.length > 0 && <div><h3 className="font-semibold text-lg mb-2 flex items-center gap-2 text-green-600"><ThumbsUp className="h-5 w-5" />Puntos Fuertes</h3><ul className="list-disc pl-5 space-y-1 text-muted-foreground">{analysisResult.strengths.map((point, i) => <li key={i}>{point}</li>)}</ul></div>}
+                {analysisResult.weaknesses.length > 0 && <div><h3 className="font-semibold text-lg mb-2 flex items-center gap-2 text-destructive"><AlertTriangle className="h-5 w-5" />Áreas de Mejora</h3><ul className="list-disc pl-5 space-y-1 text-muted-foreground">{analysisResult.weaknesses.map((point, i) => <li key={i}>{point}</li>)}</ul></div>}
+                {analysisResult.suggestions.length > 0 && <div><h3 className="font-semibold text-lg mb-2 flex items-center gap-2 text-primary"><Sparkles className="h-5 w-5" />Sugerencias</h3><ul className="list-disc pl-5 space-y-1 text-muted-foreground">{analysisResult.suggestions.map((rec, i) => <li key={i}>{rec}</li>)}</ul></div>}
+              </CardContent>
+            </Card>
+          )}
+
         </CardContent>
       </Card>
     </div>
