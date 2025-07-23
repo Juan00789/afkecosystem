@@ -21,6 +21,7 @@ import {
   GraduationCap,
   Landmark,
   Wand2,
+  Banknote,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -39,7 +40,7 @@ interface HeaderProps {
 }
 
 export function Header({}: HeaderProps) {
-  const { user, signOutUser } = useAuth();
+  const { user, userProfile, signOutUser } = useAuth();
 
   const handleSignOut = async () => {
     await signOutUser();
@@ -57,6 +58,7 @@ export function Header({}: HeaderProps) {
     { href: '/dashboard/network', label: 'Brokis', icon: Users },
     { href: '/dashboard/services', label: 'My Services', icon: Briefcase },
     { href: '/dashboard/contabilidad', label: 'Contabilidad', icon: Landmark },
+    ...(userProfile?.role === 'admin' ? [{ href: '/dashboard/fondo', label: 'Fondo Financiero', icon: Banknote }] : []),
   ];
   
   const bottomLinks = [

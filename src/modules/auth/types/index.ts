@@ -3,6 +3,7 @@
 export enum Role {
   Client = 'client',
   Provider = 'provider',
+  Admin = 'admin',
 }
 
 export interface UserProfile {
@@ -14,6 +15,7 @@ export interface UserProfile {
   companyName?: string;
   website?: string;
   credits?: number;
+  role?: 'admin' | 'user';
   bankInfo?: {
     bankName?: string;
     accountNumber?: string;

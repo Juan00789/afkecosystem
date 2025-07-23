@@ -17,6 +17,7 @@ import {
   GraduationCap,
   Landmark,
   Wand2,
+  Banknote,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -26,32 +27,33 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-
-const navLinks = [
-  { href: '/dashboard', label: 'Dashboard', icon: Home },
-  { href: '/dashboard/marketplace', label: 'Marketplace', icon: ShoppingBag },
-  { href: '/dashboard/cursos', label: 'Cursos', icon: BookOpen },
-  { href: '/dashboard/my-courses', label: 'My Courses', icon: GraduationCap },
-  { href: '/dashboard/creditos', label: 'Créditos', icon: HandCoins },
-  { href: '/dashboard/consultorias', label: 'Consultorías', icon: MessageSquareText },
-  { href: '/dashboard/analisis', label: 'Análisis IA', icon: Wand2 },
-  { href: '/dashboard/network', label: 'Brokis', icon: Users },
-  { href: '/dashboard/services', label: 'My Services', icon: Briefcase },
-  { href: '/dashboard/contabilidad', label: 'Contabilidad', icon: Landmark },
-];
-
-const bottomLinks = [
-  { href: '/dashboard/profile', label: 'Settings', icon: Settings },
-];
+import { useAuth } from '@/modules/auth/hooks/use-auth';
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { userProfile } = useAuth();
+
+  const navLinks = [
+    { href: '/dashboard', label: 'Dashboard', icon: Home },
+    { href: '/dashboard/marketplace', label: 'Marketplace', icon: ShoppingBag },
+    { href: '/dashboard/cursos', label: 'Cursos', icon: BookOpen },
+    { href: '/dashboard/my-courses', label: 'My Courses', icon: GraduationCap },
+    { href: '/dashboard/creditos', label: 'Créditos', icon: HandCoins },
+    { href: '/dashboard/consultorias', label: 'Consultorías', icon: MessageSquareText },
+    { href: '/dashboard/analisis', label: 'Análisis IA', icon: Wand2 },
+    { href: '/dashboard/network', label: 'Brokis', icon: Users },
+    { href: '/dashboard/services', label: 'My Services', icon: Briefcase },
+    { href: '/dashboard/contabilidad', label: 'Contabilidad', icon: Landmark },
+    ...(userProfile?.role === 'admin' ? [{ href: '/dashboard/fondo', label: 'Fondo Financiero', icon: Banknote }] : []),
+  ];
+
+  const bottomLinks = [
+    { href: '/dashboard/profile', label: 'Settings', icon: Settings },
+  ];
 
   const renderLink = (link: { href: string; label: string; icon: any }) => {
     const { href, label, icon: Icon } = link;
-    // The dashboard link is a special case, active only when the path is exactly '/dashboard'.
     const isActive = href === '/dashboard' ? pathname === href : pathname.startsWith(href);
-
 
     return (
       <Tooltip key={label}>

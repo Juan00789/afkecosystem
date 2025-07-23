@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { ArrowLeft, HandCoins, CheckCircle, BookOpen, UserPlus, FileText, Landmark } from 'lucide-react';
+import { ArrowLeft, HandCoins, CheckCircle, BookOpen, UserPlus, FileText, Landmark, Wallet } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { collection, addDoc, serverTimestamp, query, where, onSnapshot, orderBy } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, onSnapshot, orderBy, doc, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -38,6 +38,13 @@ interface CreditRequest {
   createdAt: { toDate: () => Date };
 }
 
+interface Loan {
+    id: string;
+    amount: number;
+    repaymentTerm: string;
+    status: 'outstanding' | 'paid';
+    dueDate: { toDate: () => Date };
+}
 
 const waysToEarn = [
   {
@@ -62,6 +69,7 @@ export default function CreditosPage() {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [creditRequests, setCreditRequests] = useState<CreditRequest[]>([]);
+  const [loans, setLoans] = useState<Loan[]>([]);
   
   const { control, handleSubmit, reset } = useForm<CreditRequestFormData>({
     resolver: zodResolver(creditRequestSchema),
@@ -74,15 +82,28 @@ export default function CreditosPage() {
 
   useEffect(() => {
     if (!user) return;
-    const q = query(collection(db, 'credit_requests'), where('userId', '==', user.uid), orderBy('createdAt', 'desc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const qRequests = query(collection(db, 'credit_requests'), where('userId', '==', user.uid), orderBy('createdAt', 'desc'));
+    const unsubscribeRequests = onSnapshot(qRequests, (snapshot) => {
         const requests = snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
         } as CreditRequest));
         setCreditRequests(requests);
     });
-    return () => unsubscribe();
+
+    const qLoans = query(collection(db, 'loans'), where('userId', '==', user.uid), where('status', '==', 'outstanding'), orderBy('dueDate', 'asc'));
+    const unsubscribeLoans = onSnapshot(qLoans, (snapshot) => {
+        const userLoans = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        } as Loan));
+        setLoans(userLoans);
+    });
+
+    return () => {
+        unsubscribeRequests();
+        unsubscribeLoans();
+    };
   }, [user]);
 
   const onSubmit = async (data: CreditRequestFormData) => {
@@ -94,6 +115,7 @@ export default function CreditosPage() {
     try {
         await addDoc(collection(db, 'credit_requests'), {
             userId: user.uid,
+            userName: userProfile?.displayName,
             ...data,
             status: 'pending',
             createdAt: serverTimestamp(),
@@ -107,7 +129,16 @@ export default function CreditosPage() {
         setIsSubmitting(false);
     }
   };
-
+  
+  const handlePayLoan = async (loanId: string) => {
+    // This is a simulated payment for now
+    const batch = writeBatch(db);
+    const loanRef = doc(db, 'loans', loanId);
+    batch.update(loanRef, { status: 'paid' });
+    // In a real scenario, you'd also decrease user credits and update fund capital
+    await batch.commit();
+    toast({ title: 'Pago Registrado', description: 'Gracias por mantener tus cuentas al día.'});
+  };
 
   return (
     <div className="container mx-auto max-w-6xl p-4 space-y-8">
@@ -179,13 +210,32 @@ export default function CreditosPage() {
                     </form>
                 </CardContent>
             </Card>
+
+             <Card>
+                <CardHeader><CardTitle>Mis Préstamos Activos</CardTitle></CardHeader>
+                <CardContent>
+                    {loans.length > 0 ? (
+                        <ul className="space-y-3">
+                            {loans.map(loan => (
+                                <li key={loan.id} className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
+                                    <div>
+                                        <p className="font-semibold">DOP {loan.amount.toLocaleString()}</p>
+                                        <p className="text-sm text-muted-foreground">Vence el: {format(loan.dueDate.toDate(), 'PP')}</p>
+                                    </div>
+                                    <Button size="sm" onClick={() => handlePayLoan(loan.id)}>Pagar</Button>
+                                </li>
+                            ))}
+                        </ul>
+                    ) : <p className="text-muted-foreground text-center py-4">No tienes préstamos pendientes.</p>}
+                </CardContent>
+            </Card>
         </div>
         
         <div className="lg:col-span-2 space-y-8">
              <Card className="text-center sticky top-24">
                 <CardHeader>
                     <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-secondary/20 mb-4">
-                        <Landmark className="h-10 w-10 text-secondary" />
+                        <Wallet className="h-10 w-10 text-secondary" />
                     </div>
                     <CardTitle className="text-xl font-bold">Tu Estado Económico</CardTitle>
                 </CardHeader>
