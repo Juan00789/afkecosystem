@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
-import { collection, query, where, onSnapshot, orderBy, addDoc, serverTimestamp, deleteDoc, doc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, orderBy, addDoc, serverTimestamp, updateDoc, doc } from 'firebase/firestore';
 import { format } from 'date-fns';
 import Link from 'next/link';
 
@@ -28,6 +28,7 @@ const transactionSchema = z.object({
   date: z.coerce.date({ required_error: 'Please select a date.' }),
   category: z.string().min(1, 'Debe seleccionar una categoría.'),
   paymentMethod: z.string().min(1, 'Debe seleccionar un método de pago.'),
+  relatedPartyName: z.string().optional(),
 });
 
 type TransactionFormData = z.infer<typeof transactionSchema>;
@@ -35,6 +36,7 @@ type TransactionFormData = z.infer<typeof transactionSchema>;
 interface Transaction extends TransactionFormData {
   id: string;
   date: { toDate: () => Date };
+  status?: 'active' | 'archived';
 }
 
 const expenseCategories = ['Suministros', 'Marketing', 'Transporte', 'Alquiler', 'Servicios', 'Otros'];
@@ -57,6 +59,7 @@ export default function TransactionsPage() {
       date: new Date(),
       category: '',
       paymentMethod: '',
+      relatedPartyName: '',
     },
   });
 
@@ -65,7 +68,7 @@ export default function TransactionsPage() {
   useEffect(() => {
     if (!user) return;
     setLoading(true);
-    const q = query(collection(db, 'transactions'), where('userId', '==', user.uid), orderBy('date', 'desc'));
+    const q = query(collection(db, 'transactions'), where('userId', '==', user.uid), where('status', '==', 'active'), orderBy('date', 'desc'), where('status', '!=', 'archived'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const trans = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction));
       setTransactions(trans);
@@ -85,6 +88,7 @@ export default function TransactionsPage() {
         ...data,
         userId: user.uid,
         date: data.date,
+        status: 'active', // Set default status
       });
       toast({ title: 'Éxito', description: 'Transacción añadida.' });
       reset();
@@ -98,11 +102,12 @@ export default function TransactionsPage() {
   
   const handleDelete = async (id: string) => {
     try {
-        await deleteDoc(doc(db, 'transactions', id));
-        toast({ title: 'Éxito', description: 'Transacción eliminada.' });
+        const transactionRef = doc(db, 'transactions', id);
+        await updateDoc(transactionRef, { status: 'archived' });
+        toast({ title: 'Transacción Archivada', description: 'La transacción ha sido archivada y se puede ver en el historial.' });
     } catch (error) {
-        console.error('Error deleting transaction: ', error);
-        toast({ title: 'Error', description: 'No se pudo eliminar la transacción.', variant: 'destructive' });
+        console.error('Error archiving transaction: ', error);
+        toast({ title: 'Error', description: 'No se pudo archivar la transacción.', variant: 'destructive' });
     }
   }
 
@@ -145,6 +150,10 @@ export default function TransactionsPage() {
                             <Label htmlFor="description">Descripción / Concepto</Label>
                             <Controller name="description" control={control} render={({ field }) => <Textarea id="description" {...field} />} />
                             {errors.description && <p className="text-sm text-destructive">{errors.description.message}</p>}
+                        </div>
+                         <div className="space-y-2">
+                            <Label htmlFor="relatedPartyName">Cliente / Proveedor (Opcional)</Label>
+                            <Controller name="relatedPartyName" control={control} render={({ field }) => <Input id="relatedPartyName" placeholder="Nombre del cliente o proveedor" {...field} />} />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="amount">Monto (DOP)</Label>
@@ -190,8 +199,8 @@ export default function TransactionsPage() {
         <div className="lg:col-span-2">
             <Card>
                 <CardHeader>
-                    <CardTitle>Historial de Transacciones</CardTitle>
-                    <CardDescription>Todas tus transacciones registradas.</CardDescription>
+                    <CardTitle>Transacciones Activas Recientes</CardTitle>
+                    <CardDescription>Movimientos que no han sido archivados.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <Table>
@@ -223,12 +232,12 @@ export default function TransactionsPage() {
                                             </AlertDialogTrigger>
                                             <AlertDialogContent>
                                                 <AlertDialogHeader>
-                                                    <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-                                                    <AlertDialogDescription>Esta acción no se puede deshacer y eliminará la transacción permanentemente.</AlertDialogDescription>
+                                                    <AlertDialogTitle>¿Archivar transacción?</AlertDialogTitle>
+                                                    <AlertDialogDescription>Esta acción marcará la transacción como archivada. Podrás verla en el historial completo.</AlertDialogDescription>
                                                 </AlertDialogHeader>
                                                 <AlertDialogFooter>
                                                     <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                                    <AlertDialogAction onClick={() => handleDelete(t.id)}>Eliminar</AlertDialogAction>
+                                                    <AlertDialogAction onClick={() => handleDelete(t.id)}>Archivar</AlertDialogAction>
                                                 </AlertDialogFooter>
                                             </AlertDialogContent>
                                        </AlertDialog>

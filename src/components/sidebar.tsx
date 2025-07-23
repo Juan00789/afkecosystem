@@ -1,4 +1,3 @@
-
 // src/components/sidebar.tsx
 'use client';
 import Link from 'next/link';
@@ -23,6 +22,7 @@ import {
   BrainCircuit,
   Growth,
   LayoutGrid,
+  History,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -45,6 +45,7 @@ export function Sidebar() {
     { section: 'Colabora', href: '/dashboard/network', label: 'Mis Brokis', icon: GitFork },
     { section: 'Colabora', href: '/dashboard/mentorias', label: 'Mentorías', icon: MessageSquareHeart },
     { section: 'Gestiona', href: '/dashboard/contabilidad', label: 'Mis Finanzas', icon: Landmark },
+    { section: 'Gestiona', href: '/dashboard/contabilidad/historial', label: 'Historial Financiero', icon: History },
     { section: 'Gestiona', href: '/dashboard/cotizador', label: 'Cotizador', icon: FileText },
     { section: 'Gestiona', href: '/dashboard/productos', label: 'Mi Almacén', icon: Archive },
     { section: 'Gestiona', href: '/dashboard/services', label: 'Mis Servicios', icon: Briefcase },

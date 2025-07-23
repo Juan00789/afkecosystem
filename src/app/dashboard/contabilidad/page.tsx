@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowLeft, Landmark, DollarSign, ArrowUpCircle, ArrowDownCircle, PlusCircle, FileText, Archive } from 'lucide-react';
+import { ArrowLeft, Landmark, DollarSign, ArrowUpCircle, ArrowDownCircle, PlusCircle, FileText, Archive, History } from 'lucide-react';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
 import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -18,6 +18,7 @@ interface Transaction {
   description: string;
   amount: number;
   date: { toDate: () => Date };
+  status?: 'active' | 'archived';
 }
 
 export default function ContabilidadPage() {
@@ -34,7 +35,7 @@ export default function ContabilidadPage() {
     if (!user) return;
     setLoading(true);
 
-    const qTransactions = query(collection(db, 'transactions'), where('userId', '==', user.uid), orderBy('date', 'desc'));
+    const qTransactions = query(collection(db, 'transactions'), where('userId', '==', user.uid), where('status', '==', 'active'), orderBy('date', 'desc'));
     const unsubTransactions = onSnapshot(qTransactions, (snapshot) => {
       const trans = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction));
       setTransactions(trans);
@@ -86,7 +87,13 @@ export default function ContabilidadPage() {
                 <p className="text-muted-foreground">Una vista simple de la salud financiera de tu negocio.</p>
             </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+             <Button asChild size="lg" variant="outline">
+                <Link href="/dashboard/contabilidad/historial">
+                    <History className="mr-2 h-5 w-5" />
+                    Ver Historial Completo
+                </Link>
+            </Button>
             <Button asChild size="lg" variant="outline">
                 <Link href="/dashboard/contabilidad/invoices">
                     <FileText className="mr-2 h-5 w-5" />
@@ -146,8 +153,8 @@ export default function ContabilidadPage() {
       <section>
         <Card>
           <CardHeader>
-            <CardTitle>Historial de Transacciones</CardTitle>
-            <CardDescription>Todas tus transacciones registradas.</CardDescription>
+            <CardTitle>Transacciones Recientes</CardTitle>
+            <CardDescription>Tus últimos 10 movimientos registrados. El historial completo está disponible.</CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
@@ -159,7 +166,7 @@ export default function ContabilidadPage() {
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {transactions.map(t => (
+                    {transactions.slice(0, 10).map(t => (
                         <TableRow key={t.id}>
                             <TableCell className="font-medium">{t.description}</TableCell>
                             <TableCell>{format(t.date.toDate(), 'dd/MM/yyyy')}</TableCell>
