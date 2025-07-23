@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
-import { collection, query, where, getDocs, doc, writeBatch, serverTimestamp, increment } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, writeBatch, serverTimestamp, increment, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
 import type { UserProfile } from '@/modules/auth/types';
@@ -73,33 +73,44 @@ export function UserSelectionDialog({ roleToAdd, existingNetworkIds, onUserAdded
     const clientId = roleToAdd === 'provider' ? user.uid : userToAdd.uid;
     const providerId = roleToAdd === 'provider' ? userToAdd.uid : user.uid;
     
-    // Check if this is the first connection of this type
-    const connectionsQuery = query(collection(db, 'network_connections'), where(roleToAdd === 'provider' ? 'client_id' : 'provider_id', '==', user.uid));
-    const connectionsSnapshot = await getDocs(connectionsQuery);
-    const isFirstConnection = connectionsSnapshot.empty;
-
-    const batch = writeBatch(db);
-    const newConnectionRef = doc(collection(db, 'network_connections'));
-    batch.set(newConnectionRef, {
-      client_id: clientId,
-      provider_id: providerId,
-      created_at: serverTimestamp(),
-    });
-
-    if (isFirstConnection) {
-        const currentUserRef = doc(db, 'users', user.uid);
-        batch.update(currentUserRef, { credits: increment(5) });
-    }
-    
     try {
-        await batch.commit();
-        toast({ title: '¡Éxito!', description: `${userToAdd.displayName} has been added as a ${roleToAdd}.` });
-        if (isFirstConnection) {
-            toast({ title: '¡Créditos Ganados!', description: `Has ganado 5 créditos por añadir tu primer ${roleToAdd}.` });
-            await refreshUserProfile();
-        }
+        await runTransaction(db, async (transaction) => {
+            // Check if user already has a connection of this type
+            const fieldToCheck = roleToAdd === 'client' ? 'provider_id' : 'client_id';
+            const connectionsQuery = query(
+                collection(db, 'network_connections'),
+                where(fieldToCheck, '==', user.uid),
+                limit(1)
+            );
+            const existingConnectionsSnap = await transaction.get(connectionsQuery);
+            const isFirstConnectionOfType = existingConnectionsSnap.empty;
+            
+            // Add the new connection
+            const newConnectionRef = doc(collection(db, 'network_connections'));
+            transaction.set(newConnectionRef, {
+              client_id: clientId,
+              provider_id: providerId,
+              created_at: serverTimestamp(),
+            });
+
+            // Award credits if it's the first connection of this type
+            if (isFirstConnectionOfType) {
+                const currentUserRef = doc(db, 'users', user.uid);
+                transaction.update(currentUserRef, { credits: increment(5) });
+                toast({
+                    title: '¡Créditos Ganados!',
+                    description: `Has ganado 5 créditos por añadir tu primer ${roleToAdd}.`
+                });
+            }
+        });
+        
+        toast({ title: '¡Éxito!', description: `${userToAdd.displayName} has sido añadido como tu ${roleToAdd}.` });
+        
+        // Refresh local and global state
         onUserAdded();
-        setAllUsers(prev => prev.filter(u => u.uid !== userToAdd.uid)); // Remove from list
+        await refreshUserProfile();
+        setIsOpen(false);
+
     } catch (error) {
         console.error("Error adding user to network:", error);
         toast({ title: 'Error', description: 'Failed to add user.', variant: 'destructive' });
@@ -110,19 +121,19 @@ export function UserSelectionDialog({ roleToAdd, existingNetworkIds, onUserAdded
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button>
-          <UserPlus className="mr-2 h-4 w-4" /> Add {roleToAdd}
+          <UserPlus className="mr-2 h-4 w-4" /> Añadir {roleToAdd}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Add a new {roleToAdd}</DialogTitle>
-          <DialogDescription>Select a user from the platform to add to your network.</DialogDescription>
+          <DialogTitle>Añadir un nuevo {roleToAdd}</DialogTitle>
+          <DialogDescription>Selecciona un usuario de la plataforma para añadir a tu red.</DialogDescription>
         </DialogHeader>
         <div className="mt-4">
             <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input 
-                    placeholder="Search by name or email..."
+                    placeholder="Buscar por nombre o correo..."
                     className="pl-10"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -131,7 +142,7 @@ export function UserSelectionDialog({ roleToAdd, existingNetworkIds, onUserAdded
         </div>
         <ScrollArea className="h-72 mt-4">
             <div className="space-y-2 pr-4">
-            {loading ? <p>Loading users...</p> : filteredUsers.length > 0 ? (
+            {loading ? <p>Cargando usuarios...</p> : filteredUsers.length > 0 ? (
                 filteredUsers.map(u => (
                     <div key={u.uid} className="flex items-center justify-between p-2 rounded-md hover:bg-muted">
                         <div className="flex items-center gap-3">
@@ -144,11 +155,11 @@ export function UserSelectionDialog({ roleToAdd, existingNetworkIds, onUserAdded
                                 <p className="text-sm text-muted-foreground">{u.email}</p>
                             </div>
                         </div>
-                        <Button size="sm" onClick={() => handleAddUser(u)}>Add</Button>
+                        <Button size="sm" onClick={() => handleAddUser(u)}>Añadir</Button>
                     </div>
                 ))
             ) : (
-                <p className="text-center text-muted-foreground py-10">No users found.</p>
+                <p className="text-center text-muted-foreground py-10">No se encontraron usuarios.</p>
             )}
             </div>
         </ScrollArea>
