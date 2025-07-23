@@ -236,7 +236,7 @@ export function DashboardOverview({ userId }: DashboardOverviewProps) {
 
     const unsubProvider = onSnapshot(providerQuery, async (snapshot) => {
         const casesPromises = snapshot.docs.map(fetchCaseWithProfiles);
-        const fetchedCases = await Promise.all(fetchedCases);
+        const fetchedCases = await Promise.all(casesPromises);
         setProviderCases(fetchedCases);
         providerLoaded = true;
         checkLoadingDone();
@@ -339,38 +339,13 @@ export function DashboardOverview({ userId }: DashboardOverviewProps) {
             </StatsCard>
         </div>
       </div>
-
-       {Object.entries(moduleSections).map(([sectionTitle, modules]) => (
-        <div key={sectionTitle}>
-            <h2 className="text-2xl font-semibold mb-4">{sectionTitle}</h2>
-             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {modules.map((module) => (
-                  <Link href={module.href} key={module.title}>
-                    <Card className="h-full transition-transform duration-300 hover:-translate-y-1 hover:shadow-xl bg-card hover:bg-card/80">
-                      <CardHeader className="items-center text-center">
-                            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 mb-3">
-                                {module.icon}
-                            </div>
-                            <CardTitle className="text-primary">{module.title}</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                            <p className="text-sm text-center text-muted-foreground">{module.description}</p>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                ))}
-            </div>
-        </div>
-       ))}
-
-
-      <div>
+      
+       <div>
         <h2 className="text-2xl font-semibold mb-4">Actividad Reciente</h2>
         <div className="space-y-4">
           {allCases.length > 0 ? (
             allCases.slice(0, 5).map(caseData => {
               let perspective: 'client' | 'provider';
-              // If it's a self-assigned case, view it as the provider.
               if (caseData.clientId === caseData.providerId) {
                 perspective = 'provider';
               } else {
@@ -396,6 +371,29 @@ export function DashboardOverview({ userId }: DashboardOverviewProps) {
           )}
         </div>
       </div>
+
+       {Object.entries(moduleSections).map(([sectionTitle, modules]) => (
+        <div key={sectionTitle}>
+            <h2 className="text-2xl font-semibold mb-4">{sectionTitle}</h2>
+             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {modules.map((module) => (
+                  <Link href={module.href} key={module.title}>
+                    <Card className="h-full transition-transform duration-300 hover:-translate-y-1 hover:shadow-xl bg-card hover:bg-card/80">
+                      <CardHeader className="items-center text-center">
+                            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 mb-3">
+                                {module.icon}
+                            </div>
+                            <CardTitle className="text-primary">{module.title}</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                            <p className="text-sm text-center text-muted-foreground">{module.description}</p>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                ))}
+            </div>
+        </div>
+       ))}
     </div>
   );
 }
