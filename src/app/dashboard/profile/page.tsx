@@ -19,6 +19,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Award } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
 
 const profileSchema = z.object({
   displayName: z.string().min(2, 'Name must be at least 2 characters').max(50),
@@ -27,6 +29,9 @@ const profileSchema = z.object({
   website: z.string().url('Please enter a valid URL').optional().or(z.literal('')),
   bankName: z.string().optional(),
   accountNumber: z.string().optional(),
+  isMentor: z.boolean().optional(),
+  mentorBio: z.string().optional(),
+  mentorSpecialties: z.string().optional(),
 });
 
 type ProfileFormData = z.infer<typeof profileSchema>;
@@ -38,7 +43,7 @@ export function ProfilePage() {
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
-  const { control, handleSubmit, reset, formState: { errors, isDirty } } = useForm<ProfileFormData>({
+  const { control, handleSubmit, reset, watch, formState: { errors, isDirty } } = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
         displayName: '',
@@ -47,8 +52,13 @@ export function ProfilePage() {
         website: '',
         bankName: '',
         accountNumber: '',
+        isMentor: false,
+        mentorBio: '',
+        mentorSpecialties: '',
     }
   });
+
+  const isMentor = watch('isMentor');
 
   useEffect(() => {
     if (userProfile) {
@@ -59,6 +69,9 @@ export function ProfilePage() {
         website: userProfile.website || '',
         bankName: userProfile.bankInfo?.bankName || '',
         accountNumber: userProfile.bankInfo?.accountNumber || '',
+        isMentor: userProfile.isMentor || false,
+        mentorBio: userProfile.mentorBio || '',
+        mentorSpecialties: userProfile.mentorSpecialties?.join(', ') || '',
       });
     }
   }, [userProfile, reset]);
@@ -94,20 +107,23 @@ export function ProfilePage() {
         await updateProfile(user, { displayName: displayName, photoURL: photoURL || user.photoURL });
         
         const userDocRef = doc(db, 'users', user.uid);
-        const updatedProfileData = {
-            ...userProfile, // Start with existing profile data
+        const updatedProfileData: UserProfile = {
+            ...(userProfile || {}),
             uid: user.uid,
-            email: user.email,
+            email: user.email || '',
             displayName: displayName,
             phoneNumber: data.phoneNumber,
             companyName: data.companyName,
             website: data.website,
             photoURL: photoURL || userProfile?.photoURL || '',
-            credits: userProfile?.credits || 0, // Ensure credits are preserved
+            credits: userProfile?.credits || 0,
             bankInfo: {
                 bankName: data.bankName,
                 accountNumber: data.accountNumber,
-            }
+            },
+            isMentor: data.isMentor,
+            mentorBio: data.mentorBio,
+            mentorSpecialties: data.mentorSpecialties?.split(',').map(s => s.trim()).filter(Boolean) || [],
         };
 
         await setDoc(userDocRef, updatedProfileData, { merge: true });
@@ -116,8 +132,11 @@ export function ProfilePage() {
 
         toast({ title: 'Success', description: 'Your profile has been updated.' });
         
-        // After successful save, reset form to new state to make isDirty false
-        reset(data);
+        const resetData: ProfileFormData = {
+          ...data,
+          mentorSpecialties: data.mentorSpecialties || '',
+        };
+        reset(resetData);
         setPhoto(null);
         setPhotoPreview(null);
     } catch (error) {
@@ -219,6 +238,26 @@ export function ProfilePage() {
                                 toast({ title: 'Copied!', description: 'Provider ID copied to clipboard.' });
                               }
                           }}>Copy ID</Button>
+                      </div>
+                      
+                      <div className="space-y-4 pt-4 border-t">
+                          <h3 className="text-lg font-medium">Zona de Mentoría</h3>
+                           <div className="flex items-center space-x-2">
+                                <Controller name="isMentor" control={control} render={({ field }) => <Switch id="isMentor" checked={field.value} onCheckedChange={field.onChange} />} />
+                                <Label htmlFor="isMentor">¿Ofreces mentorías?</Label>
+                           </div>
+                           {isMentor && (
+                             <div className="space-y-4 pl-8 border-l">
+                                <div className="space-y-2">
+                                  <Label htmlFor="mentorBio">Biografía de Mentor (corta)</Label>
+                                  <Controller name="mentorBio" control={control} render={({ field }) => <Textarea id="mentorBio" placeholder="Describe tu enfoque y experiencia como mentor." {...field} />} />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label htmlFor="mentorSpecialties">Especialidades (separadas por coma)</Label>
+                                  <Controller name="mentorSpecialties" control={control} render={({ field }) => <Input id="mentorSpecialties" placeholder="Ej: Marketing Digital, Finanzas, Liderazgo" {...field} />} />
+                                </div>
+                             </div>
+                           )}
                       </div>
                   </TabsContent>
 

@@ -20,4 +20,7 @@ export interface UserProfile {
     bankName?: string;
     accountNumber?: string;
   };
+  isMentor?: boolean;
+  mentorBio?: string;
+  mentorSpecialties?: string[];
 }

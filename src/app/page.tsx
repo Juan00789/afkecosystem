@@ -26,9 +26,9 @@ const modules = [
   },
   {
     icon: <MessageSquareHeart className="h-8 w-8 text-primary" />,
-    title: 'Mentorías y Foros',
+    title: 'Mentorías',
     description: 'Conecta con mentores y participa en foros de discusión.',
-    href: '/dashboard/consultorias',
+    href: '/dashboard/mentorias',
   },
 ];
 
