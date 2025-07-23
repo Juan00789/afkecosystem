@@ -10,14 +10,14 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
-export const FileAnalysisInputSchema = z.object({
+const FileAnalysisInputSchema = z.object({
   fileName: z.string().describe('The name of the file.'),
   fileContent: z.string().describe('The Base64 encoded content of the file.'),
   userQuery: z.string().describe('The specific question or type of analysis the user wants.'),
 });
 export type FileAnalysisInput = z.infer<typeof FileAnalysisInputSchema>;
 
-export const FileAnalysisOutputSchema = z.object({
+const FileAnalysisOutputSchema = z.object({
   summary: z.string().describe('An executive summary of the analysis.'),
   keyPoints: z.array(z.string()).describe('A list of the most important findings or observations.'),
   recommendations: z.array(z.string()).describe('A list of actionable recommendations based on the analysis.'),
