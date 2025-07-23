@@ -29,14 +29,14 @@ const profileSchema = z.object({
   website: z.string().url('Please enter a valid URL').optional().or(z.literal('')),
   bankName: z.string().optional(),
   accountNumber: z.string().optional(),
-  isMentor: z.boolean().optional(),
+  isMentor: z.boolean().default(false),
   mentorBio: z.string().optional(),
   mentorSpecialties: z.string().optional(),
 });
 
 type ProfileFormData = z.infer<typeof profileSchema>;
 
-export function ProfilePage() {
+export default function ProfileSettingsPage() {
   const { user, userProfile, loading, refreshUserProfile } = useAuth();
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
@@ -103,32 +103,32 @@ export function ProfilePage() {
             photoURL = await getDownloadURL(snapshot.ref);
         }
         
-        // Update Firebase Auth profile
         await updateProfile(user, { displayName: displayName, photoURL: photoURL || user.photoURL });
         
         const userDocRef = doc(db, 'users', user.uid);
+        
         const updatedProfileData: UserProfile = {
             ...(userProfile || {}),
             uid: user.uid,
             email: user.email || '',
             displayName: displayName,
+            photoURL: photoURL || userProfile?.photoURL || '',
             phoneNumber: data.phoneNumber,
             companyName: data.companyName,
             website: data.website,
-            photoURL: photoURL || userProfile?.photoURL || '',
             credits: userProfile?.credits || 0,
             bankInfo: {
                 bankName: data.bankName,
                 accountNumber: data.accountNumber,
             },
             isMentor: data.isMentor,
-            mentorBio: data.mentorBio,
-            mentorSpecialties: data.mentorSpecialties?.split(',').map(s => s.trim()).filter(Boolean) || [],
+            mentorBio: data.isMentor ? data.mentorBio : '',
+            mentorSpecialties: data.isMentor ? data.mentorSpecialties?.split(',').map(s => s.trim()).filter(Boolean) : [],
         };
 
         await setDoc(userDocRef, updatedProfileData, { merge: true });
         
-        await refreshUserProfile(); // Refresh the user profile context
+        await refreshUserProfile();
 
         toast({ title: 'Success', description: 'Your profile has been updated.' });
         
