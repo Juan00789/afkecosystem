@@ -26,6 +26,8 @@ const transactionSchema = z.object({
   description: z.string().min(3, 'Description must be at least 3 characters.'),
   amount: z.coerce.number().positive('Amount must be positive.'),
   date: z.coerce.date({ required_error: 'Please select a date.' }),
+  category: z.string().min(1, 'Debe seleccionar una categoría.'),
+  paymentMethod: z.string().min(1, 'Debe seleccionar un método de pago.'),
 });
 
 type TransactionFormData = z.infer<typeof transactionSchema>;
@@ -34,6 +36,10 @@ interface Transaction extends TransactionFormData {
   id: string;
   date: { toDate: () => Date };
 }
+
+const expenseCategories = ['Suministros', 'Marketing', 'Transporte', 'Alquiler', 'Servicios', 'Otros'];
+const incomeCategories = ['Venta de Producto', 'Venta de Servicio', 'Consultoría', 'Otro'];
+const paymentMethods = ['Efectivo', 'Transferencia Bancaria', 'Tarjeta de Crédito/Débito', 'PayPal', 'Otro'];
 
 export default function TransactionsPage() {
   const { user } = useAuth();
@@ -49,6 +55,8 @@ export default function TransactionsPage() {
       description: '',
       amount: 0,
       date: new Date(),
+      category: '',
+      paymentMethod: '',
     },
   });
 
@@ -62,6 +70,9 @@ export default function TransactionsPage() {
       const trans = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction));
       setTransactions(trans);
       setLoading(false);
+    }, (error) => {
+        console.error("Error fetching transactions: ", error);
+        setLoading(false);
     });
     return () => unsubscribe();
   }, [user]);
@@ -95,13 +106,15 @@ export default function TransactionsPage() {
     }
   }
 
+  const categories = transactionType === 'income' ? incomeCategories : expenseCategories;
+
   return (
     <div className="container mx-auto max-w-7xl p-4 space-y-8">
       <div className="mb-6">
         <Button asChild variant="outline">
           <Link href="/dashboard/contabilidad">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Regresar al Dashboard
+            Regresar al Dashboard de Finanzas
           </Link>
         </Button>
       </div>
@@ -129,7 +142,7 @@ export default function TransactionsPage() {
                            {errors.type && <p className="text-sm text-destructive">{errors.type.message}</p>}
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="description">Descripción</Label>
+                            <Label htmlFor="description">Descripción / Concepto</Label>
                             <Controller name="description" control={control} render={({ field }) => <Textarea id="description" {...field} />} />
                             {errors.description && <p className="text-sm text-destructive">{errors.description.message}</p>}
                         </div>
@@ -142,6 +155,30 @@ export default function TransactionsPage() {
                             <Label htmlFor="date">Fecha</Label>
                             <Controller name="date" control={control} render={({ field }) => <Input id="date" type="date" value={field.value ? format(new Date(field.value), 'yyyy-MM-dd') : ''} onChange={e => field.onChange(new Date(e.target.value))} />} />
                             {errors.date && <p className="text-sm text-destructive">{errors.date.message}</p>}
+                        </div>
+                        <div className="space-y-2">
+                           <Label>Categoría</Label>
+                           <Controller name="category" control={control} render={({ field }) => (
+                               <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                   <SelectTrigger><SelectValue placeholder="Selecciona una categoría..." /></SelectTrigger>
+                                   <SelectContent>
+                                       {categories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                                   </SelectContent>
+                               </Select>
+                           )} />
+                           {errors.category && <p className="text-sm text-destructive">{errors.category.message}</p>}
+                        </div>
+                        <div className="space-y-2">
+                           <Label>Método de Pago</Label>
+                           <Controller name="paymentMethod" control={control} render={({ field }) => (
+                               <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                   <SelectTrigger><SelectValue placeholder="Selecciona un método..." /></SelectTrigger>
+                                   <SelectContent>
+                                       {paymentMethods.map(method => <SelectItem key={method} value={method}>{method}</SelectItem>)}
+                                   </SelectContent>
+                               </Select>
+                           )} />
+                           {errors.paymentMethod && <p className="text-sm text-destructive">{errors.paymentMethod.message}</p>}
                         </div>
                         <Button type="submit" disabled={isSubmitting} className="w-full">
                             {isSubmitting ? 'Guardando...' : 'Guardar Transacción'}
@@ -160,20 +197,22 @@ export default function TransactionsPage() {
                     <Table>
                         <TableHeader>
                             <TableRow>
+                                <TableHead>Concepto</TableHead>
+                                <TableHead>Categoría</TableHead>
                                 <TableHead>Fecha</TableHead>
-                                <TableHead>Descripción</TableHead>
                                 <TableHead className="text-right">Monto</TableHead>
                                 <TableHead className="text-right">Acciones</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {loading ? (
-                                <TableRow><TableCell colSpan={4} className="text-center">Cargando...</TableCell></TableRow>
+                                <TableRow><TableCell colSpan={5} className="text-center">Cargando...</TableCell></TableRow>
                             ) : transactions.length > 0 ? (
                                 transactions.map(t => (
                                 <TableRow key={t.id}>
-                                    <TableCell>{format(t.date.toDate(), 'dd/MM/yy')}</TableCell>
                                     <TableCell className="font-medium">{t.description}</TableCell>
+                                    <TableCell>{t.category}</TableCell>
+                                    <TableCell>{format(t.date.toDate(), 'dd/MM/yy')}</TableCell>
                                     <TableCell className={`text-right font-semibold ${t.type === 'income' ? 'text-green-500' : 'text-red-500'}`}>
                                         ${t.amount.toLocaleString()}
                                     </TableCell>
@@ -197,7 +236,7 @@ export default function TransactionsPage() {
                                 </TableRow>
                             ))
                             ) : (
-                                <TableRow><TableCell colSpan={4} className="text-center">No hay transacciones.</TableCell></TableRow>
+                                <TableRow><TableCell colSpan={5} className="text-center">No hay transacciones.</TableCell></TableRow>
                             )}
                         </TableBody>
                     </Table>
