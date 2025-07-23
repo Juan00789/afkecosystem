@@ -159,10 +159,36 @@ export function CaseDetail({ caseId }: CaseDetailProps) {
             transaction.update(caseRef, { status: newStatus, lastUpdate: serverTimestamp() });
 
             if (newStatus === 'completed') {
-                const clientRef = doc(db, 'users', caseData.clientId);
-                const providerRef = doc(db, 'users', caseData.providerId);
-                transaction.update(clientRef, { credits: increment(10) });
-                transaction.update(providerRef, { credits: increment(10) });
+                // Determine credit reward based on sentiment
+                const sentimentResult = await analyzeCaseSentiment({
+                  caseTitle: caseData.title,
+                  comments: comments.map(c => ({ authorName: c.authorName, text: c.text })),
+                });
+                
+                let creditReward = 0;
+                let toastDescription = '';
+                
+                switch (sentimentResult.sentiment) {
+                    case 'Positivo':
+                        creditReward = 10;
+                        toastDescription = '¡Excelente colaboración! Créditos de recompensa distribuidos.';
+                        break;
+                    case 'Neutral':
+                        creditReward = 5;
+                        toastDescription = 'Caso completado. Se han distribuido créditos de recompensa reducidos.';
+                        break;
+                    default: // Negativo or Conflicto Potencial
+                        creditReward = 0;
+                        toastDescription = 'Caso completado, pero no se otorgan créditos debido a la fricción en la comunicación. Fomentemos el respeto.';
+                        break;
+                }
+
+                if (creditReward > 0) {
+                  const clientRef = doc(db, 'users', caseData.clientId);
+                  const providerRef = doc(db, 'users', caseData.providerId);
+                  transaction.update(clientRef, { credits: increment(creditReward) });
+                  transaction.update(providerRef, { credits: increment(creditReward) });
+                }
 
                 // Payout investments with bonus
                 for (const investment of investments) {
@@ -170,12 +196,13 @@ export function CaseDetail({ caseId }: CaseDetailProps) {
                     const returnAmount = investment.amount * 1.10; // 10% bonus
                     transaction.update(investorRef, { credits: increment(returnAmount) });
                 }
+
+                 toast({ title: '¡Caso Completado!', description: toastDescription });
             }
         });
 
         toast({ title: 'Success', description: 'Case status updated.' });
         if (newStatus === 'completed') {
-            toast({ title: '¡Caso Completado!', description: 'Créditos de recompensa y retornos de inversión han sido distribuidos.' });
             await refreshUserProfile();
         }
     } catch (error) {

@@ -49,18 +49,18 @@ interface Loan {
 const waysToEarn = [
   {
     icon: <CheckCircle className="h-6 w-6 text-green-500" />,
-    title: 'Completar un Caso',
-    description: 'Gana 10 créditos cada vez que completas un caso como proveedor.',
+    title: 'Completar un Caso con Respeto',
+    description: 'Gana hasta 10 créditos cada vez que completas un caso como proveedor o cliente con una colaboración positiva.',
   },
   {
     icon: <BookOpen className="h-6 w-6 text-blue-500" />,
-    title: 'Crear un Curso',
-    description: 'Gana 25 créditos por cada nuevo micro-curso que aportes a la comunidad.',
+    title: 'Crear un Curso de Calidad',
+    description: 'Gana 25 créditos por cada nuevo micro-curso que aportes y sea validado por la comunidad.',
   },
   {
     icon: <UserPlus className="h-6 w-6 text-purple-500" />,
-    title: 'Expandir tu Red',
-    description: 'Gana 5 créditos por cada nuevo cliente o proveedor que se una a tu red.',
+    title: 'Expandir tu Red de Confianza',
+    description: 'Gana 5 créditos por cada nuevo cliente o proveedor que se una a tu red por primera vez.',
   },
 ];
 
@@ -161,17 +161,17 @@ export default function CreditosPage() {
                     </div>
                     <div>
                         <CardTitle className="text-3xl font-extrabold tracking-tight text-primary">
-                        Sistema de Microcréditos
+                        Sistema de Microcréditos de Confianza
                         </CardTitle>
                         <CardDescription className="text-lg">
-                        Impulsa tus proyectos con el apoyo de la comunidad.
+                        Los créditos reflejan tu reputación y colaboración.
                         </CardDescription>
                     </div>
                 </div>
                 </CardHeader>
                 <CardContent>
                 <p className="text-muted-foreground">
-                    Los créditos son la moneda del ecosistema, un reflejo de confianza y colaboración. Solicita un microcrédito para invertir en tu negocio, comprar materiales o lo que necesites para crecer. Tu participación activa fortalece este fondo de todos.
+                    Los créditos son más que una moneda; son un indicador de confianza ganado a través del respeto y la colaboración. Solicita un microcrédito para invertir en tu negocio, sabiendo que el fondo es sostenido por el éxito colectivo.
                 </p>
                 </CardContent>
             </Card>
@@ -272,7 +272,7 @@ export default function CreditosPage() {
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Cómo Ganar Créditos</CardTitle>
+                    <CardTitle>Cómo Ganar Créditos de Confianza</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                     {waysToEarn.map(way => (
