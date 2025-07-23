@@ -1,3 +1,4 @@
+
 // src/app/dashboard/cotizador/page.tsx
 'use client';
 import { useState, useEffect } from 'react';
@@ -49,7 +50,7 @@ export default function QuoteGeneratorPage() {
   const [services, setServices] = useState<Service[]>([]);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
 
-  const { control, handleSubmit, reset, watch, setValue } = useForm<QuoteFormData>({
+  const { control, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<QuoteFormData>({
     resolver: zodResolver(quoteSchema),
     defaultValues: {
       clientName: '',
