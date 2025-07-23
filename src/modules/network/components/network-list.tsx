@@ -45,7 +45,10 @@ export function NetworkList({ roleToList, refreshTrigger, onUserRemoved }: Netwo
 
   useEffect(() => {
     const fetchNetworkUsers = async () => {
-      if (!user) return;
+      if (!user) {
+        setLoading(false);
+        return;
+      };
       setLoading(true);
 
       try {
