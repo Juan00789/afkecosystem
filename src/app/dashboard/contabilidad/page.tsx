@@ -4,22 +4,15 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowLeft, Landmark, DollarSign, ArrowUpCircle, ArrowDownCircle, PlusCircle, FileText, Archive, History } from 'lucide-react';
+import { ArrowLeft, Landmark, DollarSign, ArrowUpCircle, ArrowDownCircle, PlusCircle, FileText, Archive, History, BarChart } from 'lucide-react';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
 import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { Product } from '@/modules/products/types';
+import type { Transaction } from '@/modules/invoicing/types';
 
-interface Transaction {
-  id: string;
-  type: 'income' | 'expense';
-  description: string;
-  amount: number;
-  date: { toDate: () => Date };
-  status?: 'active' | 'archived';
-}
 
 export default function ContabilidadPage() {
   const { user } = useAuth();
@@ -97,7 +90,13 @@ export default function ContabilidadPage() {
             <Button asChild size="lg" variant="outline">
                 <Link href="/dashboard/contabilidad/invoices">
                     <FileText className="mr-2 h-5 w-5" />
-                    Ver Facturas
+                    Ver Documentos
+                </Link>
+            </Button>
+            <Button asChild size="lg" variant="outline">
+                <Link href="/dashboard/analisis/financiero">
+                    <BarChart className="mr-2 h-5 w-5" />
+                    Ver Análisis
                 </Link>
             </Button>
             <Button asChild size="lg">

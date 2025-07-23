@@ -46,6 +46,8 @@ export function Sidebar() {
     { section: 'Colabora', href: '/dashboard/mentorias', label: 'Mentorías', icon: MessageSquareHeart },
     { section: 'Gestiona', href: '/dashboard/contabilidad', label: 'Mis Finanzas', icon: Landmark },
     { section: 'Gestiona', href: '/dashboard/contabilidad/historial', label: 'Historial Financiero', icon: History },
+    { section: 'Gestiona', href: '/dashboard/contabilidad/invoices', label: 'Documentos', icon: FileText },
+    { section: 'Gestiona', href: '/dashboard/analisis/financiero', label: 'Análisis Financiero', icon: BarChart },
     { section: 'Gestiona', href: '/dashboard/cotizador', label: 'Cotizador', icon: FileText },
     { section: 'Gestiona', href: '/dashboard/productos', label: 'Mi Almacén', icon: Archive },
     { section: 'Gestiona', href: '/dashboard/services', label: 'Mis Servicios', icon: Briefcase },

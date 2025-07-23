@@ -4,9 +4,10 @@ import { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { db } from '@/lib/firebase';
+import { db, storage } from '@/lib/firebase';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
 import { collection, query, where, onSnapshot, orderBy, addDoc, serverTimestamp, updateDoc, doc, getDocs, documentId } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { format } from 'date-fns';
 import Link from 'next/link';
 
@@ -17,10 +18,11 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ArrowLeft, Trash2 } from 'lucide-react';
+import { ArrowLeft, Trash2, Upload } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
 import type { UserProfile } from '@/modules/auth/types';
+import type { Transaction } from '@/modules/invoicing/types';
 
 const transactionSchema = z.object({
   type: z.enum(['income', 'expense'], { required_error: 'Please select a transaction type.' }),
@@ -31,6 +33,7 @@ const transactionSchema = z.object({
   paymentMethod: z.string().min(1, 'Debe seleccionar un método de pago.'),
   relatedPartyId: z.string().optional(),
   manualRelatedPartyName: z.string().optional(),
+  documentFile: z.any().optional(),
 }).refine(data => {
     if (data.relatedPartyId === 'manual') {
         return !!data.manualRelatedPartyName && data.manualRelatedPartyName.length > 0;
@@ -43,19 +46,12 @@ const transactionSchema = z.object({
 
 type TransactionFormData = z.infer<typeof transactionSchema>;
 
-interface Transaction extends Omit<TransactionFormData, 'relatedPartyId' | 'manualRelatedPartyName'> {
-  id: string;
-  date: { toDate: () => Date };
-  status?: 'active' | 'archived';
-  relatedPartyName?: string;
-}
-
 interface NetworkUser {
     id: string;
     displayName: string;
 }
 
-const expenseCategories = ['Suministros', 'Marketing', 'Transporte', 'Alquiler', 'Servicios', 'Otros'];
+const expenseCategories = ['Suministros', 'Marketing', 'Transporte', 'Alquiler', 'Servicios', 'Impuestos', 'Otros'];
 const incomeCategories = ['Venta de Producto', 'Venta de Servicio', 'Consultoría', 'Otro'];
 const paymentMethods = ['Efectivo', 'Transferencia Bancaria', 'Tarjeta de Crédito/Débito', 'PayPal', 'Otro'];
 
@@ -66,8 +62,9 @@ export default function TransactionsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [networkUsers, setNetworkUsers] = useState<NetworkUser[]>([]);
+  const [fileName, setFileName] = useState('');
 
-  const { control, handleSubmit, reset, watch, formState: { errors } } = useForm<TransactionFormData>({
+  const { control, handleSubmit, reset, watch, register, formState: { errors } } = useForm<TransactionFormData>({
     resolver: zodResolver(transactionSchema),
     defaultValues: {
       type: 'expense',
@@ -135,6 +132,14 @@ export default function TransactionsPage() {
     try {
       let relatedPartyName: string | undefined = undefined;
       let relatedPartyId: string | undefined = undefined;
+      let documentUrl: string | undefined = undefined;
+      
+      if (data.type === 'expense' && data.documentFile?.[0]) {
+          const file = data.documentFile[0];
+          const storageRef = ref(storage, `expense-documents/${user.uid}/${Date.now()}-${file.name}`);
+          const snapshot = await uploadBytes(storageRef, file);
+          documentUrl = await getDownloadURL(snapshot.ref);
+      }
 
       if(data.relatedPartyId) {
           if(data.relatedPartyId === 'manual') {
@@ -158,9 +163,11 @@ export default function TransactionsPage() {
         userId: user.uid,
         status: 'active',
         createdAt: serverTimestamp(),
+        documentUrl: documentUrl,
       });
       toast({ title: 'Éxito', description: 'Transacción añadida.' });
       reset();
+      setFileName('');
     } catch (error) {
       console.error('Error adding transaction: ', error);
       toast({ title: 'Error', description: 'No se pudo añadir la transacción.', variant: 'destructive' });
@@ -273,6 +280,22 @@ export default function TransactionsPage() {
                            )} />
                            {errors.paymentMethod && <p className="text-sm text-destructive">{errors.paymentMethod.message}</p>}
                         </div>
+                        
+                        {transactionType === 'expense' && (
+                            <div className="space-y-2">
+                                <Label htmlFor="documentFile">Adjuntar Factura/Recibo (Opcional)</Label>
+                                <div className="flex items-center justify-center w-full">
+                                    <label htmlFor="document-upload" className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer bg-muted/50 hover:bg-muted">
+                                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                            <Upload className="w-6 h-6 mb-2 text-muted-foreground" />
+                                            <p className="text-xs text-muted-foreground">{fileName || 'Sube tu factura'}</p>
+                                        </div>
+                                        <input id="document-upload" type="file" className="hidden" {...register('documentFile')} onChange={e => setFileName(e.target.files?.[0]?.name || '')}/>
+                                    </label>
+                                </div>
+                            </div>
+                        )}
+
                         <Button type="submit" disabled={isSubmitting} className="w-full">
                             {isSubmitting ? 'Guardando...' : 'Guardar Transacción'}
                         </Button>
@@ -307,7 +330,7 @@ export default function TransactionsPage() {
                                     <TableCell>{t.category}</TableCell>
                                     <TableCell>{format(t.date.toDate(), 'dd/MM/yy')}</TableCell>
                                     <TableCell className={`text-right font-semibold ${t.type === 'income' ? 'text-green-500' : 'text-red-500'}`}>
-                                        ${t.amount.toLocaleString()}
+                                        {t.type === 'income' ? '+' : '-'}${t.amount.toLocaleString()}
                                     </TableCell>
                                     <TableCell className="text-right">
                                        <AlertDialog>

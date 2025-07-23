@@ -23,6 +23,7 @@ import {
   Archive,
   GitFork,
   History,
+  BarChart,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -61,6 +62,8 @@ export function Header({}: HeaderProps) {
     'Gestiona': [
       { href: '/dashboard/contabilidad', label: 'Mis Finanzas', icon: Landmark },
       { href: '/dashboard/contabilidad/historial', label: 'Historial Financiero', icon: History },
+      { href: '/dashboard/contabilidad/invoices', label: 'Documentos', icon: FileText },
+      { href: '/dashboard/analisis/financiero', label: 'Análisis Financiero', icon: BarChart },
       { href: '/dashboard/cotizador', label: 'Cotizador', icon: FileText },
       { href: '/dashboard/productos', label: 'Mi Almacén', icon: Archive },
       { href: '/dashboard/services', label: 'Mis Servicios', icon: Briefcase },

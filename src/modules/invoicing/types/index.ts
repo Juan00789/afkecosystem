@@ -65,3 +65,19 @@ export interface Invoice extends QuoteFormData {
   status: 'sent' | 'paid' | 'overdue';
   createdAt: Timestamp;
 }
+
+export interface Transaction {
+  id: string;
+  userId: string;
+  type: 'income' | 'expense';
+  description: string;
+  amount: number;
+  date: Timestamp;
+  category: string;
+  paymentMethod: string;
+  relatedPartyName?: string;
+  relatedPartyId?: string;
+  status?: 'active' | 'archived';
+  invoiceId?: string;
+  documentUrl?: string; // URL to the uploaded expense document
+}
