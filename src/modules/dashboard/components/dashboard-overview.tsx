@@ -1,3 +1,4 @@
+
 // src/modules/dashboard/components/dashboard-overview.tsx
 'use client';
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -14,7 +15,6 @@ import {
   Briefcase,
   BookOpen,
   FileText,
-  HandHelping,
   HandCoins,
   MessageSquareHeart,
   ShoppingBag,
@@ -24,8 +24,9 @@ import {
   LineChart,
   Landmark,
   FileSearch,
-  Banknote,
   Archive,
+  GitFork,
+  GraduationCap,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
@@ -33,67 +34,84 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ResponsiveContainer, Bar, XAxis, YAxis, Tooltip, Legend, BarChart as ReBarChart, LineChart as ReLineChart, Line, CartesianGrid } from 'recharts';
 import { format, subMonths, startOfMonth } from 'date-fns';
 
-
 interface DashboardOverviewProps {
   userId: string;
 }
 
-const modules = [
-  {
-    icon: <ShoppingBag className="h-8 w-8 text-primary" />,
-    title: 'Marketplace',
-    description: 'Explora servicios y productos del ecosistema.',
-    href: '/dashboard/marketplace',
-  },
-  {
-    icon: <BookOpen className="h-8 w-8 text-primary" />,
-    title: 'Cursos Exprés',
-    description: 'Aprende habilidades clave para crecer.',
-    href: '/dashboard/cursos',
-  },
-  {
-    icon: <HandCoins className="h-8 w-8 text-primary" />,
-    title: 'Microcréditos',
-    description: 'Accede a financiamiento colaborativo.',
-    href: '/dashboard/creditos',
-  },
-  {
-    icon: <MessageSquareHeart className="h-8 w-8 text-primary" />,
-    title: 'Mentorías',
-    description: 'Conecta con mentores y resuelve dudas.',
-    href: '/dashboard/mentorias',
-  },
-  {
-    icon: <FileSearch className="h-8 w-8 text-primary" />,
-    title: 'Análisis IA',
-    description: 'Obtén opiniones expertas de tus documentos.',
-    href: '/dashboard/analisis',
-  },
-  {
-    icon: <Users className="h-8 w-8 text-primary" />,
-    title: 'Mis Brokis',
-    description: 'Gestiona tu red de clientes y proveedores.',
-    href: '/dashboard/network',
-  },
-   {
-    icon: <Briefcase className="h-8 w-8 text-primary" />,
-    title: 'Mis Servicios',
-    description: 'Administra los servicios que ofreces.',
-    href: '/dashboard/services',
-  },
-  {
-    icon: <Archive className="h-8 w-8 text-primary" />,
-    title: 'Mi Almacén',
-    description: 'Gestiona tu inventario de productos.',
-    href: '/dashboard/productos',
-  },
-  {
-    icon: <Landmark className="h-8 w-8 text-primary" />,
-    title: 'Mis Finanzas',
-    description: 'Lleva un control de tus finanzas.',
-    href: '/dashboard/contabilidad',
-  },
-];
+const moduleSections = {
+  'Colabora': [
+    {
+      icon: <ShoppingBag className="h-8 w-8 text-primary" />,
+      title: 'Marketplace',
+      description: 'Explora servicios y productos del ecosistema.',
+      href: '/dashboard/marketplace',
+    },
+    {
+      icon: <GitFork className="h-8 w-8 text-primary" />,
+      title: 'Mis Brokis',
+      description: 'Gestiona tu red de clientes y proveedores.',
+      href: '/dashboard/network',
+    },
+    {
+      icon: <MessageSquareHeart className="h-8 w-8 text-primary" />,
+      title: 'Mentorías',
+      description: 'Conecta con mentores y resuelve dudas.',
+      href: '/dashboard/mentorias',
+    },
+  ],
+  'Gestiona': [
+    {
+      icon: <Landmark className="h-8 w-8 text-primary" />,
+      title: 'Mis Finanzas',
+      description: 'Lleva un control de tus finanzas.',
+      href: '/dashboard/contabilidad',
+    },
+    {
+      icon: <FileText className="h-8 w-8 text-primary" />,
+      title: 'Cotizador',
+      description: 'Crea cotizaciones y facturas profesionales.',
+      href: '/dashboard/cotizador',
+    },
+    {
+      icon: <Archive className="h-8 w-8 text-primary" />,
+      title: 'Mi Almacén',
+      description: 'Gestiona tu inventario de productos.',
+      href: '/dashboard/productos',
+    },
+    {
+      icon: <Briefcase className="h-8 w-8 text-primary" />,
+      title: 'Mis Servicios',
+      description: 'Administra los servicios que ofreces.',
+      href: '/dashboard/services',
+    },
+    {
+      icon: <GraduationCap className="h-8 w-8 text-primary" />,
+      title: 'Mis Cursos',
+      description: 'Crea y gestiona tus micro-cursos.',
+      href: '/dashboard/my-courses',
+    },
+  ],
+  'Crece': [
+    {
+      icon: <BookOpen className="h-8 w-8 text-primary" />,
+      title: 'Cursos Exprés',
+      description: 'Aprende habilidades clave para crecer.',
+      href: '/dashboard/cursos',
+    },
+    {
+      icon: <HandCoins className="h-8 w-8 text-primary" />,
+      title: 'Microcréditos',
+      description: 'Accede a financiamiento colaborativo.',
+      href: '/dashboard/creditos',
+    },
+    {
+      icon: <FileSearch className="h-8 w-8 text-primary" />,
+      title: 'Análisis IA',
+      description: 'Obtén auditorías expertas de tus documentos.',
+      href: '/dashboard/analisis',
+    },
+  ]
+};
 
 const StatsCard = ({ title, description, icon, children }: { title: string; description: string; icon: React.ReactNode; children: React.ReactNode }) => (
     <Card>
@@ -131,7 +149,7 @@ async function fetchCaseWithProfiles(docSnap: any): Promise<Case> {
 
 
 export function DashboardOverview({ userId }: DashboardOverviewProps) {
-  const { userProfile, refreshUserProfile } = useAuth();
+  const { userProfile } = useAuth();
   const [clientCases, setClientCases] = useState<Case[]>([]);
   const [providerCases, setProviderCases] = useState<Case[]>([]);
   const [loading, setLoading] = useState(true);
@@ -139,14 +157,6 @@ export function DashboardOverview({ userId }: DashboardOverviewProps) {
   const isProfileIncomplete = useMemo(() => {
     return !userProfile?.companyName;
   }, [userProfile]);
-
-  useEffect(() => {
-      if (userProfile?.credits) {
-          // This effect is to ensure the UI updates when credits change.
-          // The actual logic is handled in the components that award credits.
-      }
-  }, [userProfile?.credits]);
-
 
   const allCases = useMemo(() => {
     const combined = [...clientCases, ...providerCases];
@@ -226,7 +236,7 @@ export function DashboardOverview({ userId }: DashboardOverviewProps) {
 
     const unsubProvider = onSnapshot(providerQuery, async (snapshot) => {
         const casesPromises = snapshot.docs.map(fetchCaseWithProfiles);
-        const fetchedCases = await Promise.all(casesPromises);
+        const fetchedCases = await Promise.all(fetchedCases);
         setProviderCases(fetchedCases);
         providerLoaded = true;
         checkLoadingDone();
@@ -330,24 +340,28 @@ export function DashboardOverview({ userId }: DashboardOverviewProps) {
         </div>
       </div>
 
-
-       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {modules.map((module) => (
-              <Link href={module.href} key={module.title}>
-                <Card className="h-full transition-transform duration-300 hover:-translate-y-1 hover:shadow-xl bg-card hover:bg-card/80">
-                  <CardHeader className="items-center text-center">
-                        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 mb-3">
-                            {module.icon}
-                        </div>
-                        <CardTitle className="text-primary">{module.title}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                        <p className="text-sm text-center text-muted-foreground">{module.description}</p>
-                  </CardContent>
-                </Card>
-              </Link>
-          ))}
-      </div>
+       {Object.entries(moduleSections).map(([sectionTitle, modules]) => (
+        <div key={sectionTitle}>
+            <h2 className="text-2xl font-semibold mb-4">{sectionTitle}</h2>
+             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {modules.map((module) => (
+                  <Link href={module.href} key={module.title}>
+                    <Card className="h-full transition-transform duration-300 hover:-translate-y-1 hover:shadow-xl bg-card hover:bg-card/80">
+                      <CardHeader className="items-center text-center">
+                            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 mb-3">
+                                {module.icon}
+                            </div>
+                            <CardTitle className="text-primary">{module.title}</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                            <p className="text-sm text-center text-muted-foreground">{module.description}</p>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                ))}
+            </div>
+        </div>
+       ))}
 
 
       <div>
