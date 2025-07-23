@@ -74,7 +74,9 @@ function CreateCaseFormComponent() {
 
       if (userDocSnap.exists()) {
         const userData = userDocSnap.data();
-        const providerIds = userData.network?.providers || [];
+        const connectionsQuery = query(collection(db, 'network_connections'), where('client_id', '==', user.uid));
+        const connectionsSnapshot = await getDocs(connectionsQuery);
+        const providerIds = connectionsSnapshot.docs.map(d => d.data().provider_id);
         
         if (providerIds.length > 0) {
             const providersQuery = query(collection(db, 'users'), where(documentId(), 'in', providerIds));
