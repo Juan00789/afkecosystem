@@ -1,10 +1,12 @@
+
+      
 // src/modules/cases/components/case-detail.tsx
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { doc, getDoc, onSnapshot, updateDoc, collection, query, orderBy, addDoc, serverTimestamp, runTransaction, increment } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
-import type { Case, Comment } from '../types';
+import type { Case, Comment, Investment } from '../types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -14,11 +16,23 @@ import { format } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
-import { CheckCircle, Circle, CircleDot, Bot, Sparkles, AlertTriangle,ThumbsUp, Frown, MessageSquare } from 'lucide-react';
+import { CheckCircle, Circle, CircleDot, Bot, Sparkles, AlertTriangle,ThumbsUp, Frown, MessageSquare, HandCoins } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { analyzeCaseSentiment, type CaseSentimentOutput } from '@/ai/flows/case-sentiment-flow';
-
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { processInvestment } from '@/ai/flows/investment-flow';
 
 const WhatsAppIcon = () => (
     <svg
@@ -64,20 +78,23 @@ const StatusTracker = ({ currentStatus }: { currentStatus: Case['status'] }) => 
   );
 };
 
-
 interface CaseDetailProps {
   caseId: string;
 }
 
 export function CaseDetail({ caseId }: CaseDetailProps) {
-  const { user, userProfile } = useAuth();
+  const { user, userProfile, refreshUserProfile } = useAuth();
   const { toast } = useToast();
   const [caseData, setCaseData] = useState<Case | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
+  const [investments, setInvestments] = useState<Investment[]>([]);
   const [newComment, setNewComment] = useState('');
+  const [investmentAmount, setInvestmentAmount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<CaseSentimentOutput | null>(null);
+  const [isInvesting, setIsInvesting] = useState(false);
+  const [isInvestmentDialogOpen, setIsInvestmentDialogOpen] = useState(false);
 
   const getStatusVariant = useCallback((status: string) => {
     switch (status) {
@@ -89,6 +106,8 @@ export function CaseDetail({ caseId }: CaseDetailProps) {
     }
   }, []);
 
+  const totalInvested = investments.reduce((sum, i) => sum + i.amount, 0);
+
   useEffect(() => {
     if (!caseId) return;
     setLoading(true);
@@ -98,7 +117,6 @@ export function CaseDetail({ caseId }: CaseDetailProps) {
       if (docSnap.exists()) {
         const data = docSnap.data() as Omit<Case, 'id'>;
         
-        // Fetch client and provider profiles
         const clientSnap = await getDoc(doc(db, 'users', data.clientId));
         const providerSnap = await getDoc(doc(db, 'users', data.providerId));
         
@@ -117,49 +135,50 @@ export function CaseDetail({ caseId }: CaseDetailProps) {
 
     const commentsQuery = query(collection(db, `cases/${caseId}/comments`), orderBy('createdAt', 'asc'));
     const unsubscribeComments = onSnapshot(commentsQuery, (snapshot) => {
-        const fetchedComments = snapshot.docs.map(doc => {
-            const data = doc.data();
-            return {
-                id: doc.id,
-                ...data,
-                createdAt: data.createdAt?.toDate(),
-            } as Comment
-        });
+        const fetchedComments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), createdAt: doc.data().createdAt?.toDate() } as Comment));
         setComments(fetchedComments);
+    });
+    
+    const investmentsQuery = query(collection(db, `cases/${caseId}/investments`), orderBy('createdAt', 'asc'));
+    const unsubscribeInvestments = onSnapshot(investmentsQuery, (snapshot) => {
+        const fetchedInvestments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Investment));
+        setInvestments(fetchedInvestments);
     });
 
     return () => {
       unsubscribeCase();
       unsubscribeComments();
+      unsubscribeInvestments();
     };
   }, [caseId]);
 
   const handleStatusChange = async (newStatus: string) => {
     if (!caseData || newStatus === caseData.status) return;
-    
+
     try {
         await runTransaction(db, async (transaction) => {
             const caseRef = doc(db, 'cases', caseId);
-            const caseDoc = await transaction.get(caseRef);
-            if (!caseDoc.exists()) throw "Case does not exist!";
-
-            // Update case status and timestamp
             transaction.update(caseRef, { status: newStatus, lastUpdate: serverTimestamp() });
 
-            // If case is completed, award credits
             if (newStatus === 'completed') {
                 const clientRef = doc(db, 'users', caseData.clientId);
                 const providerRef = doc(db, 'users', caseData.providerId);
-                
-                // Award 10 credits to both client and provider
                 transaction.update(clientRef, { credits: increment(10) });
                 transaction.update(providerRef, { credits: increment(10) });
+
+                // Payout investments with bonus
+                for (const investment of investments) {
+                    const investorRef = doc(db, 'users', investment.investorId);
+                    const returnAmount = investment.amount * 1.10; // 10% bonus
+                    transaction.update(investorRef, { credits: increment(returnAmount) });
+                }
             }
         });
-        
+
         toast({ title: 'Success', description: 'Case status updated.' });
-         if (newStatus === 'completed') {
-            toast({ title: '¡Créditos Ganados!', description: '¡Cliente y proveedor han ganado 10 créditos cada uno!' });
+        if (newStatus === 'completed') {
+            toast({ title: '¡Caso Completado!', description: 'Créditos de recompensa y retornos de inversión han sido distribuidos.' });
+            await refreshUserProfile();
         }
     } catch (error) {
         console.error("Error updating status: ", error);
@@ -181,10 +200,7 @@ export function CaseDetail({ caseId }: CaseDetailProps) {
         setNewComment('');
         toast({ title: 'Comment added' });
         
-        // Also update the case's lastUpdate timestamp
-        await updateDoc(doc(db, 'cases', caseId), {
-            lastUpdate: serverTimestamp(),
-        });
+        await updateDoc(doc(db, 'cases', caseId), { lastUpdate: serverTimestamp() });
 
     } catch (error) {
         console.error("Error adding comment: ", error);
@@ -194,11 +210,7 @@ export function CaseDetail({ caseId }: CaseDetailProps) {
 
   const handleSentimentAnalysis = async () => {
     if (!caseData || comments.length === 0) {
-      toast({
-        title: 'No hay suficientes datos',
-        description: 'Se necesita al menos un comentario para analizar el sentimiento.',
-        variant: 'destructive',
-      });
+      toast({ title: 'No hay suficientes datos', description: 'Se necesita al menos un comentario para analizar el sentimiento.', variant: 'destructive' });
       return;
     }
     setIsAnalyzing(true);
@@ -218,30 +230,49 @@ export function CaseDetail({ caseId }: CaseDetailProps) {
     }
   };
 
+    const handleInvestment = async () => {
+        if (!user || !caseData || investmentAmount <= 0) return;
+        if ((userProfile?.credits || 0) < investmentAmount) {
+            toast({ title: 'Fondos Insuficientes', description: 'No tienes suficientes créditos para esta inversión.', variant: 'destructive' });
+            return;
+        }
+        setIsInvesting(true);
+        try {
+            const result = await processInvestment({
+                investorId: user.uid,
+                caseId: caseData.id,
+                amount: investmentAmount,
+            });
+
+            if (result.success) {
+                toast({ title: 'Inversión Exitosa', description: result.message });
+                await refreshUserProfile();
+                setIsInvestmentDialogOpen(false);
+                setInvestmentAmount(0);
+            } else {
+                toast({ title: 'Error en la Inversión', description: result.message, variant: 'destructive' });
+            }
+        } catch (error: any) {
+            toast({ title: 'Error', description: error.message || 'No se pudo completar la inversión.', variant: 'destructive' });
+        } finally {
+            setIsInvesting(false);
+        }
+    };
+
+
   const SentimentIcon = ({ sentiment }: { sentiment: CaseSentimentOutput['sentiment'] }) => {
     switch (sentiment) {
-      case 'Positivo':
-        return <ThumbsUp className="h-5 w-5 text-green-500" />;
-      case 'Negativo':
-        return <Frown className="h-5 w-5 text-red-500" />;
-      case 'Conflicto Potencial':
-        return <AlertTriangle className="h-5 w-5 text-yellow-500" />;
-      case 'Neutral':
-      default:
-        return <MessageSquare className="h-5 w-5 text-muted-foreground" />;
+      case 'Positivo': return <ThumbsUp className="h-5 w-5 text-green-500" />;
+      case 'Negativo': return <Frown className="h-5 w-5 text-red-500" />;
+      case 'Conflicto Potencial': return <AlertTriangle className="h-5 w-5 text-yellow-500" />;
+      case 'Neutral': default: return <MessageSquare className="h-5 w-5 text-muted-foreground" />;
     }
   };
 
-  if (loading) {
-    return <div>Loading case details...</div>;
-  }
+  if (loading) return <div>Loading case details...</div>;
+  if (!caseData) return <div>Case not found.</div>;
 
-  if (!caseData) {
-    return <div>Case not found.</div>;
-  }
-
-  const perspective = user?.uid === caseData.clientId ? 'client' : 'provider';
-  const otherParty = perspective === 'client' ? caseData.provider : caseData.client;
+  const isParticipant = user?.uid === caseData.clientId || user?.uid === caseData.providerId;
   const whatsappMessage = encodeURIComponent(`Hola, te contacto desde AFKEcosystem sobre el caso: "${caseData.title}".`);
 
   return (
@@ -277,56 +308,70 @@ export function CaseDetail({ caseId }: CaseDetailProps) {
           <Separator className="my-6" />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-3">
-                <h4 className="font-semibold">Client</h4>
+                <h4 className="font-semibold">Cliente</h4>
                 <div className="flex items-center gap-3">
-                    <Link href={`/profile/${caseData.client?.uid}`} className="group">
-                        <Avatar>
-                            <AvatarImage src={caseData.client?.photoURL} />
-                            <AvatarFallback>{caseData.client?.displayName?.[0] || 'C'}</AvatarFallback>
-                        </Avatar>
-                    </Link>
+                    <Link href={`/profile/${caseData.client?.uid}`} className="group"><Avatar><AvatarImage src={caseData.client?.photoURL} /><AvatarFallback>{caseData.client?.displayName?.[0] || 'C'}</AvatarFallback></Avatar></Link>
                     <div>
-                        <Link href={`/profile/${caseData.client?.uid}`}>
-                            <p className="font-medium hover:underline">{caseData.client?.displayName}</p>
-                        </Link>
+                        <Link href={`/profile/${caseData.client?.uid}`}><p className="font-medium hover:underline">{caseData.client?.displayName}</p></Link>
                         <p className="text-sm text-muted-foreground">{caseData.client?.email}</p>
                     </div>
                 </div>
-                 {caseData.client?.phoneNumber && (
-                    <Button asChild variant="outline" size="sm">
-                       <a href={`https://wa.me/${caseData.client.phoneNumber.replace(/\D/g, '')}?text=${whatsappMessage}`} target="_blank" rel="noopener noreferrer">
-                           <WhatsAppIcon />
-                           Contactar Cliente
-                       </a>
-                    </Button>
-                )}
+                 {caseData.client?.phoneNumber && <Button asChild variant="outline" size="sm"><a href={`https://wa.me/${caseData.client.phoneNumber.replace(/\D/g, '')}?text=${whatsappMessage}`} target="_blank" rel="noopener noreferrer"><WhatsAppIcon />Contactar Cliente</a></Button>}
             </div>
              <div className="space-y-3">
-                <h4 className="font-semibold">Provider</h4>
+                <h4 className="font-semibold">Proveedor</h4>
                 <div className="flex items-center gap-3">
-                    <Link href={`/profile/${caseData.provider?.uid}`} className="group">
-                        <Avatar>
-                            <AvatarImage src={caseData.provider?.photoURL} />
-                            <AvatarFallback>{caseData.provider?.displayName?.[0] || 'P'}</AvatarFallback>
-                        </Avatar>
-                    </Link>
+                    <Link href={`/profile/${caseData.provider?.uid}`} className="group"><Avatar><AvatarImage src={caseData.provider?.photoURL} /><AvatarFallback>{caseData.provider?.displayName?.[0] || 'P'}</AvatarFallback></Avatar></Link>
                     <div>
-                        <Link href={`/profile/${caseData.provider?.uid}`}>
-                            <p className="font-medium hover:underline">{caseData.provider?.displayName}</p>
-                        </Link>
+                        <Link href={`/profile/${caseData.provider?.uid}`}><p className="font-medium hover:underline">{caseData.provider?.displayName}</p></Link>
                         <p className="text-sm text-muted-foreground">{caseData.provider?.email}</p>
                     </div>
                 </div>
-                {caseData.provider?.phoneNumber && (
-                    <Button asChild variant="outline" size="sm">
-                       <a href={`https://wa.me/${caseData.provider.phoneNumber.replace(/\D/g, '')}?text=${whatsappMessage}`} target="_blank" rel="noopener noreferrer">
-                           <WhatsAppIcon />
-                           Contactar Proveedor
-                       </a>
-                    </Button>
-                )}
+                {caseData.provider?.phoneNumber && <Button asChild variant="outline" size="sm"><a href={`https://wa.me/${caseData.provider.phoneNumber.replace(/\D/g, '')}?text=${whatsappMessage}`} target="_blank" rel="noopener noreferrer"><WhatsAppIcon />Contactar Proveedor</a></Button>}
             </div>
           </div>
+        </CardContent>
+      </Card>
+        
+      <Card>
+        <CardHeader><CardTitle>Inversiones del Ecosistema</CardTitle></CardHeader>
+        <CardContent>
+            <div className="flex justify-between items-center bg-muted/50 p-4 rounded-lg">
+                <div>
+                    <p className="text-muted-foreground">Total Invertido</p>
+                    <p className="text-2xl font-bold">{totalInvested.toLocaleString()} créditos</p>
+                </div>
+                {!isParticipant && (
+                    <Dialog open={isInvestmentDialogOpen} onOpenChange={setIsInvestmentDialogOpen}>
+                        <DialogTrigger asChild>
+                            <Button><HandCoins className="mr-2 h-4 w-4" />Invertir</Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Invertir en: {caseData.title}</DialogTitle>
+                                <DialogDescription>Tu balance actual: {userProfile?.credits || 0} créditos. Recibirás un 10% de retorno si el caso se completa exitosamente.</DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-2">
+                                <Label htmlFor="investment-amount">Monto a Invertir</Label>
+                                <Input id="investment-amount" type="number" value={investmentAmount} onChange={(e) => setInvestmentAmount(Number(e.target.value))} min="1" max={userProfile?.credits || 0} />
+                            </div>
+                            <DialogFooter>
+                                <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
+                                <Button onClick={handleInvestment} disabled={isInvesting || investmentAmount <= 0}>{isInvesting ? "Invirtiendo..." : "Confirmar Inversión"}</Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+                )}
+            </div>
+            <div className="mt-4 space-y-2">
+                {investments.map(inv => (
+                    <div key={inv.id} className="flex items-center justify-between text-sm">
+                        <p>Inversión de {inv.investorId}</p>
+                        <p className="font-semibold">{inv.amount.toLocaleString()} créditos</p>
+                    </div>
+                ))}
+                {investments.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">Aún no hay inversiones en este caso.</p>}
+            </div>
         </CardContent>
       </Card>
 
@@ -409,3 +454,5 @@ export function CaseDetail({ caseId }: CaseDetailProps) {
     </div>
   );
 }
+      
+    

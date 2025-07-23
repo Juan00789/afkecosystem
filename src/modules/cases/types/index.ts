@@ -1,3 +1,5 @@
+
+      
 // src/modules/cases/types/index.ts
 import type { Timestamp } from 'firebase/firestore';
 
@@ -42,3 +44,12 @@ export interface Comment {
     authorPhotoURL: string;
     createdAt: Date;
 }
+
+export interface Investment {
+  id: string;
+  investorId: string;
+  amount: number;
+  createdAt: Timestamp;
+}
+      
+    
