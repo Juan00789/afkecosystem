@@ -67,7 +67,7 @@ export function ProductsManagement() {
   const [productImageFile, setProductImageFile] = useState<File | null>(null);
   const [productImagePreview, setProductImagePreview] = useState<string | null>(null);
 
-  const { control, handleSubmit, reset, setValue } = useForm<ProductFormData>({
+  const { control, handleSubmit, reset, setValue, formState: { errors } } = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
     defaultValues: { name: '', description: '', price: 0, stock: 0 },
   });
