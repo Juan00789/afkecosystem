@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
-import { collection, query, where, onSnapshot, orderBy, addDoc, serverTimestamp, updateDoc, doc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, orderBy, addDoc, serverTimestamp, updateDoc, doc, getDocs, documentId } from 'firebase/firestore';
 import { format } from 'date-fns';
 import Link from 'next/link';
 
@@ -20,6 +20,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ArrowLeft, Trash2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
+import type { UserProfile } from '@/modules/auth/types';
 
 const transactionSchema = z.object({
   type: z.enum(['income', 'expense'], { required_error: 'Please select a transaction type.' }),
@@ -28,15 +29,30 @@ const transactionSchema = z.object({
   date: z.coerce.date({ required_error: 'Please select a date.' }),
   category: z.string().min(1, 'Debe seleccionar una categoría.'),
   paymentMethod: z.string().min(1, 'Debe seleccionar un método de pago.'),
-  relatedPartyName: z.string().optional(),
+  relatedPartyId: z.string().optional(),
+  manualRelatedPartyName: z.string().optional(),
+}).refine(data => {
+    if (data.relatedPartyId === 'manual') {
+        return !!data.manualRelatedPartyName && data.manualRelatedPartyName.length > 0;
+    }
+    return true;
+}, {
+    message: 'El nombre manual es requerido cuando se selecciona "Otro".',
+    path: ['manualRelatedPartyName'],
 });
 
 type TransactionFormData = z.infer<typeof transactionSchema>;
 
-interface Transaction extends TransactionFormData {
+interface Transaction extends Omit<TransactionFormData, 'relatedPartyId' | 'manualRelatedPartyName'> {
   id: string;
   date: { toDate: () => Date };
   status?: 'active' | 'archived';
+  relatedPartyName?: string;
+}
+
+interface NetworkUser {
+    id: string;
+    displayName: string;
 }
 
 const expenseCategories = ['Suministros', 'Marketing', 'Transporte', 'Alquiler', 'Servicios', 'Otros'];
@@ -49,6 +65,7 @@ export default function TransactionsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [networkUsers, setNetworkUsers] = useState<NetworkUser[]>([]);
 
   const { control, handleSubmit, reset, watch, formState: { errors } } = useForm<TransactionFormData>({
     resolver: zodResolver(transactionSchema),
@@ -59,16 +76,48 @@ export default function TransactionsPage() {
       date: new Date(),
       category: '',
       paymentMethod: '',
-      relatedPartyName: '',
+      relatedPartyId: '',
+      manualRelatedPartyName: '',
     },
   });
 
   const transactionType = watch('type');
+  const relatedPartySelection = watch('relatedPartyId');
+
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchNetwork = async () => {
+        const clientConnectionsQuery = query(collection(db, 'network_connections'), where('provider_id', '==', user.uid));
+        const providerConnectionsQuery = query(collection(db, 'network_connections'), where('client_id', '==', user.uid));
+        
+        const [clientSnapshot, providerSnapshot] = await Promise.all([
+            getDocs(clientConnectionsQuery),
+            getDocs(providerConnectionsQuery),
+        ]);
+
+        const clientIds = clientSnapshot.docs.map(doc => doc.data().client_id);
+        const providerIds = providerSnapshot.docs.map(doc => doc.data().provider_id);
+        
+        const allIds = [...new Set([...clientIds, ...providerIds])];
+
+        if (allIds.length > 0) {
+            const usersQuery = query(collection(db, 'users'), where('uid', 'in', allIds));
+            const usersSnapshot = await getDocs(usersQuery);
+            const usersList = usersSnapshot.docs.map(doc => ({
+                id: doc.id,
+                displayName: (doc.data() as UserProfile).displayName || doc.data().email,
+            }));
+            setNetworkUsers(usersList);
+        }
+    }
+    fetchNetwork();
+  }, [user]);
 
   useEffect(() => {
     if (!user) return;
     setLoading(true);
-    const q = query(collection(db, 'transactions'), where('userId', '==', user.uid), where('status', '==', 'active'), orderBy('date', 'desc'), where('status', '!=', 'archived'));
+    const q = query(collection(db, 'transactions'), where('userId', '==', user.uid), where('status', '==', 'active'), orderBy('date', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const trans = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction));
       setTransactions(trans);
@@ -84,11 +133,30 @@ export default function TransactionsPage() {
     if (!user) return;
     setIsSubmitting(true);
     try {
+      let relatedPartyName: string | undefined = undefined;
+      let relatedPartyId: string | undefined = undefined;
+
+      if(data.relatedPartyId) {
+          if(data.relatedPartyId === 'manual') {
+              relatedPartyName = data.manualRelatedPartyName;
+          } else {
+              const selectedUser = networkUsers.find(u => u.id === data.relatedPartyId);
+              relatedPartyName = selectedUser?.displayName;
+              relatedPartyId = selectedUser?.id;
+          }
+      }
+
       await addDoc(collection(db, 'transactions'), {
-        ...data,
-        userId: user.uid,
+        type: data.type,
+        description: data.description,
+        amount: data.amount,
         date: data.date,
-        status: 'active', // Set default status
+        category: data.category,
+        paymentMethod: data.paymentMethod,
+        relatedPartyId: relatedPartyId,
+        relatedPartyName: relatedPartyName,
+        userId: user.uid,
+        status: 'active',
       });
       toast({ title: 'Éxito', description: 'Transacción añadida.' });
       reset();
@@ -152,8 +220,23 @@ export default function TransactionsPage() {
                             {errors.description && <p className="text-sm text-destructive">{errors.description.message}</p>}
                         </div>
                          <div className="space-y-2">
-                            <Label htmlFor="relatedPartyName">Cliente / Proveedor (Opcional)</Label>
-                            <Controller name="relatedPartyName" control={control} render={({ field }) => <Input id="relatedPartyName" placeholder="Nombre del cliente o proveedor" {...field} />} />
+                           <Label>Cliente / Proveedor (Opcional)</Label>
+                           <Controller name="relatedPartyId" control={control} render={({ field }) => (
+                               <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                   <SelectTrigger><SelectValue placeholder="Selecciona un contacto..." /></SelectTrigger>
+                                   <SelectContent>
+                                       {networkUsers.map(nu => <SelectItem key={nu.id} value={nu.id}>{nu.displayName}</SelectItem>)}
+                                       <SelectItem value="manual">Otro (Entrada Manual)</SelectItem>
+                                   </SelectContent>
+                               </Select>
+                           )} />
+                           {relatedPartySelection === 'manual' && (
+                               <div className="space-y-2 pt-2">
+                                   <Label htmlFor="manualRelatedPartyName">Nombre del Cliente/Proveedor Manual</Label>
+                                   <Controller name="manualRelatedPartyName" control={control} render={({ field }) => <Input id="manualRelatedPartyName" placeholder="Escribe el nombre" {...field} />} />
+                                   {errors.manualRelatedPartyName && <p className="text-sm text-destructive">{errors.manualRelatedPartyName.message}</p>}
+                               </div>
+                           )}
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="amount">Monto (DOP)</Label>
@@ -168,7 +251,7 @@ export default function TransactionsPage() {
                         <div className="space-y-2">
                            <Label>Categoría</Label>
                            <Controller name="category" control={control} render={({ field }) => (
-                               <Select onValueChange={field.onChange} defaultValue={field.value}>
+                               <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
                                    <SelectTrigger><SelectValue placeholder="Selecciona una categoría..." /></SelectTrigger>
                                    <SelectContent>
                                        {categories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
@@ -180,7 +263,7 @@ export default function TransactionsPage() {
                         <div className="space-y-2">
                            <Label>Método de Pago</Label>
                            <Controller name="paymentMethod" control={control} render={({ field }) => (
-                               <Select onValueChange={field.onChange} defaultValue={field.value}>
+                               <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
                                    <SelectTrigger><SelectValue placeholder="Selecciona un método..." /></SelectTrigger>
                                    <SelectContent>
                                        {paymentMethods.map(method => <SelectItem key={method} value={method}>{method}</SelectItem>)}
