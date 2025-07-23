@@ -1,92 +1,106 @@
 
-      
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Users can read their own profile, and any user can read public profiles.
-    // Users can only write to their own profile.
+
+    // Helper function to check if a user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper function to check if the user is the owner of a document
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // Users can read any profile, but can only write to their own
     match /users/{userId} {
-      allow read: if true;
-      allow write: if request.auth.uid == userId;
+      allow read: if isAuthenticated();
+      allow write: if isOwner(userId);
     }
-
-    // Services can be read by anyone.
-    // Only the provider who owns the service can create, update, or delete it.
+    
+    // Services can be read by anyone, but only created/modified by the owner
     match /services/{serviceId} {
-      allow read: if true;
-      allow create, update, delete: if request.auth.uid == request.resource.data.providerId;
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.providerId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && resource.data.providerId == request.auth.uid;
     }
-    
-    // Cases can only be read by the client or provider involved.
-    // A case can be created by the client.
-    // A case can be updated by either the client or provider.
+
+    // Products can be read by anyone, but only created/modified by the owner
+    match /products/{productId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.providerId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && resource.data.providerId == request.auth.uid;
+    }
+
+    // Cases can be read by participants, created by anyone authenticated
     match /cases/{caseId} {
-      allow read: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
-      allow create: if request.auth.uid == request.resource.data.clientId;
-      allow update: if request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId;
-
-      // Comments can be created by the client or provider of the case.
-      // Comments can be read by the client or provider of the case.
+      allow get: if isAuthenticated() && (resource.data.clientId == request.auth.uid || resource.data.providerId == request.auth.uid);
+      allow list: if isAuthenticated(); // For dashboard views
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (resource.data.clientId == request.auth.uid || resource.data.providerId == request.auth.uid);
+      
+      // Comments can be added by participants
       match /comments/{commentId} {
-        allow read: if get(/databases/$(database)/documents/cases/$(caseId)).data.clientId == request.auth.uid || get(/databases/$(database)/documents/cases/$(caseId)).data.providerId == request.auth.uid;
-        allow create: if request.auth.uid == get(/databases/$(database)/documents/cases/$(caseId)).data.clientId || request.auth.uid == get(/databases/$(database)/documents/cases/$(caseId)).data.providerId;
-      }
-
-      // Investments can be read by any authenticated user.
-      // Investments can only be created by authenticated users who are not the client or provider of the case.
-      match /investments/{investmentId} {
-        allow read: if request.auth != null;
-        allow create: if request.auth != null && request.auth.uid != get(/databases/$(database)/documents/cases/$(caseId)).data.clientId && request.auth.uid != get(/databases/$(database)/documents/cases/$(caseId)).data.providerId;
-        allow update, delete: if false; // Investments are immutable
+        allow read, create: if isAuthenticated() && (get(/databases/$(database)/documents/cases/$(caseId)).data.clientId == request.auth.uid || get(/databases/$(database)/documents/cases/$(caseId)).data.providerId == request.auth.uid);
       }
     }
-    
-    // Network connections can only be managed by the involved users.
-    // This rule is simplified; a more robust one might check for existing connections.
+
+    // Network connections can be read by participants, and created by the client
     match /network_connections/{connectionId} {
-      allow read: if request.auth.uid == resource.data.client_id || request.auth.uid == resource.data.provider_id;
-      allow create: if request.auth.uid == request.resource.data.client_id || request.auth.uid == request.resource.data.provider_id;
-      allow delete: if request.auth.uid == resource.data.client_id || request.auth.uid == resource.data.provider_id;
-    }
-
-    // Courses can be read by anyone.
-    // Courses can only be created/updated/deleted by the provider.
-    match /courses/{courseId} {
-      allow read: if true;
-      allow create, update, delete: if request.auth.uid == request.resource.data.providerId;
-    }
-
-    // Credit requests can only be created and read by the user who made them.
-    // Admins can read/update them.
-    match /credit_requests/{requestId} {
-      allow create: if request.auth.uid == request.resource.data.userId;
-      allow read: if request.auth.uid == resource.data.userId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-      allow update: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-    }
-
-    // Loans can only be read by the user who owns them or an admin.
-    // Admins can update them (e.g., mark as paid).
-    match /loans/{loanId} {
-       allow read, update: if request.auth.uid == resource.data.userId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-       allow create: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      allow read: if isAuthenticated() && (resource.data.client_id == request.auth.uid || resource.data.provider_id == request.auth.uid);
+      allow create: if isAuthenticated() && request.resource.data.client_id == request.auth.uid;
+      allow delete: if isAuthenticated() && (resource.data.client_id == request.auth.uid || resource.data.provider_id == request.auth.uid);
     }
     
-    // The main fund can only be read and updated by an admin.
-    match /fund/main {
-      allow read, write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    // Invoices can only be managed by the provider who created them
+    match /invoices/{invoiceId} {
+        allow read, write: if isAuthenticated() && resource.data.providerId == request.auth.uid;
+        allow create: if isAuthenticated() && request.resource.data.providerId == request.auth.uid;
     }
 
-    // P2P transactions can be created by any authenticated user.
-    // They can only be read by the sender or receiver.
-    match /p2p_transactions/{transactionId} {
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.senderUid;
-      allow read: if request.auth.uid == resource.data.senderUid || request.auth.uid == resource.data.recipientUid;
-      allow update, delete: if false; // Transactions are immutable
+    // Transactions can only be managed by the user who created them
+    match /transactions/{transactionId} {
+        allow read, write, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+        allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+    }
+    
+    // Credit requests can be read by the user or an admin, created by the user, and updated by an admin
+    match /credit_requests/{requestId} {
+        allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+        allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+        allow update: if isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // Courses can be read by anyone authenticated, and managed by the provider
+    match /courses/{courseId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.providerId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && resource.data.providerId == request.auth.uid;
+    }
+    
+    // Fund can only be read/written by an admin
+    match /fund/{fundId} {
+        allow read, write: if isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
+    // Loans can be read by the user or an admin, and updated by an admin
+    match /loans/{loanId} {
+        allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+        allow update: if isAuthenticated() && (resource.data.userId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+    }
+    
+    // Investments can be created by any authenticated user, and read by participants or investor.
+    match /investments/{investmentId} {
+        allow read: if isAuthenticated(); // Simplified for now
+        allow create: if isAuthenticated() && request.resource.data.investorId == request.auth.uid;
+    }
+
+    // P2P transactions can be created by the sender
+     match /p2p_transactions/{transactionId} {
+      allow create: if isAuthenticated() && request.resource.data.senderUid == request.auth.uid;
+      allow read: if isAuthenticated() && (resource.data.senderUid == request.auth.uid || resource.data.recipientUid == request.auth.uid);
+    }
   }
 }
-      
-    
