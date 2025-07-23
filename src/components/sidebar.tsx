@@ -17,6 +17,7 @@ import {
   Banknote,
   MessageSquareHeart,
   Archive,
+  TrendingUp,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -38,7 +39,7 @@ export function Sidebar() {
     { href: '/dashboard/cursos', label: 'Cursos', icon: BookOpen },
     { href: '/dashboard/my-courses', label: 'Mis Cursos', icon: GraduationCap },
     { href: '/dashboard/creditos', label: 'Créditos', icon: HandCoins },
-    { href: '/dashboard/inversiones', label: 'Inversiones', icon: Banknote },
+    { href: '/dashboard/inversiones', label: 'Inversiones', icon: TrendingUp },
     { href: '/dashboard/mentorias', label: 'Mentorías', icon: MessageSquareHeart },
     { href: '/dashboard/analisis', label: 'Análisis IA', icon: FileSearch },
     { href: '/dashboard/network', label: 'Mis Brokis', icon: Users },
