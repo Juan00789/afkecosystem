@@ -20,11 +20,11 @@ service cloud.firestore {
       // Cualquier usuario autenticado puede crear un caso.
       allow create: if request.auth != null;
       // Solo el cliente o el proveedor del caso pueden leerlo.
-      allow get: if request.auth != null && (request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId);
+      allow get: if request.auth != null && (request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
       // Permitir que los usuarios autenticados listen los casos para el dashboard, pero con seguridad en la consulta.
       allow list: if request.auth != null;
       // Solo el cliente o el proveedor pueden actualizar el caso (ej: cambiar estado).
-      allow update: if request.auth != null && (request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId);
+      allow update: if request.auth != null && (request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
       // Nadie puede eliminar un caso directamente.
       allow delete: if false;
 
@@ -33,7 +33,7 @@ service cloud.firestore {
         // Solo el cliente o el proveedor pueden añadir comentarios.
         allow create: if request.auth != null && (request.auth.uid == get(/databases/$(database)/documents/cases/$(caseId)).data.clientId || request.auth.uid == get(/databases/$(database)/documents/cases/$(caseId)).data.providerId);
         // Solo el cliente y el proveedor del caso pueden leer los comentarios.
-        allow list, get: if request.auth != null && (request.auth.uid == get(/databases/$(database)/documents/cases/$(caseId)).data.clientId || request.auth.uid == get(/databases/$(database)/documents/cases/$(caseId)).data.providerId);
+        allow list, get: if request.auth != null && (request.auth.uid == get(/databases/$(database)/documents/cases/$(caseId)).data.clientId || request.auth.uid == get(/databases/$(database)/documents/cases/$(caseId)).data.providerId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
         // Los comentarios no se pueden editar ni eliminar para mantener la integridad del registro.
         allow update, delete: if false;
       }

@@ -2,16 +2,12 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { useState } from 'react';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
-import { useRouter } from 'next/navigation';
 import { Sidebar } from '@/components/sidebar';
 import { Header } from '@/components/header';
-import { Role } from '@/modules/auth/types';
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
-  const router = useRouter();
 
   if (loading) {
     return (
