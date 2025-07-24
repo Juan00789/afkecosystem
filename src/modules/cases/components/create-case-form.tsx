@@ -17,7 +17,6 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Suspense } from 'react';
-import { Sparkles } from 'lucide-react';
 
 
 const caseSchema = z.object({
@@ -61,33 +60,33 @@ function CreateCaseFormComponent() {
 
   useEffect(() => {
     const fetchProviders = async () => {
-      if (!user || !userProfile) return;
+      if (!user) return;
       
-      const selfProvider: Provider = {
-        id: user.uid,
-        displayName: `${userProfile.displayName || user.email} (Yo mismo)`,
-      };
-      let providersList: Provider[] = [selfProvider];
+      let providersList: Provider[] = [];
 
-      const userDocRef = doc(db, 'users', user.uid);
-      const userDocSnap = await getDoc(userDocRef);
-
-      if (userDocSnap.exists()) {
-        const userData = userDocSnap.data();
-        const connectionsQuery = query(collection(db, 'network_connections'), where('client_id', '==', user.uid));
-        const connectionsSnapshot = await getDocs(connectionsQuery);
-        const providerIds = connectionsSnapshot.docs.map(d => d.data().provider_id);
-        
-        if (providerIds.length > 0) {
-            const providersQuery = query(collection(db, 'users'), where(documentId(), 'in', providerIds));
-            const providersSnapshot = await getDocs(providersQuery);
-            const networkProviders = providersSnapshot.docs.map(doc => ({
-                id: doc.id,
-                displayName: doc.data().displayName || doc.data().email || 'Unnamed Provider',
-            }));
-            providersList = [...providersList, ...networkProviders];
-        }
+      // Fetch providers from user's network connections
+      const connectionsQuery = query(collection(db, 'network_connections'), where('client_id', '==', user.uid));
+      const connectionsSnapshot = await getDocs(connectionsQuery);
+      const providerIds = connectionsSnapshot.docs.map(d => d.data().provider_id);
+      
+      if (providerIds.length > 0) {
+          const providersQuery = query(collection(db, 'users'), where('uid', 'in', providerIds));
+          const providersSnapshot = await getDocs(providersQuery);
+          const networkProviders = providersSnapshot.docs.map(doc => ({
+              id: doc.id,
+              displayName: doc.data().displayName || doc.data().email || 'Unnamed Provider',
+          }));
+          providersList.push(...networkProviders);
       }
+
+      // Add self as a provider option
+      if(userProfile) {
+          providersList.push({
+            id: user.uid,
+            displayName: `${userProfile.displayName || user.email} (Yo mismo)`,
+          });
+      }
+
       // Ensure the preselected provider is in the list if they aren't already
       if (preselectedProviderId && !providersList.some(p => p.id === preselectedProviderId)) {
         const providerDoc = await getDoc(doc(db, 'users', preselectedProviderId));
@@ -102,14 +101,14 @@ function CreateCaseFormComponent() {
       setProviders(providersList);
     };
     fetchProviders();
-  }, [user, userProfile, preselectedProviderId]);
+  }, [user, userProfile]);
   
   useEffect(() => {
     if (preselectedProviderId) {
       setValue('providerId', preselectedProviderId);
     }
      if (serviceName) {
-      setValue('title', `Servicio: ${serviceName}`);
+      setValue('title', `Solicitud de servicio: ${serviceName}`);
     }
   }, [preselectedProviderId, serviceName, setValue]);
   
