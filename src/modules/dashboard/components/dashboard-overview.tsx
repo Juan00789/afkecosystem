@@ -1,3 +1,4 @@
+// src/modules/dashboard/components/dashboard-overview.tsx
 'use client';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { collection, query, where, orderBy, onSnapshot, doc, getDoc } from 'firebase/firestore';
@@ -30,6 +31,7 @@ import { useAuth } from '@/modules/auth/hooks/use-auth';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ResponsiveContainer, Bar, XAxis, YAxis, Tooltip, Legend, BarChart as ReBarChart, LineChart as ReLineChart, Line, CartesianGrid } from 'recharts';
 import { format, subMonths, startOfMonth } from 'date-fns';
+import { AnimatedWelcome } from '@/components/ui/animated-welcome';
 
 interface DashboardOverviewProps {
   userId: string;
@@ -274,7 +276,7 @@ export function DashboardOverview({ userId }: DashboardOverviewProps) {
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-            <h1 className="text-3xl font-bold">Panel Principal</h1>
+            <AnimatedWelcome text={`Bienvenido, ${userProfile?.displayName || 'Emprendedor'}`} />
             <p className="text-muted-foreground">Un resumen de tu actividad y crecimiento en el ecosistema.</p>
         </div>
         <div className="flex items-center gap-4">
