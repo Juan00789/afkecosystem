@@ -141,7 +141,7 @@ export default function AuthPage() {
             onMouseLeave={() => setIsHoveringWolf(false)}
         >
             <Image 
-                src="https://placehold.co/800x800.png"
+                src="/wolf.png"
                 alt="Spirit Animal"
                 width={600}
                 height={600}
