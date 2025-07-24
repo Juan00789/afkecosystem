@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
-import { collection, query, where, getDocs, doc, writeBatch, serverTimestamp, increment, limit, runTransaction } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, writeBatch, serverTimestamp, increment, limit, runTransaction, addDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
 import type { UserProfile } from '@/modules/auth/types';
@@ -21,12 +21,11 @@ import { UserPlus, Search } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface UserSelectionDialogProps {
-  roleToAdd: 'client' | 'provider';
   existingNetworkIds: string[];
   onUserAdded: () => void;
 }
 
-export function UserSelectionDialog({ roleToAdd, existingNetworkIds, onUserAdded }: UserSelectionDialogProps) {
+export function UserSelectionDialog({ existingNetworkIds, onUserAdded }: UserSelectionDialogProps) {
   const { user, userProfile, refreshUserProfile } = useAuth();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
@@ -70,43 +69,44 @@ export function UserSelectionDialog({ roleToAdd, existingNetworkIds, onUserAdded
       return;
     }
     
-    const clientId = roleToAdd === 'provider' ? user.uid : userToAdd.uid;
-    const providerId = roleToAdd === 'provider' ? userToAdd.uid : user.uid;
-    
     try {
         await runTransaction(db, async (transaction) => {
-            const fieldToCheck = roleToAdd === 'client' ? 'client_id' : 'provider_id';
-            const valueToCheck = roleToAdd === 'client' ? userToAdd.uid : user.uid;
-
-            const connectionsQuery = query(
+            const currentUserConnectionsQuery = query(
                 collection(db, 'network_connections'),
-                where(fieldToCheck, '==', valueToCheck),
-                limit(1)
+                where('client_id', '==', user.uid)
+            );
+            const otherUserConnectionsQuery = query(
+                collection(db, 'network_connections'),
+                where('client_id', '==', userToAdd.uid)
             );
             
-            const existingConnectionsSnap = await getDocs(connectionsQuery);
-            const isFirstConnectionOfType = existingConnectionsSnap.empty;
-            
+            const [currentUserConnectionsSnap, otherUserConnectionsSnap] = await Promise.all([
+                getDocs(currentUserConnectionsQuery),
+                getDocs(otherUserConnectionsQuery)
+            ]);
+
+            const isFirstConnectionForCurrentUser = currentUserConnectionsSnap.empty;
+            const isFirstConnectionForOtherUser = otherUserConnectionsSnap.empty;
+
             // Add the new connection
-            const newConnectionRef = doc(collection(db, 'network_connections'));
-            transaction.set(newConnectionRef, {
-              client_id: clientId,
-              provider_id: providerId,
+            await addDoc(collection(db, 'network_connections'), {
+              client_id: user.uid,
+              provider_id: userToAdd.uid,
               created_at: serverTimestamp(),
             });
 
-            // Award credits if it's the first connection of this type
-            if (isFirstConnectionOfType) {
+            // Award credits if it's the first connection for either user
+            if (isFirstConnectionForCurrentUser) {
                 const currentUserRef = doc(db, 'users', user.uid);
                 transaction.update(currentUserRef, { credits: increment(5) });
-                toast({
-                    title: '¡Créditos Ganados!',
-                    description: `Has ganado 5 créditos por añadir tu primer ${roleToAdd}.`
-                });
+            }
+             if (isFirstConnectionForOtherUser) {
+                const otherUserRef = doc(db, 'users', userToAdd.uid);
+                transaction.update(otherUserRef, { credits: increment(5) });
             }
         });
         
-        toast({ title: '¡Éxito!', description: `${userToAdd.displayName} ha sido añadido como tu ${roleToAdd}.` });
+        toast({ title: '¡Éxito!', description: `${userToAdd.displayName} ha sido añadido a tu red de brokis.` });
         
         // Refresh local and global state
         onUserAdded();
@@ -123,13 +123,13 @@ export function UserSelectionDialog({ roleToAdd, existingNetworkIds, onUserAdded
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button>
-          <UserPlus className="mr-2 h-4 w-4" /> Añadir {roleToAdd}
+          <UserPlus className="mr-2 h-4 w-4" /> Añadir Broki
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Añadir un nuevo {roleToAdd}</DialogTitle>
-          <DialogDescription>Selecciona un usuario de la plataforma para añadir a tu red.</DialogDescription>
+          <DialogTitle>Añadir un nuevo Broki</DialogTitle>
+          <DialogDescription>Busca y selecciona un usuario de la plataforma para añadirlo a tu red de confianza.</DialogDescription>
         </DialogHeader>
         <div className="mt-4">
             <div className="relative">

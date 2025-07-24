@@ -31,12 +31,11 @@ import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 
 interface NetworkListProps {
-  roleToList: 'client' | 'provider';
   refreshTrigger: number;
   onUserRemoved: () => void;
 }
 
-export function NetworkList({ roleToList, refreshTrigger, onUserRemoved }: NetworkListProps) {
+export function NetworkList({ refreshTrigger, onUserRemoved }: NetworkListProps) {
   const { user } = useAuth();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,14 +50,18 @@ export function NetworkList({ roleToList, refreshTrigger, onUserRemoved }: Netwo
       setLoading(true);
 
       try {
-        const fieldToQuery = roleToList === 'provider' ? 'client_id' : 'provider_id';
-        const connectionsQuery = query(collection(db, 'network_connections'), where(fieldToQuery, '==', user.uid));
-        const connectionsSnapshot = await getDocs(connectionsQuery);
-
-        const userIds = connectionsSnapshot.docs.map(doc => {
-            const data = doc.data();
-            return roleToList === 'provider' ? data.provider_id : data.client_id;
-        });
+        const clientConnectionsQuery = query(collection(db, 'network_connections'), where('provider_id', '==', user.uid));
+        const providerConnectionsQuery = query(collection(db, 'network_connections'), where('client_id', '==', user.uid));
+        
+        const [clientSnapshot, providerSnapshot] = await Promise.all([
+          getDocs(clientConnectionsQuery),
+          getDocs(providerConnectionsQuery),
+        ]);
+        
+        const clientIds = clientSnapshot.docs.map(doc => doc.data().client_id);
+        const providerIds = providerSnapshot.docs.map(doc => doc.data().provider_id);
+        
+        const userIds = [...new Set([...clientIds, ...providerIds])];
 
         if (userIds.length > 0) {
           const usersQuery = query(collection(db, 'users'), where('uid', 'in', userIds));
@@ -69,38 +72,32 @@ export function NetworkList({ roleToList, refreshTrigger, onUserRemoved }: Netwo
           setUsers([]);
         }
       } catch (error) {
-        console.error(`Error fetching ${roleToList}s:`, error);
-        toast({ title: 'Error', description: `Failed to load ${roleToList}s.`, variant: 'destructive' });
+        console.error(`Error fetching network:`, error);
+        toast({ title: 'Error', description: `Failed to load network.`, variant: 'destructive' });
       } finally {
         setLoading(false);
       }
     };
 
     fetchNetworkUsers();
-  }, [user, roleToList, refreshTrigger, toast]);
+  }, [user, refreshTrigger, toast]);
 
   const handleRemoveUser = async (userToRemoveId: string) => {
     if (!user) return;
     
     try {
-        const clientId = roleToList === 'provider' ? user.uid : userToRemoveId;
-        const providerId = roleToList === 'provider' ? userToRemoveId : user.uid;
+        const q1 = query(collection(db, 'network_connections'), where('client_id', '==', user.uid), where('provider_id', '==', userToRemoveId));
+        const q2 = query(collection(db, 'network_connections'), where('client_id', '==', userToRemoveId), where('provider_id', '==', user.uid));
 
-        const connectionQuery = query(
-            collection(db, 'network_connections'),
-            where('client_id', '==', clientId),
-            where('provider_id', '==', providerId)
-        );
-        const snapshot = await getDocs(connectionQuery);
-        
-        if (snapshot.empty) {
+        const [snapshot1, snapshot2] = await Promise.all([getDocs(q1), getDocs(q2)]);
+
+        if (snapshot1.empty && snapshot2.empty) {
             throw new Error("Connection not found.");
         }
         
         const batch = writeBatch(db);
-        snapshot.docs.forEach(doc => {
-            batch.delete(doc.ref);
-        });
+        snapshot1.docs.forEach(doc => batch.delete(doc.ref));
+        snapshot2.docs.forEach(doc => batch.delete(doc.ref));
         await batch.commit();
 
         toast({ title: 'Success', description: 'User removed from your network.' });
@@ -113,7 +110,7 @@ export function NetworkList({ roleToList, refreshTrigger, onUserRemoved }: Netwo
   }
 
   if (loading) {
-    return <p>Loading {roleToList}s...</p>;
+    return <p>Cargando tu red...</p>;
   }
 
   return (
@@ -123,8 +120,8 @@ export function NetworkList({ roleToList, refreshTrigger, onUserRemoved }: Netwo
           <TableHeader>
             <TableRow>
               <TableHead>Nombre</TableHead>
+              <TableHead>Compañía</TableHead>
               <TableHead>Contacto</TableHead>
-              <TableHead>Rol / Compañía</TableHead>
               <TableHead className="text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
@@ -144,8 +141,8 @@ export function NetworkList({ roleToList, refreshTrigger, onUserRemoved }: Netwo
                     </Link>
                   </div>
                 </TableCell>
+                <TableCell>{networkUser.companyName || 'Independiente'}</TableCell>
                 <TableCell>{networkUser.email || networkUser.phoneNumber || 'N/A'}</TableCell>
-                <TableCell>{networkUser.companyName || 'N/A'}</TableCell>
                 <TableCell className="text-right">
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
@@ -157,7 +154,7 @@ export function NetworkList({ roleToList, refreshTrigger, onUserRemoved }: Netwo
                       <AlertDialogHeader>
                         <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                         <AlertDialogDescription>
-                          This action will remove {networkUser.displayName || 'this user'} from your {roleToList} list.
+                          This action will remove {networkUser.displayName || 'this user'} from your network.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
@@ -175,7 +172,7 @@ export function NetworkList({ roleToList, refreshTrigger, onUserRemoved }: Netwo
         </Table>
       ) : (
         <div className="text-center py-10 border-2 border-dashed rounded-lg">
-          <p className="text-muted-foreground">You haven't added any {roleToList}s yet.</p>
+          <p className="text-muted-foreground">Tu red de brokis está vacía. ¡Añade tu primer contacto!</p>
         </div>
       )}
     </div>
