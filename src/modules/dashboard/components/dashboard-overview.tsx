@@ -280,14 +280,14 @@ export function DashboardOverview({ userId }: DashboardOverviewProps) {
             <p className="text-muted-foreground">Un resumen de tu actividad y crecimiento en el ecosistema.</p>
         </div>
         <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 rounded-full bg-secondary/20 px-4 py-2 text-secondary">
-                <Award className="h-6 w-6" />
-                <span className="text-xl font-bold">{userProfile?.credits || 0}</span>
-                <span className="font-medium">Créditos</span>
-            </div>
+            <Button asChild variant="outline">
+                <Link href="/dashboard/services">
+                    <PlusCircle className="mr-2 h-4 w-4" /> Crear un Servicio
+                </Link>
+            </Button>
             <Button asChild>
                 <Link href="/dashboard/cases/create">
-                    <PlusCircle className="mr-2 h-4 w-4" /> Nuevo Caso
+                    <PlusCircle className="mr-2 h-4 w-4" /> Crear un Caso
                 </Link>
             </Button>
         </div>
