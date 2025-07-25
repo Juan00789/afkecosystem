@@ -1,6 +1,6 @@
 // src/app/dashboard/cases/create/page.tsx
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -16,7 +16,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Suspense } from 'react';
 
 
 const caseSchema = z.object({
@@ -220,8 +219,8 @@ function CreateCaseFormComponent() {
   );
 }
 
-// Wrap the component in Suspense to use useSearchParams
-export function CreateCaseForm() {
+// Wrap the component in Suspense to use useSearchParams and export as default
+export default function CreateCasePage() {
     return (
         <Suspense fallback={<div>Loading...</div>}>
             <CreateCaseFormComponent />
