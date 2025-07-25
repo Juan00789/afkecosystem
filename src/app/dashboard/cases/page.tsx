@@ -4,7 +4,7 @@
 import { useState, useEffect, useMemo, Suspense } from 'react';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
 import { db } from '@/lib/firebase';
-import { collection, query, where, onSnapshot, orderBy, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, orderBy, doc, getDoc, or } from 'firebase/firestore';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Briefcase } from 'lucide-react';
@@ -36,12 +36,21 @@ function CaseSkeleton() {
 
 function CasesListComponent() {
     const { user } = useAuth();
-    const [clientCases, setClientCases] = useState<Case[]>([]);
-    const [providerCases, setProviderCases] = useState<Case[]>([]);
+    const [allCases, setAllCases] = useState<Case[]>([]);
     const [loading, setLoading] = useState(true);
 
     async function fetchCaseWithProfiles(docSnap: any): Promise<Case> {
         const data = docSnap.data() as Omit<Case, 'id' | 'client' | 'provider'>;
+        // Avoid fetching if data is missing critical fields
+        if (!data.clientId || !data.providerId) {
+            console.warn(`Case ${docSnap.id} is missing clientId or providerId`);
+            return {
+                id: docSnap.id,
+                ...data,
+                client: null,
+                provider: null,
+            };
+        }
         const clientSnap = await getDoc(doc(db, 'users', data.clientId));
         const providerSnap = await getDoc(doc(db, 'users', data.providerId));
 
@@ -62,35 +71,29 @@ function CasesListComponent() {
         setLoading(true);
         const casesRef = collection(db, 'cases');
 
-        const clientQuery = query(casesRef, where('clientId', '==', user.uid), orderBy('lastUpdate', 'desc'));
-        const providerQuery = query(casesRef, where('providerId', '==', user.uid), orderBy('lastUpdate', 'desc'));
+        // This single query fetches all cases where the user is either the client or the provider.
+        // The 'or' function requires creating a composite index in Firestore.
+        const userCasesQuery = query(
+            casesRef, 
+            or(
+                where('clientId', '==', user.uid),
+                where('providerId', '==', user.uid)
+            ),
+            orderBy('lastUpdate', 'desc')
+        );
 
-        const unsubClient = onSnapshot(clientQuery, async (snapshot) => {
+        const unsubscribe = onSnapshot(userCasesQuery, async (snapshot) => {
             const casesPromises = snapshot.docs.map(fetchCaseWithProfiles);
             const fetchedCases = await Promise.all(casesPromises);
-            setClientCases(fetchedCases);
+            setAllCases(fetchedCases);
+            setLoading(false);
+        }, (error) => {
+            console.error("Error fetching cases: ", error);
+            setLoading(false);
         });
 
-        const unsubProvider = onSnapshot(providerQuery, async (snapshot) => {
-            const casesPromises = snapshot.docs.map(fetchCaseWithProfiles);
-            const fetchedCases = await Promise.all(casesPromises);
-            setProviderCases(fetchedCases);
-        });
-
-        // A simple way to stop loading, can be improved
-        Promise.all([new Promise(res => setTimeout(res, 1500))]).then(() => setLoading(false));
-
-        return () => {
-            unsubClient();
-            unsubProvider();
-        };
+        return () => unsubscribe();
     }, [user]);
-
-    const allCases = useMemo(() => {
-        const combined = [...clientCases, ...providerCases];
-        return Array.from(new Map(combined.map(c => [c.id, c])).values())
-                    .sort((a, b) => b.lastUpdate.toDate().getTime() - a.lastUpdate.toDate().getTime());
-    }, [clientCases, providerCases]);
     
     const caseStatuses: Case['status'][] = ['new', 'in-progress', 'completed', 'cancelled'];
     const tabs = ['all', ...caseStatuses];
