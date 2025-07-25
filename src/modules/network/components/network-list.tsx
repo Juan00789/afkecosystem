@@ -1,4 +1,3 @@
-
 // src/modules/network/components/network-list.tsx
 'use client';
 import { useState, useEffect } from 'react';
@@ -63,21 +62,12 @@ export function NetworkList({ refreshTrigger, onUserRemoved }: NetworkListProps)
       setLoading(true);
 
       try {
-        const clientConnectionsQuery = query(collection(db, 'network_connections'), where('provider_id', '==', user.uid));
-        const providerConnectionsQuery = query(collection(db, 'network_connections'), where('client_id', '==', user.uid));
-        
-        const [clientSnapshot, providerSnapshot] = await Promise.all([
-          getDocs(clientConnectionsQuery),
-          getDocs(providerConnectionsQuery),
-        ]);
-        
-        const clientIds = clientSnapshot.docs.map(doc => doc.data().client_id);
-        const providerIds = providerSnapshot.docs.map(doc => doc.data().provider_id);
-        
-        const userIds = [...new Set([...clientIds, ...providerIds])];
+        const connectionsQuery = query(collection(db, 'network_connections'), where('client_id', '==', user.uid));
+        const connectionsSnapshot = await getDocs(connectionsQuery);
+        const providerIds = connectionsSnapshot.docs.map(doc => doc.data().provider_id);
 
-        if (userIds.length > 0) {
-          const usersQuery = query(collection(db, 'users'), where('uid', 'in', userIds));
+        if (providerIds.length > 0) {
+          const usersQuery = query(collection(db, 'users'), where('uid', 'in', providerIds));
           const usersSnapshot = await getDocs(usersQuery);
           const usersList = usersSnapshot.docs.map(docSnap => docSnap.data() as UserProfile);
           setUsers(usersList);
@@ -99,6 +89,7 @@ export function NetworkList({ refreshTrigger, onUserRemoved }: NetworkListProps)
     if (!user) return;
     
     try {
+        // Query for both directions of the connection
         const q1 = query(collection(db, 'network_connections'), where('client_id', '==', user.uid), where('provider_id', '==', userToRemoveId));
         const q2 = query(collection(db, 'network_connections'), where('client_id', '==', userToRemoveId), where('provider_id', '==', user.uid));
 

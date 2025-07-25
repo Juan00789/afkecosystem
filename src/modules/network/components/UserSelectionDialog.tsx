@@ -71,36 +71,36 @@ export function UserSelectionDialog({ existingNetworkIds, onUserAdded }: UserSel
     
     try {
         await runTransaction(db, async (transaction) => {
-            const currentUserConnectionsQuery = query(
-                collection(db, 'network_connections'),
-                where('client_id', '==', user.uid)
-            );
-            const otherUserConnectionsQuery = query(
-                collection(db, 'network_connections'),
-                where('client_id', '==', userToAdd.uid)
-            );
+            // Create connection from current user to the new user (A -> B)
+            const connection1Ref = doc(collection(db, 'network_connections'));
+            transaction.set(connection1Ref, {
+              client_id: user.uid,
+              provider_id: userToAdd.uid,
+              created_at: serverTimestamp(),
+            });
+            
+            // Create the reciprocal connection (B -> A)
+            const connection2Ref = doc(collection(db, 'network_connections'));
+            transaction.set(connection2Ref, {
+              client_id: userToAdd.uid,
+              provider_id: user.uid,
+              created_at: serverTimestamp(),
+            });
+
+            // Credit award logic - check if it's the first connection for either user
+            const currentUserConnectionsQuery = query(collection(db, 'network_connections'), where('client_id', '==', user.uid), limit(1));
+            const otherUserConnectionsQuery = query(collection(db, 'network_connections'), where('client_id', '==', userToAdd.uid), limit(1));
             
             const [currentUserConnectionsSnap, otherUserConnectionsSnap] = await Promise.all([
                 getDocs(currentUserConnectionsQuery),
                 getDocs(otherUserConnectionsQuery)
             ]);
 
-            const isFirstConnectionForCurrentUser = currentUserConnectionsSnap.empty;
-            const isFirstConnectionForOtherUser = otherUserConnectionsSnap.empty;
-
-            // Add the new connection
-            await addDoc(collection(db, 'network_connections'), {
-              client_id: user.uid,
-              provider_id: userToAdd.uid,
-              created_at: serverTimestamp(),
-            });
-
-            // Award credits if it's the first connection for either user
-            if (isFirstConnectionForCurrentUser) {
+            if (currentUserConnectionsSnap.empty) {
                 const currentUserRef = doc(db, 'users', user.uid);
                 transaction.update(currentUserRef, { credits: increment(5) });
             }
-             if (isFirstConnectionForOtherUser) {
+             if (otherUserConnectionsSnap.empty) {
                 const otherUserRef = doc(db, 'users', userToAdd.uid);
                 transaction.update(otherUserRef, { credits: increment(5) });
             }
@@ -108,7 +108,6 @@ export function UserSelectionDialog({ existingNetworkIds, onUserAdded }: UserSel
         
         toast({ title: '¡Éxito!', description: `${userToAdd.displayName} ha sido añadido a tu red de brokis.` });
         
-        // Refresh local and global state
         onUserAdded();
         await refreshUserProfile();
         setIsOpen(false);
