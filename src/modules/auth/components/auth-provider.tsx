@@ -48,6 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           photoURL: firebaseUser.photoURL || '',
           phoneNumber: firebaseUser.phoneNumber || '',
           credits: 0,
+          // role is intentionally omitted for new users
           network: {
             clients: [],
             providers: [],

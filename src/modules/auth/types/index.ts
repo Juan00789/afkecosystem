@@ -1,11 +1,5 @@
 // src/modules/auth/types/index.ts
 
-export enum Role {
-  Client = 'client',
-  Provider = 'provider',
-  Admin = 'admin',
-}
-
 export interface UserProfile {
   uid: string;
   email: string;
@@ -15,7 +9,7 @@ export interface UserProfile {
   companyName?: string;
   website?: string;
   credits?: number;
-  role?: 'admin' | 'user';
+  role?: 'admin'; // Role is optional, and only 'admin' is a special value.
   bankInfo?: {
     bankName?: string;
     accountNumber?: string;
