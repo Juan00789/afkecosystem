@@ -1,10 +1,9 @@
+
 'use client';
 import Link from 'next/link';
 import {
   Home,
-  Users,
   Briefcase,
-  FileText,
   Settings,
   ShoppingBag,
   BookOpen,
@@ -18,10 +17,7 @@ import {
   Archive,
   BarChart,
   GitFork,
-  BrainCircuit,
-  Growth,
-  LayoutGrid,
-  History,
+  FileText,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -45,9 +41,6 @@ export function Sidebar() {
     { section: 'Colabora', href: '/dashboard/network', label: 'Mis Brokis', icon: GitFork },
     { section: 'Colabora', href: '/dashboard/mentorias', label: 'Mentorías', icon: MessageSquareHeart },
     { section: 'Gestiona', href: '/dashboard/contabilidad', label: 'Mis Finanzas', icon: Landmark },
-    { section: 'Gestiona', href: '/dashboard/contabilidad/historial', label: 'Historial Financiero', icon: History },
-    { section: 'Gestiona', href: '/dashboard/contabilidad/invoices', label: 'Documentos', icon: FileText },
-    { section: 'Gestiona', href: '/dashboard/analisis/financiero', label: 'Análisis Financiero', icon: BarChart },
     { section: 'Gestiona', href: '/dashboard/cotizador', label: 'Cotizador', icon: FileText },
     { section: 'Gestiona', href: '/dashboard/productos', label: 'Mi Almacén', icon: Archive },
     { section: 'Gestiona', href: '/dashboard/services', label: 'Mis Servicios', icon: Briefcase },
@@ -86,6 +79,15 @@ export function Sidebar() {
       </Tooltip>
     );
   };
+  
+   const groupedLinks = navLinks.reduce((acc, link) => {
+    if (!acc[link.section]) {
+      acc[link.section] = [];
+    }
+    acc[link.section].push(link);
+    return acc;
+  }, {} as Record<string, typeof navLinks>);
+
 
   return (
     <aside className="fixed inset-y-0 left-0 z-10 hidden w-14 flex-col border-r bg-background sm:flex">
@@ -98,22 +100,12 @@ export function Sidebar() {
             <HandHelping className="h-4 w-4 transition-all group-hover:scale-110" />
             <span className="sr-only">AFKEcosystem</span>
           </Link>
-          {navLinks.filter(l => l.section === 'Principal').map(renderLink)}
-          <Separator className="my-2" />
-           <p className="text-xs text-muted-foreground font-semibold tracking-wider uppercase">Colabora</p>
-          {navLinks.filter(l => l.section === 'Colabora').map(renderLink)}
-          <Separator className="my-2" />
-           <p className="text-xs text-muted-foreground font-semibold tracking-wider uppercase">Gestiona</p>
-          {navLinks.filter(l => l.section === 'Gestiona').map(renderLink)}
-           <Separator className="my-2" />
-           <p className="text-xs text-muted-foreground font-semibold tracking-wider uppercase">Crece</p>
-          {navLinks.filter(l => l.section === 'Crece').map(renderLink)}
-          {userProfile?.role === 'admin' && (
-            <>
-              <Separator className="my-2" />
-              {navLinks.filter(l => l.section === 'Admin').map(renderLink)}
-            </>
-          )}
+          {Object.entries(groupedLinks).map(([section, links], index) => (
+              <div key={section} className="flex flex-col items-center gap-4 w-full">
+                {index > 0 && <Separator className="my-2" />}
+                {links.map(renderLink)}
+              </div>
+          ))}
         </nav>
         <nav className="mt-auto flex flex-col items-center gap-4 px-2 sm:py-5">
           {bottomLinks.map(renderLink)}

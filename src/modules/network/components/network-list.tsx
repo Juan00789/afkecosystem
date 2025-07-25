@@ -1,3 +1,4 @@
+
 // src/modules/network/components/network-list.tsx
 'use client';
 import { useState, useEffect } from 'react';
@@ -15,7 +16,7 @@ import {
 } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Trash2 } from 'lucide-react';
+import { Trash2, MessageSquare } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,6 +30,18 @@ import {
 } from "@/components/ui/alert-dialog"
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
+
+const WhatsAppIcon = () => (
+    <svg
+      role="img"
+      viewBox="0 0 24 24"
+      xmlns="http://www.w3.org/2000/svg"
+      className="h-4 w-4"
+      fill="currentColor"
+    >
+      <path d="M12.04 2.016c-5.49 0-9.957 4.467-9.957 9.957 0 1.906.538 3.696 1.487 5.25L2.015 22l4.904-1.556a9.88 9.88 0 0 0 4.982 1.32c5.49 0 9.956-4.467 9.956-9.957s-4.466-9.957-9.956-9.957zm0 18.15c-1.636 0-3.23-.42-4.62-1.205l-.33-.195-3.434.91.927-3.356-.214-.348a8.35 8.35 0 0 1-1.26-4.96c0-4.54 3.704-8.244 8.244-8.244s8.244 3.704 8.244 8.244-3.704 8.244-8.244 8.244zm4.512-6.136c-.247-.124-1.463-.722-1.69- .808-.226-.086-.39-.124-.555.124-.164.247-.638.808-.782.972-.144.165-.288.185-.535.062-.247-.124-.927-.34-1.767-1.09s-1.402-1.636-1.402-1.928c0-.29.313-.446.425-.554.112-.108.247-.287.37-.47.124-.184.165-.307.247-.514.082-.206.04-.385-.02-.51-.06-.124-.555-1.33-.76-1.822-.206-.49-.413-.422-.555-.43-.144-.007-.308-.007-.472-.007a.95.95 0 0 0-.68.307c-.226.247-.873.85-1.07 2.06s-.206 2.223.04 2.514c.247.29 1.424 2.223 3.456 3.036 2.032.813 2.032.544 2.398.514.367-.03.928-.38 1.05- .74.124-.36.124-.67.082-.81z" />
+    </svg>
+);
 
 interface NetworkListProps {
   refreshTrigger: number;
@@ -126,7 +139,13 @@ export function NetworkList({ refreshTrigger, onUserRemoved }: NetworkListProps)
             </TableRow>
           </TableHeader>
           <TableBody>
-            {users.map((networkUser) => (
+            {users.map((networkUser) => {
+              const whatsappNumber = networkUser.phoneNumber?.replace(/\D/g, '');
+              const whatsappLink = whatsappNumber 
+                ? `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(`Hola, te contacto desde AFKEcosystem.`)}`
+                : null;
+
+              return (
               <TableRow key={networkUser.uid}>
                 <TableCell>
                   <div className="flex items-center gap-3">
@@ -144,6 +163,13 @@ export function NetworkList({ refreshTrigger, onUserRemoved }: NetworkListProps)
                 <TableCell>{networkUser.companyName || 'Independiente'}</TableCell>
                 <TableCell>{networkUser.email || networkUser.phoneNumber || 'N/A'}</TableCell>
                 <TableCell className="text-right">
+                  {whatsappLink && (
+                    <Button asChild variant="outline" size="sm" className="mr-2">
+                      <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
+                          <WhatsAppIcon />
+                      </a>
+                    </Button>
+                  )}
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                        <Button variant="ghost" size="icon">
@@ -167,7 +193,7 @@ export function NetworkList({ refreshTrigger, onUserRemoved }: NetworkListProps)
                   </AlertDialog>
                 </TableCell>
               </TableRow>
-            ))}
+            )})}
           </TableBody>
         </Table>
       ) : (
