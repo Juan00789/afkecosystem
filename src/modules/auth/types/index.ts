@@ -23,4 +23,8 @@ export interface UserProfile {
   isMentor?: boolean;
   mentorBio?: string;
   mentorSpecialties?: string[];
+  network?: {
+    clients?: string[];
+    providers?: string[];
+  };
 }

@@ -23,8 +23,8 @@ export async function fetchMarketplaceServices(): Promise<Service[]> {
     }
     
     // Batch fetch providers
-    const usersSnapshot = await getDocs(query(collection(db, 'users'), where(documentId(), 'in', providerIds)));
-    const providersMap = new Map(usersSnapshot.docs.map(doc => [doc.id, doc.data() as UserProfile]));
+    const usersSnapshot = await getDocs(query(collection(db, 'users'), where('uid', 'in', providerIds)));
+    const providersMap = new Map(usersSnapshot.docs.map(doc => [doc.data().uid, doc.data() as UserProfile]));
 
     const enrichedServices = servicesData.map(service => ({
       ...service,
