@@ -340,10 +340,15 @@ export function DashboardOverview({ userId }: DashboardOverviewProps) {
       </div>
       
        <div>
-        <h2 className="text-2xl font-semibold mb-4">Actividad Reciente</h2>
+        <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-semibold">Casos Recientes</h2>
+            <Button asChild variant="outline">
+                <Link href="/dashboard/cases">Ver Todos los Casos</Link>
+            </Button>
+        </div>
         <div className="space-y-4">
           {allCases.length > 0 ? (
-            allCases.slice(0, 5).map(caseData => {
+            allCases.slice(0, 3).map(caseData => {
               let perspective: 'client' | 'provider';
               if (caseData.clientId === caseData.providerId) {
                 perspective = 'provider';

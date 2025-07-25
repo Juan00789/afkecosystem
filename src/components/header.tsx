@@ -51,6 +51,7 @@ export function Header({}: HeaderProps) {
   const navSections = {
     'Principal': [
       { href: '/dashboard', label: 'Panel Principal', icon: Home },
+      { href: '/dashboard/cases', label: 'Mis Casos', icon: Briefcase },
     ],
     'Colabora': [
       { href: '/dashboard/marketplace', label: 'Marketplace', icon: ShoppingBag },

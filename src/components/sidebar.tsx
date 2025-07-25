@@ -40,6 +40,7 @@ export function Sidebar() {
 
   const navLinks = [
     { section: 'Principal', href: '/dashboard', label: 'Panel Principal', icon: Home },
+    { section: 'Principal', href: '/dashboard/cases', label: 'Mis Casos', icon: Briefcase },
     { section: 'Colabora', href: '/dashboard/marketplace', label: 'Marketplace', icon: ShoppingBag },
     { section: 'Colabora', href: '/dashboard/network', label: 'Mis Brokis', icon: GitFork },
     { section: 'Colabora', href: '/dashboard/mentorias', label: 'Mentorías', icon: MessageSquareHeart },
