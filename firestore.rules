@@ -3,87 +3,88 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+  
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+    
+    function isParticipant(caseId) {
+      let caseResource = get(/databases/$(database)/documents/cases/$(caseId));
+      return isOwner(caseResource.data.clientId) || isOwner(caseResource.data.providerId);
+    }
 
-    // Users: Can read anyone's profile, but only write to their own.
-    // User cannot update their own credits or role.
     match /users/{userId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth.uid == userId;
-      allow update: if request.auth.uid == userId
+      allow read;
+      allow create: if isOwner(userId);
+      
+      // Allow users to update their own profile, but protect sensitive fields.
+      allow update: if isOwner(userId)
+                    && request.resource.data.uid == resource.data.uid
+                    && request.resource.data.email == resource.data.email
                     && request.resource.data.credits == resource.data.credits
                     && request.resource.data.role == resource.data.role;
     }
-
-    // Cases: Only client or provider can access.
+    
     match /cases/{caseId} {
-      allow read, update: if request.auth != null && (request.auth.uid == resource.data.clientId || request.auth.uid == resource.data.providerId);
-      allow create: if request.auth != null && request.resource.data.clientId == request.auth.uid;
-
-      // Comments: Only participants of the case can read/write comments.
-      match /comments/{commentId} {
-        allow read: if request.auth != null && (request.auth.uid == get(/databases/$(database)/documents/cases/$(caseId)).data.clientId || request.auth.uid == get(/databases/$(database)/documents/cases/$(caseId)).data.providerId);
-        allow create: if request.auth != null && request.resource.data.authorId == request.auth.uid;
-      }
+      allow read, update: if isParticipant(caseId);
+      allow create: if isOwner(request.resource.data.clientId);
     }
-
-    // Marketplace: Anyone can read services and products. Only owner can write.
+    
+    match /cases/{caseId}/comments/{commentId} {
+      allow read: if isParticipant(caseId);
+      allow create: if isOwner(request.resource.data.authorId);
+    }
+    
     match /services/{serviceId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null && request.resource.data.providerId == request.auth.uid;
-      allow update, delete: if request.auth != null && resource.data.providerId == request.auth.uid;
-    }
-
-    match /products/{productId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null && request.resource.data.providerId == request.auth.uid;
-      allow update, delete: if request.auth != null && resource.data.providerId == request.auth.uid;
+      allow read;
+      allow create, update, delete: if isOwner(request.resource.data.providerId);
     }
     
-    // Courses: Anyone can read, only owner can write/delete.
+     match /products/{productId} {
+      allow read;
+      allow create, update, delete: if isOwner(request.resource.data.providerId);
+    }
+    
     match /courses/{courseId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null && request.resource.data.providerId == request.auth.uid;
-      allow update, delete: if request.auth != null && resource.data.providerId == request.auth.uid;
-    }
-
-    // Network Connections: Users can only create connections for themselves.
-    match /network_connections/{connectionId} {
-        allow read: if request.auth != null;
-        allow create: if request.auth != null && (request.resource.data.client_id == request.auth.uid || request.resource.data.provider_id == request.auth.uid);
-        allow delete: if request.auth != null && (resource.data.client_id == request.auth.uid || resource.data.provider_id == request.auth.uid);
+        allow read;
+        allow create, update, delete: if isOwner(request.resource.data.providerId);
     }
     
-    // Financial: Users can only manage their own transactions and invoices.
-    match /transactions/{transactionId} {
-        allow read, create, update, delete: if request.auth != null && request.auth.uid == getAfter(/databases/$(database)/documents/transactions/$(transactionId)).data.userId;
-    }
-    match /invoices/{invoiceId} {
-        allow read, create, update, delete: if request.auth != null && request.auth.uid == getAfter(/databases/$(database)/documents/invoices/$(invoiceId)).data.providerId;
+    match /network_connections/{connectionId} {
+      allow read: if isOwner(resource.data.client_id) || isOwner(resource.data.provider_id);
+      allow create: if isOwner(request.resource.data.client_id);
+      allow delete: if isOwner(resource.data.client_id) || isOwner(resource.data.provider_id);
     }
 
-    // Credit System: Users can create their own requests. Admin can manage the fund.
+    match /transactions/{transactionId} {
+      allow read, create, update: if isOwner(request.resource.data.userId);
+    }
+
+    match /invoices/{invoiceId} {
+      allow read, create: if isOwner(request.resource.data.providerId);
+    }
+    
     match /credit_requests/{requestId} {
-        allow read, create: if request.auth != null && request.auth.uid == request.resource.data.userId;
-        // Admins can update status
-        allow update: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      allow read: if isOwner(resource.data.userId) || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      allow create: if isOwner(request.resource.data.userId);
+      // Only admins can update status
+      allow update: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
     
     match /loans/{loanId} {
-        // Only the user who owns the loan or an admin can read it.
-        allow read, update: if request.auth != null && (resource.data.userId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+      allow read: if isOwner(resource.data.userId) || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+       allow update: if isOwner(resource.data.userId) || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
     
     match /investments/{investmentId} {
         allow read: if request.auth != null;
-        // Only allow creation if the investor is the one making the request.
-        allow create: if request.auth != null && request.resource.data.investorId == request.auth.uid;
+        allow create: if isOwner(request.resource.data.investorId);
     }
-    
-    // Admin-only access to the fund document.
+
+    // Admin-only collection for managing the fund
     match /fund/{fundId} {
-        allow read, write: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      allow read: if request.auth != null;
+      allow write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
   }
 }
-
-    

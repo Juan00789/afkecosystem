@@ -1,35 +1,50 @@
+
 rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    
-    // Helper function for auth check
+  
+    // Function to check if user is authenticated
     function isAuthenticated() {
       return request.auth != null;
     }
-
-    // Helper function to check ownership based on UID in filename
-    function isOwner(userId) {
-      return request.auth.uid == userId;
+  
+    // Match user avatars
+    match /avatars/{userId}/{fileName} {
+      // Allow read access to everyone for public profiles
+      allow read;
+      
+      // Allow write (create, update) only for the authenticated user on their own path
+      allow write: if isAuthenticated() && request.auth.uid == userId
+                   // Check file type
+                   && request.resource.contentType.matches('image/png|image/jpeg|image/gif')
+                   // Check file size (e.g., max 5MB)
+                   && request.resource.size < 5 * 1024 * 1024;
     }
     
-    // Avatars: Public read, but only owner can write/delete.
-    // Filename format: {userId}.{extension}
-    match /avatars/{userIdWithExt} {
-      allow read: if true;
-      allow write: if isAuthenticated() && isOwner(userIdWithExt.split('.')[0]);
+    // Match course cover images
+    match /course-covers/{userId}/{fileName} {
+        allow read;
+        allow write: if isAuthenticated() && request.auth.uid == userId
+                    && request.resource.contentType.matches('image/png|image/jpeg')
+                    && request.resource.size < 5 * 1024 * 1024;
     }
     
-    // Course Covers: Public read, but only authenticated users can write.
-    // We assume the providerId is checked at the Firestore level before generating an upload URL.
-    match /course-covers/{fileName} {
-      allow read: if true;
-      allow write: if isAuthenticated();
+    // Match product images
+    match /product-images/{userId}/{fileName} {
+        allow read;
+        allow write: if isAuthenticated() && request.auth.uid == userId
+                    && request.resource.contentType.matches('image/png|image/jpeg')
+                    && request.resource.size < 5 * 1024 * 1024;
     }
-
-    // Default deny all other paths
-    match /{allPaths=**} {
-      allow read, write: if false;
+    
+    // Match expense documents (more restrictive)
+    match /expense-documents/{userId}/{fileName} {
+        // Only the user who uploaded it can read or write
+        allow read, write: if isAuthenticated() && request.auth.uid == userId
+                          // Allow common document types
+                          && (request.resource.contentType.matches('image/.*') || request.resource.contentType == 'application/pdf')
+                          && request.resource.size < 10 * 1024 * 1024; // 10MB limit for docs
     }
   }
 }
