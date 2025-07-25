@@ -19,6 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Briefcase } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
+import Link from 'next/link';
 
 // SVG for the cracked glass effect
 const CrackedGlassSVG = () => (
@@ -157,7 +158,9 @@ export default function AuthPage() {
       <Card className="w-full max-w-sm text-center bg-black/30 backdrop-blur-sm border-primary/20 shadow-2xl shadow-primary/10 z-10">
         <CardHeader>
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full border border-primary/20 bg-black/50">
-            <Briefcase className="h-8 w-8 text-primary" />
+            <Link href="/">
+                <Briefcase className="h-8 w-8 text-primary" />
+            </Link>
           </div>
           <CardTitle className="text-2xl text-primary font-bold">AFKEcosystem</CardTitle>
           <CardDescription className="text-muted-foreground">

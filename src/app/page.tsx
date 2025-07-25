@@ -44,7 +44,7 @@ export default function HomePage() {
           </Link>
           <nav className="flex items-center gap-4">
             <Button variant="ghost" asChild>
-                <Link href="/auth/sign-in">Login</Link>
+                <Link href="/auth">Login</Link>
             </Button>
              <Button asChild>
                 <Link href="/dashboard">Acceder</Link>
@@ -62,7 +62,7 @@ export default function HomePage() {
                     En AFKEcosystem, la cultivamos contigo. Una plataforma para emprender con impacto.
                 </p>
                 <Button size="lg" className="mt-8" asChild>
-                    <Link href="/auth/sign-in">Únete al Ecosistema</Link>
+                    <Link href="/auth">Únete al Ecosistema</Link>
                 </Button>
             </div>
         </section>
