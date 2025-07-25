@@ -22,7 +22,6 @@ export async function fetchMarketplaceServices(): Promise<Service[]> {
       return servicesData; // Return services without provider info if no provider IDs
     }
     
-    // Batch fetch providers
     const usersSnapshot = await getDocs(query(collection(db, 'users'), where('uid', 'in', providerIds)));
     const providersMap = new Map(usersSnapshot.docs.map(doc => [doc.data().uid, doc.data() as UserProfile]));
 
@@ -35,7 +34,6 @@ export async function fetchMarketplaceServices(): Promise<Service[]> {
 
   } catch (error) {
     console.error("Error fetching marketplace services:", error);
-    // In a real app, you might want to throw the error or handle it differently
     return [];
   }
 }

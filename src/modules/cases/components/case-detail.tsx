@@ -14,7 +14,7 @@ import { format } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
-import { CheckCircle, Circle, CircleDot, Bot, Sparkles, AlertTriangle,ThumbsUp, Frown, MessageSquare, HandCoins } from 'lucide-react';
+import { CheckCircle, Circle, CircleDot, Bot, Sparkles, AlertTriangle,ThumbsUp, Frown, MessageSquare, HandCoins, Send } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { analyzeCaseSentiment, type CaseSentimentOutput } from '@/ai/flows/case-sentiment-flow';
@@ -159,7 +159,6 @@ export function CaseDetail({ caseId }: CaseDetailProps) {
             transaction.update(caseRef, { status: newStatus, lastUpdate: serverTimestamp() });
 
             if (newStatus === 'completed') {
-                // Determine credit reward based on sentiment
                 const sentimentResult = await analyzeCaseSentiment({
                   caseTitle: caseData.title,
                   comments: comments.map(c => ({ authorName: c.authorName, text: c.text })),
@@ -177,7 +176,7 @@ export function CaseDetail({ caseId }: CaseDetailProps) {
                         creditReward = 5;
                         toastDescription = 'Caso completado. Se han distribuido créditos de recompensa reducidos.';
                         break;
-                    default: // Negativo or Conflicto Potencial
+                    default:
                         creditReward = 0;
                         toastDescription = 'Caso completado, pero no se otorgan créditos debido a la fricción en la comunicación. Fomentemos el respeto.';
                         break;
@@ -190,7 +189,6 @@ export function CaseDetail({ caseId }: CaseDetailProps) {
                   transaction.update(providerRef, { credits: increment(creditReward) });
                 }
 
-                // Payout investments with bonus
                 for (const investment of investments) {
                     const investorRef = doc(db, 'users', investment.investorId);
                     const returnAmount = investment.amount * 1.10; // 10% bonus
@@ -211,25 +209,28 @@ export function CaseDetail({ caseId }: CaseDetailProps) {
     }
 };
 
-  const handleAddComment = async () => {
+  const handleAddComment = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!newComment.trim() || !user || !userProfile) return;
     
+    const commentToAdd = newComment;
+    setNewComment('');
+
     try {
         await addDoc(collection(db, `cases/${caseId}/comments`), {
-            text: newComment,
+            text: commentToAdd,
             authorId: user.uid,
             authorName: userProfile.displayName || 'Anonymous',
             authorPhotoURL: userProfile.photoURL || '',
             createdAt: serverTimestamp(),
         });
-        setNewComment('');
-        toast({ title: 'Comment added' });
         
         await updateDoc(doc(db, 'cases', caseId), { lastUpdate: serverTimestamp() });
 
     } catch (error) {
         console.error("Error adding comment: ", error);
         toast({ title: 'Error', description: 'Failed to add comment.', variant: 'destructive' });
+        setNewComment(commentToAdd); // Re-set the comment if sending failed
     }
   };
 
@@ -298,7 +299,8 @@ export function CaseDetail({ caseId }: CaseDetailProps) {
   if (!caseData) return <div>Case not found.</div>;
 
   const isParticipant = user?.uid === caseData.clientId || user?.uid === caseData.providerId;
-  const whatsappMessage = encodeURIComponent(`Hola, te contacto desde AFKEcosystem sobre el caso: "${caseData.title}".`);
+  const clientWhatsappMessage = encodeURIComponent(`Hola ${caseData.client?.displayName}, te contacto desde AFKEcosystem sobre el caso: "${caseData.title}".`);
+  const providerWhatsappMessage = encodeURIComponent(`Hola ${caseData.provider?.displayName}, te contacto desde AFKEcosystem sobre el caso: "${caseData.title}".`);
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -308,7 +310,7 @@ export function CaseDetail({ caseId }: CaseDetailProps) {
             <div>
               <CardTitle className="text-2xl">{caseData.title}</CardTitle>
               <CardDescription>
-                Case created on {format(caseData.createdAt.toDate(), 'PPP')}
+                Caso creado el {format(caseData.createdAt.toDate(), 'PPP')}
               </CardDescription>
             </div>
             <div className="mt-4 sm:mt-0 flex items-center gap-4">
@@ -317,10 +319,10 @@ export function CaseDetail({ caseId }: CaseDetailProps) {
                   <SelectValue placeholder="Change status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="new">New</SelectItem>
-                  <SelectItem value="in-progress">In Progress</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                  <SelectItem value="new">Nuevo</SelectItem>
+                  <SelectItem value="in-progress">En Progreso</SelectItem>
+                  <SelectItem value="completed">Completado</SelectItem>
+                  <SelectItem value="cancelled">Cancelado</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -341,7 +343,7 @@ export function CaseDetail({ caseId }: CaseDetailProps) {
                         <p className="text-sm text-muted-foreground">{caseData.client?.email}</p>
                     </div>
                 </div>
-                 {caseData.client?.phoneNumber && <Button asChild variant="outline" size="sm"><a href={`https://wa.me/${caseData.client.phoneNumber.replace(/\D/g, '')}?text=${whatsappMessage}`} target="_blank" rel="noopener noreferrer"><WhatsAppIcon />Contactar Cliente</a></Button>}
+                 {caseData.client?.phoneNumber && <Button asChild variant="outline" size="sm"><a href={`https://wa.me/${caseData.client.phoneNumber.replace(/\D/g, '')}?text=${clientWhatsappMessage}`} target="_blank" rel="noopener noreferrer"><WhatsAppIcon />Contactar Cliente</a></Button>}
             </div>
              <div className="space-y-3">
                 <h4 className="font-semibold">Proveedor</h4>
@@ -352,7 +354,7 @@ export function CaseDetail({ caseId }: CaseDetailProps) {
                         <p className="text-sm text-muted-foreground">{caseData.provider?.email}</p>
                     </div>
                 </div>
-                {caseData.provider?.phoneNumber && <Button asChild variant="outline" size="sm"><a href={`https://wa.me/${caseData.provider.phoneNumber.replace(/\D/g, '')}?text=${whatsappMessage}`} target="_blank" rel="noopener noreferrer"><WhatsAppIcon />Contactar Proveedor</a></Button>}
+                {caseData.provider?.phoneNumber && <Button asChild variant="outline" size="sm"><a href={`https://wa.me/${caseData.provider.phoneNumber.replace(/\D/g, '')}?text=${providerWhatsappMessage}`} target="_blank" rel="noopener noreferrer"><WhatsAppIcon />Contactar Proveedor</a></Button>}
             </div>
           </div>
         </CardContent>
@@ -441,39 +443,53 @@ export function CaseDetail({ caseId }: CaseDetailProps) {
             </Card>
           )}
 
-          <div className="space-y-4">
-            {comments.map(comment => (
-              <div key={comment.id} className="flex items-start gap-3">
-                 <Avatar className="h-9 w-9">
-                    <AvatarImage src={comment.authorPhotoURL} />
-                    <AvatarFallback>{comment.authorName[0]}</AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                        <p className="font-semibold">{comment.authorName}</p>
-                        <p className="text-xs text-muted-foreground">
-                            {comment.createdAt ? format(comment.createdAt, 'PPp') : '...'}
-                        </p>
-                    </div>
-                    <p className="text-sm text-muted-foreground">{comment.text}</p>
+          <div className="space-y-4 max-h-96 overflow-y-auto p-4 border rounded-lg bg-muted/20">
+            {comments.length > 0 ? comments.map(comment => (
+              <div key={comment.id} className={cn(
+                  "flex items-end gap-2",
+                  comment.authorId === user?.uid ? "justify-end" : "justify-start"
+              )}>
+                {comment.authorId !== user?.uid && (
+                    <Avatar className="h-8 w-8">
+                        <AvatarImage src={comment.authorPhotoURL} />
+                        <AvatarFallback>{comment.authorName[0]}</AvatarFallback>
+                    </Avatar>
+                )}
+                <div className={cn(
+                    "max-w-xs md:max-w-md rounded-lg p-3",
+                    comment.authorId === user?.uid
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-background"
+                )}>
+                    <p className="text-sm font-semibold">{comment.authorId === user?.uid ? 'Tú' : comment.authorName}</p>
+                    <p className="text-sm whitespace-pre-wrap">{comment.text}</p>
+                    <p className="text-xs opacity-70 mt-1 text-right">
+                        {comment.createdAt ? format(comment.createdAt, 'p, dd/MM/yy') : '...'}
+                    </p>
                 </div>
+                 {comment.authorId === user?.uid && (
+                    <Avatar className="h-8 w-8">
+                        <AvatarImage src={comment.authorPhotoURL} />
+                        <AvatarFallback>{comment.authorName[0]}</AvatarFallback>
+                    </Avatar>
+                )}
               </div>
-            ))}
-             {comments.length === 0 && (
-                <p className="text-center text-muted-foreground py-4">No comments yet.</p>
+            )) : (
+                <p className="text-center text-muted-foreground py-4">No hay comentarios aún. ¡Inicia la conversación!</p>
             )}
           </div>
-          <Separator className="my-6" />
-           <div className="space-y-2">
+          <form onSubmit={handleAddComment} className="mt-4 flex items-center gap-2">
             <Textarea
-              placeholder="Add your comment..."
+              placeholder="Escribe tu comentario..."
               value={newComment}
               onChange={(e) => setNewComment(e.target.value)}
+              className="flex-grow"
+              rows={1}
             />
-            <Button onClick={handleAddComment} disabled={!newComment.trim()}>
-                Add Comment
+            <Button type="submit" disabled={!newComment.trim()}>
+                <Send className="h-4 w-4" />
             </Button>
-          </div>
+          </form>
         </CardContent>
       </Card>
     </div>
