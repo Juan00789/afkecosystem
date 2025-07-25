@@ -6,7 +6,7 @@ import { useAuth } from '@/modules/auth/hooks/use-auth';
 import { db } from '@/lib/firebase';
 import { collection, query, where, onSnapshot, orderBy, doc, getDoc } from 'firebase/firestore';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Briefcase } from 'lucide-react';
 import { CaseCard } from '@/modules/cases/components/case-card';
 import type { Case, UserProfile } from '@/modules/cases/types';
