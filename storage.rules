@@ -1,50 +1,46 @@
-
 rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
   
-    // Function to check if user is authenticated
-    function isAuthenticated() {
-      return request.auth != null;
+    // Helper function to check file size (e.g., max 5MB)
+    function isImage(request) {
+      return request.resource.contentType.matches('image/png') ||
+             request.resource.contentType.matches('image/jpeg');
     }
-  
-    // Match user avatars
+    
+    function isSmall(request) {
+       return request.resource.size < 5 * 1024 * 1024;
+    }
+
+    // AVATARS: User can only write to their own avatar path
     match /avatars/{userId}/{fileName} {
-      // Allow read access to everyone for public profiles
-      allow read;
-      
-      // Allow write (create, update) only for the authenticated user on their own path
-      allow write: if isAuthenticated() && request.auth.uid == userId
-                   // Check file type
-                   && request.resource.contentType.matches('image/png|image/jpeg|image/gif')
-                   // Check file size (e.g., max 5MB)
-                   && request.resource.size < 5 * 1024 * 1024;
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == userId
+                   && isImage(request) && isSmall(request);
     }
     
-    // Match course cover images
-    match /course-covers/{userId}/{fileName} {
-        allow read;
-        allow write: if isAuthenticated() && request.auth.uid == userId
-                    && request.resource.contentType.matches('image/png|image/jpeg')
-                    && request.resource.size < 5 * 1024 * 1024;
+    // COURSE COVERS: User can only write to their own course image path
+    match /course-covers/{userId}-{timestamp}-{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == userId
+                   && isImage(request) && isSmall(request);
     }
     
-    // Match product images
-    match /product-images/{userId}/{fileName} {
-        allow read;
-        allow write: if isAuthenticated() && request.auth.uid == userId
-                    && request.resource.contentType.matches('image/png|image/jpeg')
-                    && request.resource.size < 5 * 1024 * 1024;
+    // PRODUCT IMAGES: User can only write to their own product image path
+    match /product-images/{userId}-{timestamp}-{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == userId
+                   && isImage(request) && isSmall(request);
     }
     
-    // Match expense documents (more restrictive)
+    // EXPENSE DOCUMENTS: User can only write to their own expense document path
+    // Allows images and PDFs for receipts/invoices
     match /expense-documents/{userId}/{fileName} {
-        // Only the user who uploaded it can read or write
-        allow read, write: if isAuthenticated() && request.auth.uid == userId
-                          // Allow common document types
-                          && (request.resource.contentType.matches('image/.*') || request.resource.contentType == 'application/pdf')
-                          && request.resource.size < 10 * 1024 * 1024; // 10MB limit for docs
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if request.auth != null && request.auth.uid == userId
+                   && (isImage(request) || request.resource.contentType == 'application/pdf')
+                   && isSmall(request);
     }
   }
 }

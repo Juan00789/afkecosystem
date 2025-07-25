@@ -1,90 +1,93 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-  
-    function isOwner(userId) {
-      return request.auth != null && request.auth.uid == userId;
-    }
-    
-    function isParticipant(caseId) {
-      let caseResource = get(/databases/$(database)/documents/cases/$(caseId));
-      return isOwner(caseResource.data.clientId) || isOwner(caseResource.data.providerId);
+
+    // Helper function to check if a user is an admin
+    function isAdmin() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
+    // Helper function to check if a user is a participant in a case
+    function isCaseParticipant(caseId) {
+      let caseDoc = get(/databases/$(database)/documents/cases/$(caseId));
+      return request.auth.uid == caseDoc.data.clientId || request.auth.uid == caseDoc.data.providerId;
+    }
+    
+    // USERS: Public read, self-write on most fields, protected credits/role
     match /users/{userId} {
-      allow read;
-      allow create: if isOwner(userId);
-      
-      // Allow users to update their own profile, but protect sensitive fields.
-      allow update: if isOwner(userId)
-                    && request.resource.data.uid == resource.data.uid
-                    && request.resource.data.email == resource.data.email
+      allow read: if true;
+      allow create: if request.auth.uid == userId;
+      allow update: if request.auth.uid == userId
                     && request.resource.data.credits == resource.data.credits
                     && request.resource.data.role == resource.data.role;
     }
-    
+
+    // CASES: Only participants can read/write
     match /cases/{caseId} {
-      allow read, update: if isParticipant(caseId);
-      allow create: if isOwner(request.resource.data.clientId);
+      allow read, update: if isCaseParticipant(caseId) || isAdmin();
+      allow create: if request.auth.uid == request.resource.data.clientId;
     }
-    
+
+    // COMMENTS: Only participants can read/write comments
     match /cases/{caseId}/comments/{commentId} {
-      allow read: if isParticipant(caseId);
-      allow create: if isOwner(request.resource.data.authorId);
+      allow read: if isCaseParticipant(caseId) || isAdmin();
+      allow create: if request.auth.uid == request.resource.data.authorId && isCaseParticipant(caseId);
     }
     
-    match /services/{serviceId} {
-      allow read;
-      allow create, update, delete: if isOwner(request.resource.data.providerId);
-    }
-    
-     match /products/{productId} {
-      allow read;
-      allow create, update, delete: if isOwner(request.resource.data.providerId);
-    }
-    
-    match /courses/{courseId} {
-        allow read;
-        allow create, update, delete: if isOwner(request.resource.data.providerId);
-    }
-    
+    // NETWORK: Can only create/delete own connections
     match /network_connections/{connectionId} {
-      allow read: if isOwner(resource.data.client_id) || isOwner(resource.data.provider_id);
-      allow create: if isOwner(request.resource.data.client_id);
-      allow delete: if isOwner(resource.data.client_id) || isOwner(resource.data.provider_id);
+      allow read: if request.auth.uid == resource.data.client_id || request.auth.uid == resource.data.provider_id;
+      allow create: if request.auth.uid == request.resource.data.client_id;
+      allow delete: if request.auth.uid == resource.data.client_id || request.auth.uid == resource.data.provider_id;
     }
 
-    match /transactions/{transactionId} {
-      allow read, create, update: if isOwner(request.resource.data.userId);
+    // MARKETPLACE: Public read, self-write for services & products
+    match /services/{serviceId} {
+      allow read: if true;
+      allow create, update, delete: if request.auth.uid == request.resource.data.providerId;
     }
-
-    match /invoices/{invoiceId} {
-      allow read, create: if isOwner(request.resource.data.providerId);
+    match /products/{productId} {
+      allow read: if true;
+      allow create, update, delete: if request.auth.uid == request.resource.data.providerId;
     }
     
+    // COURSES: Public read, self-write for courses
+    match /courses/{courseId} {
+        allow read: if true;
+        allow create, update, delete: if request.auth.uid == request.resource.data.providerId;
+    }
+
+    // ACCOUNTING: Self-access only
+    match /transactions/{transactionId} {
+      allow read, write: if request.auth.uid == resource.data.userId;
+      allow create: if request.auth.uid == request.resource.data.userId;
+    }
+    match /invoices/{invoiceId} {
+      allow read, write: if request.auth.uid == resource.data.providerId;
+      allow create: if request.auth.uid == request.resource.data.providerId;
+    }
+    
+    // CREDIT SYSTEM
     match /credit_requests/{requestId} {
-      allow read: if isOwner(resource.data.userId) || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-      allow create: if isOwner(request.resource.data.userId);
-      // Only admins can update status
-      allow update: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      allow create: if request.auth.uid == request.resource.data.userId;
+      allow read: if request.auth.uid == resource.data.userId || isAdmin();
+      allow update: if isAdmin(); // Only admins can approve/reject
     }
     
     match /loans/{loanId} {
-      allow read: if isOwner(resource.data.userId) || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-       allow update: if isOwner(resource.data.userId) || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      allow read, update: if request.auth.uid == resource.data.userId || isAdmin();
     }
     
     match /investments/{investmentId} {
-        allow read: if request.auth != null;
-        allow create: if isOwner(request.resource.data.investorId);
+      allow create: if request.auth.uid != null && request.auth.uid == request.resource.data.investorId;
+      allow read: if request.auth.uid == resource.data.investorId || isAdmin();
     }
-
-    // Admin-only collection for managing the fund
-    match /fund/{fundId} {
-      allow read: if request.auth != null;
-      allow write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    
+    // FUND: Admin-only write access
+    match /fund/{fundDoc} {
+      allow read: if request.auth.uid != null;
+      allow write: if isAdmin();
     }
   }
 }

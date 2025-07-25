@@ -1,6 +1,6 @@
 // src/modules/courses/components/my-courses-management.tsx
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -81,7 +81,7 @@ interface Course extends CourseFormData {
 }
 
 export function MyCoursesManagement() {
-  const { user, userProfile } = useAuth();
+  const { user, userProfile, refreshUserProfile } = useAuth();
   const { toast } = useToast();
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(false);
@@ -135,6 +135,23 @@ export function MyCoursesManagement() {
     }
     setIsDialogOpen(true);
   };
+  
+  const getProfile = useCallback(async (): Promise<UserProfile> => {
+    if (userProfile) return userProfile;
+    if (!user) throw new Error('User not authenticated');
+    
+    await refreshUserProfile();
+    
+    // After refresh, userProfile in context should be updated.
+    // We need a way to get the *new* profile from context or re-fetch it.
+    // For simplicity here, re-fetching is safer.
+    const userDoc = await getDoc(doc(db, 'users', user.uid));
+    if (userDoc.exists()) {
+      return userDoc.data() as UserProfile;
+    }
+    throw new Error('User profile not found.');
+  }, [user, userProfile, refreshUserProfile]);
+
 
   const onSubmit = async (data: CourseFormData) => {
     if (!user) {
@@ -144,26 +161,8 @@ export function MyCoursesManagement() {
     setLoading(true);
 
     try {
-      // Ensure we have the user profile. If not available in context, fetch it.
-      let profileToUse = userProfile;
-      if (!profileToUse) {
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
-        if (userDoc.exists()) {
-          profileToUse = userDoc.data() as UserProfile;
-        } else {
-          throw new Error('User profile not found.');
-        }
-      }
-
-      // Step 1: Upload the image first if it exists.
-      let coverImageUrl = editingCourse?.coverImageUrl || '';
-      if (coverImageFile) {
-        const imageRef = ref(storage, `course-covers/${user.uid}-${Date.now()}-${coverImageFile.name}`);
-        const snapshot = await uploadBytes(imageRef, coverImageFile);
-        coverImageUrl = await getDownloadURL(snapshot.ref);
-      }
-  
-      // Step 2: Perform AI validation with all data ready.
+      const profileToUse = await getProfile();
+      
       const validationResult = await validateCourse({
         title: data.title,
         description: data.description,
@@ -171,32 +170,37 @@ export function MyCoursesManagement() {
       });
   
       if (!validationResult.isKnowledgeable || !validationResult.isValid) {
-        if (!validationResult.isKnowledgeable) {
-          toast({
-            title: 'Knowledge Validation Failed',
-            description: validationResult.reason,
+         let toastDescription = '';
+        if (!validationResult.isKnowledgeable) toastDescription = validationResult.reason;
+        if (!validationResult.isValid) toastDescription = `${toastDescription} ${validationResult.reason}`.trim();
+
+        toast({
+            title: 'Validación Fallida',
+            description: toastDescription,
             variant: 'destructive',
           });
-        }
+
         if (!validationResult.isValid) {
-          toast({
-            title: 'Content Validation Failed',
-            description: validationResult.reason,
-            variant: 'destructive',
-          });
-          const userRef = doc(db, 'users', user.uid);
-          await updateDoc(userRef, { credits: increment(-10) });
-          toast({
-            title: 'Penalización Aplicada',
-            description: 'Se han deducido 10 créditos por contenido de baja calidad.',
-            variant: 'destructive',
-          });
+            const userRef = doc(db, 'users', user.uid);
+            await updateDoc(userRef, { credits: increment(-10) });
+            toast({
+                title: 'Penalización Aplicada',
+                description: 'Se han deducido 10 créditos por contenido de baja calidad.',
+                variant: 'destructive',
+            });
+            await refreshUserProfile();
         }
-        setLoading(false); // Make sure to stop loading on validation failure
+        setLoading(false);
         return;
       }
   
-      // Step 3: Firestore transaction for saving data and awarding credits.
+      let coverImageUrl = editingCourse?.coverImageUrl || '';
+      if (coverImageFile) {
+        const imageRef = ref(storage, `course-covers/${user.uid}-${Date.now()}-${coverImageFile.name}`);
+        const snapshot = await uploadBytes(imageRef, coverImageFile);
+        coverImageUrl = await getDownloadURL(snapshot.ref);
+      }
+      
       const courseDataWithImage = { ...data, coverImageUrl };
   
       await runTransaction(db, async (transaction) => {
@@ -216,10 +220,12 @@ export function MyCoursesManagement() {
         }
       });
   
+      await refreshUserProfile();
+
       if (editingCourse) {
-        toast({ title: 'Success', description: 'Course updated successfully.' });
+        toast({ title: 'Éxito', description: 'Curso actualizado.' });
       } else {
-        toast({ title: 'Success', description: 'New course created. You earned 25 credits!' });
+        toast({ title: 'Éxito', description: 'Nuevo curso creado. ¡Has ganado 25 créditos!' });
       }
   
       setIsDialogOpen(false);

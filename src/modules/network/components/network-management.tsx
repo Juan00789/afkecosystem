@@ -1,7 +1,7 @@
 // src/modules/network/components/network-management.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { UserSelectionDialog } from './UserSelectionDialog';
 import { NetworkList } from './network-list';
@@ -14,33 +14,47 @@ export function NetworkManagement() {
   const { user, refreshUserProfile } = useAuth();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [networkIds, setNetworkIds] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchConnections = useCallback(async () => {
+    if (!user) {
+        setNetworkIds([]);
+        setLoading(false);
+        return;
+    };
+    setLoading(true);
+    try {
+        const clientConnectionsQuery = query(collection(db, 'network_connections'), where('provider_id', '==', user.uid));
+        const providerConnectionsQuery = query(collection(db, 'network_connections'), where('client_id', '==', user.uid));
+        
+        const [clientSnapshot, providerSnapshot] = await Promise.all([
+            getDocs(clientConnectionsQuery),
+            getDocs(providerConnectionsQuery),
+        ]);
+
+        const clientIds = clientSnapshot.docs.map(doc => doc.data().client_id);
+        const providerIds = providerSnapshot.docs.map(doc => doc.data().provider_id);
+        
+        const allIds = [...new Set([...clientIds, ...providerIds])];
+        setNetworkIds(allIds);
+    } catch(error) {
+        console.error("Failed to fetch network connections", error);
+        setNetworkIds([]);
+    } finally {
+        setLoading(false);
+    }
+  }, [user]);
 
   useEffect(() => {
-    if (!user) return;
-    
-    const fetchConnections = async () => {
-      const clientConnectionsQuery = query(collection(db, 'network_connections'), where('provider_id', '==', user.uid));
-      const providerConnectionsQuery = query(collection(db, 'network_connections'), where('client_id', '==', user.uid));
-      
-      const [clientSnapshot, providerSnapshot] = await Promise.all([
-        getDocs(clientConnectionsQuery),
-        getDocs(providerConnectionsQuery),
-      ]);
-
-      const clientIds = clientSnapshot.docs.map(doc => doc.data().client_id);
-      const providerIds = providerSnapshot.docs.map(doc => doc.data().provider_id);
-      
-      const allIds = [...new Set([...clientIds, ...providerIds])];
-      setNetworkIds(allIds);
-    };
-
     fetchConnections();
-  }, [user, refreshTrigger]);
+  }, [user, refreshTrigger, fetchConnections]);
 
-  const handleUserAddedOrRemoved = () => {
+  const handleUserAddedOrRemoved = useCallback(() => {
     setRefreshTrigger(prev => prev + 1);
-    refreshUserProfile();
-  };
+    if(refreshUserProfile) {
+      refreshUserProfile();
+    }
+  }, [refreshUserProfile]);
 
   return (
     <div className="space-y-6">

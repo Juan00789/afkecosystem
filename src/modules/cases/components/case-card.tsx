@@ -14,22 +14,12 @@ interface CaseCardProps {
   // Let the component know from which perspective we are viewing the case
   // This helps determine who the "other party" is.
   // If not provided, it defaults based on the current user's role in the case.
-  perspective?: 'client' | 'provider';
+  perspective: 'client' | 'provider';
 }
 
-export function CaseCard({ caseData, perspective: forcedPerspective }: CaseCardProps) {
+export function CaseCard({ caseData, perspective }: CaseCardProps) {
   const { user } = useAuth();
   
-  // Determine the perspective if not forced
-  let perspective: 'client' | 'provider';
-  if (forcedPerspective) {
-    perspective = forcedPerspective;
-  } else if (user?.uid === caseData.clientId) {
-    perspective = 'client';
-  } else {
-    perspective = 'provider';
-  }
-
   const otherParty = perspective === 'client' ? caseData.provider : caseData.client;
   const otherPartyRole = perspective === 'client' ? 'Proveedor' : 'Cliente';
   
