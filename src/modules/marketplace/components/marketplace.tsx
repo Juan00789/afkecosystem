@@ -1,7 +1,6 @@
 // src/modules/marketplace/components/marketplace.tsx
 'use client';
 import { useState, useEffect, useMemo } from 'react';
-import { collection, getDocs, query, where, documentId } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { UserProfile } from '@/modules/auth/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,17 +13,9 @@ import { MessageSquare, Search, LayoutGrid, Megaphone, PencilRuler, Code, Hotel,
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import type { Service } from '../types';
+import { fetchMarketplaceServices } from '../services/marketplace-service';
 
-
-interface Service {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  providerId: string;
-  category?: string; // Assuming services might have categories
-  provider?: UserProfile;
-}
 
 const CATEGORIES = [
     { name: 'Todos', icon: <LayoutGrid className="h-4 w-4 mr-2" /> },
@@ -61,46 +52,18 @@ export function Marketplace() {
   const [selectedCategory, setSelectedCategory] = useState('Todos');
 
   useEffect(() => {
-    const fetchServicesAndProviders = async () => {
-      setLoading(true);
-      try {
-        // A better approach for a large app would be a dedicated search service like Algolia
-        const servicesSnapshot = await getDocs(collection(db, 'services'));
-        const servicesData = servicesSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as Service[];
-
-        if (servicesData.length > 0) {
-          const providerIds = [...new Set(servicesData.map(s => s.providerId))].filter(Boolean);
-          
-          if (providerIds.length === 0) {
-            setServices(servicesData);
+    const loadServices = async () => {
+        setLoading(true);
+        try {
+            const fetchedServices = await fetchMarketplaceServices();
+            setServices(fetchedServices);
+        } catch (error) {
+            console.error("Error fetching marketplace data:", error);
+        } finally {
             setLoading(false);
-            return;
-          }
-          
-          // Batch fetch providers
-          const usersSnapshot = await getDocs(query(collection(db, 'users'), where(documentId(), 'in', providerIds)));
-          const providersMap = new Map(usersSnapshot.docs.map(doc => [doc.id, doc.data() as UserProfile]));
-
-          const enrichedServices = servicesData.map(service => ({
-            ...service,
-            provider: providersMap.get(service.providerId),
-          }));
-
-          setServices(enrichedServices);
-        } else {
-          setServices([]);
         }
-      } catch (error) {
-        console.error("Error fetching marketplace data:", error);
-      } finally {
-        setLoading(false);
-      }
     };
-
-    fetchServicesAndProviders();
+    loadServices();
   }, []);
 
   const filteredServices = useMemo(() => {
